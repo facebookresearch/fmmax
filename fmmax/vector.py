@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import numpy as onp
 import optax
 
-from lightcycle.fmmax.fmmax import basis, utils
+from fmmax import basis, utils
 
 PyTree = Any
 

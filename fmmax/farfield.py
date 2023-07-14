@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 import numpy as onp
 
-from lightcycle.fmmax.fmmax import basis, utils
+from fmmax import basis, utils
 
 
 def farfield_profile(

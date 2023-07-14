@@ -5,8 +5,8 @@ import unittest
 import jax.numpy as jnp
 import numpy as onp
 
-from lightcycle.fmmax.examples import metal_pillars
-from lightcycle.fmmax.fmmax import fmm
+from examples import metal_pillars
+from fmmax import fmm
 
 
 class MetalPillarsTest(unittest.TestCase):

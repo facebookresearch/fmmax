@@ -4,7 +4,7 @@ from typing import Sequence, Tuple
 
 import jax.numpy as jnp
 
-from lightcycle.fmmax.fmmax import basis, fmm, layer, scattering, utils
+from fmmax import basis, fmm, layer, scattering, utils
 
 
 def propagate_amplitude(

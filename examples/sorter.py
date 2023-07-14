@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from lightcycle.fmmax.fmmax import basis, fields, fmm, layer, scattering, utils
+from fmmax import basis, fields, fmm, layer, scattering, utils
 
 Aux = Dict[str, Any]
 Initializer = Callable[[jax.random.PRNGKeyArray, Tuple[int, int]], jnp.ndarray]

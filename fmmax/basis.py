@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import numpy as onp
 
-from lightcycle.fmmax.fmmax import utils
+from fmmax import utils
 
 # Officially defines the x- and y- directions. By convention, the x-axis preceeds
 # the y-axis in our array indexing scheme.

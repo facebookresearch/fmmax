@@ -5,7 +5,7 @@ import unittest
 import jax.numpy as jnp
 import numpy as onp
 
-from lightcycle.fmmax.examples import ar_coating
+from examples import ar_coating
 
 
 class ARCoatingTest(unittest.TestCase):

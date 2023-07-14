@@ -5,8 +5,8 @@ import unittest
 import jax.numpy as jnp
 import numpy as onp
 
-from lightcycle.fmmax.examples import uled
-from lightcycle.fmmax.fmmax import basis, fmm
+from examples import uled
+from fmmax import basis, fmm
 
 SIM_CONFIG_KWARGS = {
     "fmm_configuration": fmm.FmmConfiguration(

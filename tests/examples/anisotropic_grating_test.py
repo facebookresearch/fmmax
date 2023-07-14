@@ -5,7 +5,7 @@ import unittest
 import jax.numpy as jnp
 import numpy as onp
 
-from lightcycle.fmmax.examples import anisotropic_grating
+from examples import anisotropic_grating
 
 
 class MetalGratingTest(unittest.TestCase):

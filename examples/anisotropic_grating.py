@@ -4,7 +4,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from lightcycle.fmmax.fmmax import basis, fields, fmm, layer, scattering, utils
+from fmmax import basis, fields, fmm, layer, scattering, utils
 
 WAVELENGTH_NM: jnp.ndarray = jnp.array([450.0, 550.0, 620.0])
 POLAR_ANGLE: jnp.ndarray = jnp.array([0.0])

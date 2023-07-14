@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import numpy as onp
 import scipy.optimize as spo
 
-from lightcycle.fmmax.fmmax import basis, layer, scattering
+from fmmax import basis, layer, scattering
 
 
 def compute_reflection(

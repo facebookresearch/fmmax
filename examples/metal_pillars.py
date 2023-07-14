@@ -4,7 +4,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from lightcycle.fmmax.fmmax import basis, fields, fmm, layer, scattering, utils
+from fmmax import basis, fields, fmm, layer, scattering, utils
 
 SMatricesInterior = Tuple[
     Tuple[scattering.ScatteringMatrix, scattering.ScatteringMatrix], ...

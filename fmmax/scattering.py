@@ -6,7 +6,7 @@ from typing import Sequence, Tuple
 import jax
 import jax.numpy as jnp
 
-from lightcycle.fmmax.fmmax import layer, utils
+from fmmax import layer, utils
 
 
 @dataclasses.dataclass

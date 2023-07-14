@@ -5,8 +5,8 @@ import unittest
 import numpy as onp
 import parameterized
 
-from lightcycle.fmmax.examples import metal_grating
-from lightcycle.fmmax.fmmax import basis, fmm
+from examples import metal_grating
+from fmmax import basis, fmm
 
 
 class MetalGratingTest(unittest.TestCase):

@@ -4,7 +4,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from lightcycle.fmmax.fmmax import basis, layer, scattering, utils
+from fmmax import basis, layer, scattering, utils
 
 
 def dirac_delta_source(

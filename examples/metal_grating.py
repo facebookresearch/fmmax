@@ -5,7 +5,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from lightcycle.fmmax.fmmax import basis, fmm, layer, scattering, utils
+from fmmax import basis, fmm, layer, scattering, utils
 
 NUM_TERMS_SWEEP = (9, 25, 49, 81, 121, 169, 225, 289, 361, 441, 529, 625, 729, 841)
 

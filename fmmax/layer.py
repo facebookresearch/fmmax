@@ -6,7 +6,7 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 
-from lightcycle.fmmax.fmmax import basis, fmm, utils
+from fmmax import basis, fmm, utils
 
 
 @dataclasses.dataclass

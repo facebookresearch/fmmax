@@ -4,7 +4,7 @@ import unittest
 
 import numpy as onp
 
-from lightcycle.fmmax.examples import sorter
+from examples import sorter
 
 
 class SorterTest(unittest.TestCase):

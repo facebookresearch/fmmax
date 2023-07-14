@@ -8,7 +8,7 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 
-from lightcycle.fmmax.fmmax import basis, vector
+from fmmax import basis, vector
 
 
 @dataclasses.dataclass

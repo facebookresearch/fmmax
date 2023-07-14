@@ -6,7 +6,7 @@ from typing import Sequence, Tuple
 
 import jax.numpy as jnp
 
-from lightcycle.fmmax.fmmax import basis, fields, fmm, layer, scattering, sources
+from fmmax import basis, fields, fmm, layer, scattering, sources
 
 FMM_CONFIGURATION = fmm.FmmConfiguration(
     formulation=fmm.FmmFormulation.POL,
