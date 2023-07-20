@@ -400,8 +400,8 @@ def unflatten(flat: jnp.ndarray, expansion: basis.Expansion) -> jnp.ndarray:
 
 
 def unflatten_flux(
-    flux: Tuple[int, int],
-    expansion: Tuple[int, int],
+    flux: jnp.ndarray,
+    expansion: basis.Expansion,
     brillouin_grid_axes: Tuple[int, int],
 ) -> jnp.ndarray:
     """Unflattens a flux for a given expansion and Brillouin integration scheme.
@@ -434,13 +434,13 @@ def unflatten_flux(
     flux = unflatten(flux, expansion)
 
     # Transpose so that polarization and sources are returned to the trailing axes.
-    axes = list(range(flux.ndim - 4)) + [-2, -1, -4, -3]
+    axes = tuple(range(flux.ndim - 4)) + (-2, -1, -4, -3)
     return jnp.transpose(flux, axes)
 
 
 def unflatten_transverse_wavevectors(
-    transverse_wavevectors: Tuple[int, int],
-    expansion: Tuple[int, int],
+    transverse_wavevectors: jnp.ndarray,
+    expansion: basis.Expansion,
     brillouin_grid_axes: Tuple[int, int],
 ) -> jnp.ndarray:
     """Unflattens transverse wavevectors for a given expansion and Brillouin integration scheme.
@@ -474,7 +474,7 @@ def unflatten_transverse_wavevectors(
     transverse_wavevectors = unflatten(transverse_wavevectors, expansion)
 
     # Transpose so the trailing axis is for the wavevector direction.
-    axes = list(range(transverse_wavevectors.ndim - 3)) + [-2, -1, -3]
+    axes = tuple(range(transverse_wavevectors.ndim - 3)) + (-2, -1, -3)
     return jnp.transpose(transverse_wavevectors, axes)
 
 
