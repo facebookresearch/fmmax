@@ -232,7 +232,7 @@ def directional_poynting_flux(
 
 def eigenmode_poynting_flux(
     layer_solve_result: layer.LayerSolveResult,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+) -> jnp.ndarray:
     """Returns the total Poynting flux for each eigenmode.
 
     The result is equivalent to summing over the orders of the flux calculated
@@ -433,11 +433,14 @@ def _field_coordinates(
     """Computes the coordinates of fields, given the shape and number of unit cells."""
     i_stop = num_unit_cells[0] * shape[0]
     j_stop = num_unit_cells[1] * shape[1]
-    return jnp.meshgrid(
-        jnp.arange(0, i_stop) / shape[0],
-        jnp.arange(0, j_stop) / shape[1],
-        indexing="ij",
+    coords: Tuple[int, int] = tuple(
+        jnp.meshgrid(
+            jnp.arange(0, i_stop) / shape[0],
+            jnp.arange(0, j_stop) / shape[1],
+            indexing="ij",
+        )
     )
+    return coords
 
 
 def stack_amplitudes_interior(
