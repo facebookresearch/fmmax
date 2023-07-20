@@ -4,9 +4,9 @@ import functools
 from typing import Any, Callable, Dict, Tuple
 
 import jax
+import jax.example_libraries.optimizers as jopt
 import jax.numpy as jnp
 import numpy as onp
-import optax
 
 from fmmax import basis, utils
 
@@ -193,7 +193,7 @@ def normalize_jones(
 def tangent_field(
     arr: jnp.ndarray,
     use_jones: bool,
-    optimizer: optax.GradientTransformation,
+    optimizer: jopt.Optimizer,
     alignment_weight: float,
     smoothness_weight: float,
     steps_dim_multiple: int,
@@ -242,7 +242,7 @@ def tangent_field(
 def _tangent_field_with_loss(
     arr: jnp.ndarray,
     use_jones: bool,
-    optimizer: optax.GradientTransformation,
+    optimizer: jopt.Optimizer,
     alignment_weight: float,
     smoothness_weight: float,
     steps_dim_multiple: int,
@@ -301,7 +301,7 @@ def _optimize_tangent_field(
     tx: jnp.ndarray,
     ty: jnp.ndarray,
     loss_fn: Callable[[jnp.ndarray, jnp.ndarray], float],
-    optimizer: optax.GradientTransformation,
+    optimizer: jopt.Optimizer,
     steps_dim_multiple: int,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Optimizes `tx` and `ty` by minimizing a functional.
@@ -320,30 +320,40 @@ def _optimize_tangent_field(
         the optimization, `(tx, ty, values)`.
     """
 
-    def _step_fn(tx_ty_state, dummy_x):
+    def _step_fn(step_state, dummy_x):
         del dummy_x
-        (tx, ty), state = tx_ty_state
+        step, state = step_state
+        tx, ty = optimizer.params_fn(state)
         value, grads = jax.value_and_grad(loss_fn, argnums=(0, 1))(tx, ty)
-        updates, state = optimizer.update(grads, state)
-        (tx, ty) = _complex_apply_updates((tx, ty), updates)
-        tx, ty = _clip_magnitude(tx, ty, 1.0)
-        return ((tx, ty), state), value
+        conj_grads = jax.tree_util.tree_map(jnp.conj, grads)
+        state = optimizer.update_fn(step, conj_grads, state)
+        state = _clip_magnitude_state(state, max_magnitude=1.0)
+        return (step + 1, state), value
 
     num_steps = steps_dim_multiple * max(tx.shape[-2:])
-    state = optimizer.init((tx, ty))
-    ((tx, ty), _), values = jax.lax.scan(
-        _step_fn, ((tx, ty), state), xs=None, length=num_steps
-    )
+    state = optimizer.init_fn((tx, ty))
+    (_, state), values = jax.lax.scan(_step_fn, (0, state), xs=None, length=num_steps)
+    tx, ty = optimizer.params_fn(state)
     return tx, ty, values
 
 
-def _complex_apply_updates(params: PyTree, updates: PyTree) -> PyTree:
-    """Applies complex `updates` to `params`, performing necessary conjugation."""
-    return jax.tree_util.tree_map(
-        lambda p, u: jnp.asarray(p + u.conj()).astype(jnp.asarray(p).dtype),
-        params,
-        updates,
-    )
+def _clip_magnitude_state(
+    state: jopt.OptimizerState,
+    max_magnitude: float,
+) -> jopt.OptimizerState:
+    """Extracts parameters from `state`, clips their magnitude, and repacks the state."""
+    leaves, treedef = jax.tree_util.tree_flatten(state)
+    assert len(leaves) % 2 == 0
+    idx_tx = 0
+    idx_ty = len(leaves) // 2
+    tx = leaves[idx_tx]
+    ty = leaves[idx_ty]
+    assert tx.shape == ty.shape
+    tx, ty = _clip_magnitude(tx, ty, max_magnitude)
+    leaves = list(leaves)
+    leaves[idx_tx] = tx
+    leaves[idx_ty] = ty
+    return jax.tree_util.tree_unflatten(treedef, leaves)
 
 
 def _field_loss(
@@ -451,7 +461,7 @@ JONES: str = "jones"
 NORMAL: str = "normal"
 POL: str = "pol"
 
-OPTIMIZER = optax.sgd(learning_rate=0.2, momentum=0.8)
+OPTIMIZER = jopt.momentum(step_size=0.2, mass=0.8)
 ALIGNMENT_WEIGHT = 1.0
 SMOOTHNESS_WEIGHT = 1.0
 STEPS_DIM_MULTIPLE = 10.0

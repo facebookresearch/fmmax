@@ -22,7 +22,7 @@ LAYER_SOLVE_RESULT = layer.eigensolve_isotropic_media(
     primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
     permittivity=jnp.ones((50, 50)) * 2,
     expansion=EXPANSION,
-    fmm_configuration=fmm.BASIC_CONFIGURATION,
+    formulation=fmm.Formulation.FFT,
 )
 
 BATCH_LAYER_SOLVE_RESULT = layer.eigensolve_isotropic_media(
@@ -31,7 +31,7 @@ BATCH_LAYER_SOLVE_RESULT = layer.eigensolve_isotropic_media(
     primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
     permittivity=jnp.ones((1, 1, 2, 50, 50)) * 2,
     expansion=EXPANSION,
-    fmm_configuration=fmm.BASIC_CONFIGURATION,
+    formulation=fmm.Formulation.FFT,
 )
 
 
@@ -124,7 +124,7 @@ class SourcesTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             expansion=EXPANSION,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         )
         s_matrices_before_source = (
             s_matrices_after_source
@@ -275,7 +275,7 @@ class InternalSourceTest(unittest.TestCase):
                     approximate_num_terms=500,
                     truncation=basis.Truncation.CIRCULAR,
                 ),
-                fmm_configuration=fmm.BASIC_CONFIGURATION,
+                formulation=fmm.Formulation.FFT,
             )
 
             s_matrix = scattering.stack_s_matrix(

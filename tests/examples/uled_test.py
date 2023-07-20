@@ -9,10 +9,7 @@ from examples import uled
 from fmmax import basis, fmm
 
 SIM_CONFIG_KWARGS = {
-    "fmm_configuration": fmm.FmmConfiguration(
-        formulation=fmm.FmmFormulation.JONES_DIRECT,
-        toeplitz_mode=fmm.ToeplitzMode.CIRCULANT,
-    ),
+    "formulation": fmm.Formulation.JONES_DIRECT,
     "truncation": basis.Truncation.PARALLELOGRAMIC,
     "approximate_num_terms": 100,
 }
@@ -32,7 +29,7 @@ class MicroLedTest(unittest.TestCase):
         with self.subTest("extraction efficiency"):
             onp.testing.assert_allclose(
                 extraction_efficiency,
-                [0.464907, 0.387654, 0.223326],
+                [0.494347, 0.492305, 0.416735],
                 atol=1e-3,
             )
 
@@ -41,9 +38,9 @@ class MicroLedTest(unittest.TestCase):
             onp.testing.assert_allclose(
                 jnp.mean(jnp.abs(efields) ** 2, axis=(1, 2, 3, 4, 5)),
                 [
-                    [21.836815, 18.806988, 13.744629],
-                    [20.652706, 24.860136, 13.474065],
-                    [13.430139, 17.602402, 26.072725],
+                    [64.444786, 16.373577, 8.459116],
+                    [16.909363, 64.59829, 8.159439],
+                    [28.255959, 28.230724, 8.761396],
                 ],
                 rtol=1e-3,
             )
@@ -53,9 +50,9 @@ class MicroLedTest(unittest.TestCase):
             onp.testing.assert_allclose(
                 jnp.mean(jnp.abs(hfields) ** 2, axis=(1, 2, 3, 4, 5)),
                 [
-                    [117.24337, 145.54196, 101.089195],
-                    [129.05042, 114.42584, 106.21891],
-                    [85.74388, 92.85141, 49.98281],
+                    [92.3925, 428.87042, 46.39356],
+                    [427.06384, 90.633675, 48.09156],
+                    [115.1582, 114.41496, 28.075932],
                 ],
                 rtol=1e-3,
             )

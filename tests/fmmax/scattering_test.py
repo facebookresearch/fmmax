@@ -79,7 +79,7 @@ def _stack_solve_result(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         )
         for p in permittivities
     ]

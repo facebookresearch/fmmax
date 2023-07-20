@@ -11,24 +11,8 @@ import jax.numpy as jnp
 from fmmax import basis, vector
 
 
-@dataclasses.dataclass
-class FmmConfiguration:
-    """Stores quantities that configure a FMM calculation.
-
-    Attributes:
-        formulation: One of the formulations enumerated by `FmmFormulation`.
-            The formulation specifies how the transverse permittivity matrix
-            is computed.
-        toeplitz_mode: One of the Toeplitz matrix modes enumerated by
-            `ToeplitzMode`.
-    """
-
-    formulation: "FmmFormulation"
-    toeplitz_mode: "ToeplitzMode"
-
-
 @enum.unique
-class FmmFormulation(enum.Enum):
+class Formulation(enum.Enum):
     """Enumerates supported Fourier modal method formulations."""
 
     FFT: str = "fft"
@@ -36,20 +20,6 @@ class FmmFormulation(enum.Enum):
     JONES: str = vector.JONES
     NORMAL: str = vector.NORMAL
     POL: str = vector.POL
-
-
-@enum.unique
-class ToeplitzMode(enum.Enum):
-    """Enumerates supported Toeplitz matrix forms."""
-
-    STANDARD: str = "standard"
-    CIRCULANT: str = "circulant"
-
-
-BASIC_CONFIGURATION: FmmConfiguration = FmmConfiguration(
-    formulation=FmmFormulation.FFT,
-    toeplitz_mode=ToeplitzMode.STANDARD,
-)
 
 
 # -----------------------------------------------------------------------------
@@ -61,7 +31,7 @@ def fourier_matrices_patterned_isotropic_media(
     primitive_lattice_vectors: basis.LatticeVectors,
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
-    configuration: FmmConfiguration,
+    formulation: Formulation,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Returns the Fourier convolution matrices for patterned isotropic media.
 
@@ -74,7 +44,7 @@ def fourier_matrices_patterned_isotropic_media(
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
         permittivity: The permittivity array, with shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
-        configuration: Specifies how the Fourier matrices are to be generated.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         eta_matrix: The Fourier convolutio matrix for the inverse of the z-component
@@ -85,25 +55,24 @@ def fourier_matrices_patterned_isotropic_media(
             equation 15 of [2012 Liu], computed in the manner prescribed by
             `fmm_formulation`.
     """
-    if configuration.formulation == FmmFormulation.FFT:
+    if formulation == Formulation.FFT:
         transverse_permittivity_matrix = _transverse_permittivity_fft(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity,
             expansion=expansion,
-            configuration=configuration,
+            formulation=formulation,
         )
     else:
         transverse_permittivity_matrix = _transverse_permittivity_vector(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity,
             expansion=expansion,
-            configuration=configuration,
+            formulation=formulation,
         )
 
     transform = functools.partial(
         fourier_convolution_matrix,
         expansion=expansion,
-        toeplitz_mode=configuration.toeplitz_mode,
     )
 
     eta_matrix = transform(1 / permittivity)
@@ -119,7 +88,7 @@ def fourier_matrices_patterned_anisotropic_media(
     permittivity_yy: jnp.ndarray,
     permittivity_zz: jnp.ndarray,
     expansion: basis.Expansion,
-    configuration: FmmConfiguration,
+    formulation: Formulation,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Returns the Fourier convolution matrices for patterned isotropic media.
 
@@ -137,7 +106,7 @@ def fourier_matrices_patterned_anisotropic_media(
         permittivity_yy: The yy-component of the permittivity tensor.
         permittivity_zz: The zz-component of the permittivity tensor.
         expansion: The field expansion to be used.
-        configuration: Specifies how the Fourier matrices are to be generated.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         eta_matrix: The Fourier convolutio matrix for the inverse of the z-component
@@ -149,15 +118,12 @@ def fourier_matrices_patterned_anisotropic_media(
             `fmm_formulation`.
     """
     del primitive_lattice_vectors
-    if configuration.formulation != FmmFormulation.FFT:
-        raise ValueError(
-            f"Only `FmmFormulation.FFT` is supported, but got {configuration.formulation}."
-        )
+    if formulation != Formulation.FFT:
+        raise ValueError(f"Only `Formulation.FFT` is supported, but got {formulation}.")
 
     transform = functools.partial(
         fourier_convolution_matrix,
         expansion=expansion,
-        toeplitz_mode=configuration.toeplitz_mode,
     )
 
     transverse_permittivity_matrix = jnp.block(
@@ -175,7 +141,7 @@ def _transverse_permittivity_fft(
     primitive_lattice_vectors: basis.LatticeVectors,
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
-    configuration: FmmConfiguration,
+    formulation: Formulation,
 ) -> jnp.ndarray:
     """Computes the `eps` matrix from [2012 Liu] equation 15 using `fft` scheme.
 
@@ -183,15 +149,13 @@ def _transverse_permittivity_fft(
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
         permittivity: The permittivity array, with shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
-        configuration: Specifies how the Fourier matrices are to be generated.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         The `eps` matrix.
     """
     del primitive_lattice_vectors
-    eps_hat = fourier_convolution_matrix(
-        permittivity, expansion, configuration.toeplitz_mode
-    )
+    eps_hat = fourier_convolution_matrix(permittivity, expansion)
     zeros = jnp.zeros_like(eps_hat)
     return jnp.block([[eps_hat, zeros], [zeros, eps_hat]])
 
@@ -200,7 +164,7 @@ def _transverse_permittivity_vector(
     primitive_lattice_vectors: basis.LatticeVectors,
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
-    configuration: FmmConfiguration,
+    formulation: Formulation,
 ) -> jnp.ndarray:
     """Computes transverse permittivity using one of the vector field methods.
 
@@ -208,28 +172,23 @@ def _transverse_permittivity_vector(
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
         permittivity: The permittivity array, with shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
-        configuration: Specifies how the Fourier matrices are to be generated.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         The `eps` matrix.
     """
-    _transform = functools.partial(
-        fourier_convolution_matrix,
-        expansion=expansion,
-        toeplitz_mode=configuration.toeplitz_mode,
-    )
+    _transform = functools.partial(fourier_convolution_matrix, expansion=expansion)
 
     eps_hat = _transform(permittivity)
     zeros = jnp.zeros_like(eps_hat)
     eps_matrix = jnp.block([[eps_hat, zeros], [zeros, eps_hat]])
 
-    # TODO(mfschubert): See if the matrix inversion can be avoided.
     eta = 1 / permittivity
     eta_hat = _transform(eta)
     delta_hat = eps_hat - jnp.linalg.inv(eta_hat)
     delta_matrix = jnp.block([[delta_hat, zeros], [zeros, delta_hat]])
 
-    vector_fn = vector.VECTOR_FIELD_SCHEMES[configuration.formulation.value]
+    vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
     tx, ty = vector_fn(
         arr=permittivity,
         primitive_lattice_vectors=primitive_lattice_vectors,
@@ -284,7 +243,6 @@ def tangent_terms(
 def fourier_convolution_matrix(
     x: jnp.ndarray,
     expansion: basis.Expansion,
-    toeplitz_mode: ToeplitzMode,
 ) -> jnp.ndarray:
     """Computes the Fourier convolution matrix for `x` and `basis_coefficients`.
 
@@ -296,7 +254,6 @@ def fourier_convolution_matrix(
     Args:
         x: The array for which the Fourier coefficients are sought.
         expansion: The field expansion to be used.
-        toeplitz_mode: Specifies the form used for Toeplitz matrices.
 
     Returns:
         The coefficients, with shape `(num_vectors, num_vectors)`.
@@ -305,12 +262,7 @@ def fourier_convolution_matrix(
 
     x_fft = jnp.fft.fft2(x)
     x_fft /= jnp.prod(jnp.asarray(x.shape[-2:]))
-
-    if toeplitz_mode == ToeplitzMode.STANDARD:
-        idx = _standard_toeplitz_indices(expansion)
-    elif toeplitz_mode == ToeplitzMode.CIRCULANT:
-        idx = _circulant_toeplitz_indices(expansion)
-
+    idx = _standard_toeplitz_indices(expansion)
     return x_fft[..., idx[..., 0], idx[..., 1]]
 
 
@@ -331,31 +283,6 @@ def _standard_toeplitz_indices(expansion: basis.Expansion) -> jnp.ndarray:
     basis_coefficients = jnp.asarray(expansion.basis_coefficients)
     idx = basis_coefficients[i, :] - basis_coefficients[j, :]
     return idx
-
-
-def _circulant_toeplitz_indices(expansion: basis.Expansion) -> jnp.ndarray:
-    """Computes the indices for a circulant Toeplitz matrix for `basis_coefficients`.
-
-    See section 3.5 of [2016 Auer] for the motivation of circulant Toeplitz matrices.
-
-    Args:
-        expansion: The field expansion to be used.
-
-    Returns:
-        The indices, with shape `(num, num, 2)`.
-    """
-    idx = _standard_toeplitz_indices(expansion)
-
-    wrap_i = jnp.amax(expansion.basis_coefficients[:, 0])
-    wrap_j = jnp.amax(expansion.basis_coefficients[:, 1])
-
-    def _wrap(a: int, a_max: int) -> int:
-        return (a + a_max) % (2 * a_max + 1) - a_max
-
-    idx_i = _wrap(idx[:, :, 0], wrap_i)
-    idx_j = _wrap(idx[:, :, 1], wrap_j)
-
-    return jnp.stack([idx_i, idx_j], axis=-1).astype(int)
 
 
 def fft(
@@ -455,19 +382,7 @@ def _min_array_shape_for_expansion(expansion: basis.Expansion) -> Tuple[int, int
 
 
 jax.tree_util.register_pytree_node(
-    FmmConfiguration,
-    lambda f: ((), (f.formulation, f.toeplitz_mode)),
-    lambda xs, _: FmmConfiguration(*xs),
-)
-
-jax.tree_util.register_pytree_node(
-    FmmFormulation,
+    Formulation,
     lambda x: ((), x.value),
-    lambda value, _: FmmFormulation(value),
-)
-
-jax.tree_util.register_pytree_node(
-    ToeplitzMode,
-    lambda x: ((), x.value),
-    lambda value, _: ToeplitzMode(value),
+    lambda value, _: Formulation(value),
 )

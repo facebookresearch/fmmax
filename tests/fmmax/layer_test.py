@@ -31,24 +31,6 @@ IN_PLANE_WAVEVECTOR = basis.plane_wave_in_plane_wavevector(
     permittivity=jnp.asarray(1.0),
 )
 
-FMM_CONFIGURATION_FFT = fmm.BASIC_CONFIGURATION
-FMM_CONFIGURATION_JONES = fmm.FmmConfiguration(
-    formulation=fmm.FmmFormulation.JONES,
-    toeplitz_mode=fmm.ToeplitzMode.STANDARD,
-)
-FMM_CONFIGURATION_JONES_CIRCULANT = fmm.FmmConfiguration(
-    formulation=fmm.FmmFormulation.JONES,
-    toeplitz_mode=fmm.ToeplitzMode.CIRCULANT,
-)
-FMM_CONFIGURATION_NORMAL = fmm.FmmConfiguration(
-    formulation=fmm.FmmFormulation.NORMAL,
-    toeplitz_mode=fmm.ToeplitzMode.STANDARD,
-)
-FMM_CONFIGURATION_POL = fmm.FmmConfiguration(
-    formulation=fmm.FmmFormulation.POL,
-    toeplitz_mode=fmm.ToeplitzMode.STANDARD,
-)
-
 
 def _sort_eigs(eigvals, eigvecs):
     """Sorts eigenvalues/eigenvectors and enforces a phase convention."""
@@ -117,7 +99,7 @@ class GrcwaComparisonTest(unittest.TestCase):
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=permittivity,
             expansion=EXPANSION,
-            fmm_configuration=FMM_CONFIGURATION_FFT,
+            formulation=fmm.Formulation.FFT,
         )
         eigenvalues, eigenvectors = _sort_eigs(
             solve_result.eigenvalues, solve_result.eigenvectors
@@ -161,13 +143,14 @@ class GrcwaComparisonTest(unittest.TestCase):
 class LayerTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
-            (FMM_CONFIGURATION_FFT,),
-            (FMM_CONFIGURATION_NORMAL,),
-            (FMM_CONFIGURATION_JONES,),
-            (FMM_CONFIGURATION_POL,),
+            (fmm.Formulation.FFT,),
+            (fmm.Formulation.POL,),
+            (fmm.Formulation.NORMAL,),
+            (fmm.Formulation.JONES,),
+            (fmm.Formulation.JONES_DIRECT,),
         ]
     )
-    def test_uniform_matches_patterned(self, fmm_configuration):
+    def test_uniform_matches_patterned(self, formulation):
         permittivity = jnp.asarray([[3.14]])
         uniform_result = layer.eigensolve_uniform_isotropic_media(
             wavelength=WAVELENGTH,
@@ -185,7 +168,7 @@ class LayerTest(unittest.TestCase):
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=jnp.broadcast_to(permittivity, (64, 64)),
             expansion=EXPANSION,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
         patterned_eigenvalues, patterned_eigenvectors = _sort_eigs(
             patterned_result.eigenvalues, patterned_result.eigenvectors
@@ -245,13 +228,14 @@ class LayerTest(unittest.TestCase):
 
     @parameterized.parameterized.expand(
         [
-            (FMM_CONFIGURATION_FFT,),
-            (FMM_CONFIGURATION_NORMAL,),
-            (FMM_CONFIGURATION_JONES,),
-            (FMM_CONFIGURATION_POL,),
+            (fmm.Formulation.FFT,),
+            (fmm.Formulation.POL,),
+            (fmm.Formulation.NORMAL,),
+            (fmm.Formulation.JONES,),
+            (fmm.Formulation.JONES_DIRECT,),
         ]
     )
-    def test_patterned_layer_batch_matches_single(self, fmm_configuration):
+    def test_patterned_layer_batch_matches_single(self, formulation):
         wavelength = jnp.asarray([[[0.2]], [[0.3]], [[0.4]]])
         in_plane_wavevector = jnp.asarray([[[0.0, 0.0]], [[0.05, 0.08]]])
         permittivity = jnp.asarray(
@@ -266,7 +250,7 @@ class LayerTest(unittest.TestCase):
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=permittivity,
             expansion=EXPANSION,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
         for i, w in enumerate(wavelength[:, 0, 0]):
             for j, ipwv in enumerate(in_plane_wavevector[:, 0, :]):
@@ -277,7 +261,7 @@ class LayerTest(unittest.TestCase):
                         primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
                         permittivity=p,
                         expansion=EXPANSION,
-                        fmm_configuration=fmm_configuration,
+                        formulation=formulation,
                     )
                     eigenvalues, eigenvectors = _sort_eigs(
                         result.eigenvalues[i, j, k, :],
@@ -308,18 +292,18 @@ class LayerTest(unittest.TestCase):
                 primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
                 permittivity=permittivity,
                 expansion=EXPANSION,
-                fmm_configuration=FMM_CONFIGURATION_FFT,
+                formulation=fmm.Formulation.FFT,
             )
 
 
 class JitTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
-            (FMM_CONFIGURATION_FFT,),
-            (FMM_CONFIGURATION_JONES_CIRCULANT,),
+            (fmm.Formulation.FFT,),
+            (fmm.Formulation.POL,),
         ]
     )
-    def test_can_jit(self, fmm_configuration):
+    def test_can_jit(self, formulation):
         wavelength = jnp.asarray([[[0.2]], [[0.3]], [[0.4]]])
         in_plane_wavevector = jnp.asarray([[[0.0, 0.0]], [[0.05, 0.08]]])
         permittivity = jnp.asarray(
@@ -334,7 +318,7 @@ class JitTest(unittest.TestCase):
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=permittivity,
             expansion=EXPANSION,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
         jit_fn = jax.jit(
             functools.partial(
@@ -347,7 +331,7 @@ class JitTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=permittivity,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
         onp.testing.assert_allclose(
             result.eigenvalues**2, jit_result.eigenvalues**2
@@ -370,7 +354,7 @@ class AnistropicLayerTest(unittest.TestCase):
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=permittivity,
             expansion=EXPANSION,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         )
         result = layer.eigensolve_patterned_anisotropic_media(
             wavelength=wavelength,
@@ -382,7 +366,7 @@ class AnistropicLayerTest(unittest.TestCase):
             permittivity_yy=permittivity,
             permittivity_zz=permittivity,
             expansion=EXPANSION,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         )
         onp.testing.assert_allclose(result.eigenvalues**2, expected.eigenvalues**2)
 
@@ -416,7 +400,7 @@ class AnistropicLayerTest(unittest.TestCase):
             permittivity_yy=jnp.broadcast_to(permittivity_yy, (64, 64)),
             permittivity_zz=jnp.broadcast_to(permittivity_zz, (64, 64)),
             expansion=EXPANSION,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         )
         patterned_eigenvalues, patterned_eigenvectors = _sort_eigs(
             patterned_result.eigenvalues, patterned_result.eigenvectors

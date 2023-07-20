@@ -20,7 +20,7 @@ def _solve_s_matrix(
     expansion,
     permittivities,
     thicknesses,
-    fmm_configuration=fmm.BASIC_CONFIGURATION,
+    formulation=fmm.Formulation.FFT,
 ):
     layer_solve_results = [
         layer.eigensolve_isotropic_media(
@@ -29,7 +29,7 @@ def _solve_s_matrix(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
         for p in permittivities
     ]
@@ -186,11 +186,6 @@ class RotatedGratingTest(unittest.TestCase):
         # Tests that different, nominally equivalent unit cell selections
         # actually yield equal reflectivity for a complex, wavy grating
         # structure.
-        fmm_configuration = fmm.FmmConfiguration(
-            formulation=fmm.FmmFormulation.JONES_DIRECT,
-            toeplitz_mode=fmm.ToeplitzMode.STANDARD,
-        )
-
         wavelength = jnp.array(0.4)
         in_plane_wavevector = jnp.array((0, 0))
         approximate_num_terms = 50
@@ -244,7 +239,7 @@ class RotatedGratingTest(unittest.TestCase):
                 expansion=expansion,
                 permittivities=permittivities,
                 thicknesses=thicknesses,
-                fmm_configuration=fmm_configuration,
+                formulation=fmm.Formulation.JONES_DIRECT,
             )
             rte = s_matrix.s21[0, 0]
             rtm = s_matrix.s21[expansion.num_terms, expansion.num_terms]

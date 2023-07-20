@@ -45,7 +45,7 @@ def eigensolve_isotropic_media(
     primitive_lattice_vectors: basis.LatticeVectors,
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
-    fmm_configuration: fmm.FmmConfiguration,
+    formulation: fmm.Formulation,
 ) -> LayerSolveResult:
     """Performs the eigensolve for a layer with isotropic permittivity.
 
@@ -60,7 +60,7 @@ def eigensolve_isotropic_media(
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
         permittivity: The permittivity array.
         expansion: The field expansion to be used.
-        fmm_configuration: Specifies how the Fourier matrices are to be generated.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         The `LayerSolveResult`.
@@ -80,7 +80,7 @@ def eigensolve_isotropic_media(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity,
             expansion=expansion,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
 
 
@@ -94,7 +94,7 @@ def eigensolve_anisotropic_media(
     permittivity_yy: jnp.ndarray,
     permittivity_zz: jnp.ndarray,
     expansion: basis.Expansion,
-    fmm_configuration: fmm.FmmConfiguration,
+    formulation: fmm.Formulation,
 ) -> LayerSolveResult:
     """Performs the eigensolve for a layer with anisotropic permittivity.
 
@@ -114,7 +114,7 @@ def eigensolve_anisotropic_media(
         permittivity_yy: The yy-component of the permittivity tensor.
         permittivity_zz: The zz-component of the permittivity tensor.
         expansion: The field expansion to be used.
-        fmm_configuration: Specifies how the Fourier matrices are to be generated.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         The `LayerSolveResult`.
@@ -142,7 +142,7 @@ def eigensolve_anisotropic_media(
             permittivity_yy=permittivity_yy,
             permittivity_zz=permittivity_zz,
             expansion=expansion,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
 
 
@@ -266,7 +266,7 @@ def eigensolve_uniform_anisotropic_media(
         permittivity_yy: The yy-component of the permittivity tensor.
         permittivity_zz: The zz-component of the permittivity tensor.
         expansion: The field expansion to be used.
-        fmm_configuration: Specifies how the Fourier matrices are to be generated.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         The `LayerSolveResult`.
@@ -335,7 +335,7 @@ def eigensolve_patterned_isotropic_media(
     primitive_lattice_vectors: basis.LatticeVectors,
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
-    fmm_configuration: fmm.FmmConfiguration,
+    formulation: fmm.Formulation,
 ) -> LayerSolveResult:
     r"""Returns the results of a patterned isotropic layer eigensolve.
 
@@ -348,7 +348,7 @@ def eigensolve_patterned_isotropic_media(
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
         permittivity: The permittivity array.
         expansion: The field expansion to be used.
-        fmm_configuration: Specifies how the Fourier matrices are to be generated.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         The `LayerSolveResult`.
@@ -364,7 +364,7 @@ def eigensolve_patterned_isotropic_media(
         primitive_lattice_vectors=primitive_lattice_vectors,
         permittivity=permittivity,
         expansion=expansion,
-        configuration=fmm_configuration,
+        formulation=formulation,
     )
     return _eigensolve_patterned_media(
         wavelength=wavelength,
@@ -387,7 +387,7 @@ def eigensolve_patterned_anisotropic_media(
     permittivity_yy: jnp.ndarray,
     permittivity_zz: jnp.ndarray,
     expansion: basis.Expansion,
-    fmm_configuration: fmm.FmmConfiguration,
+    formulation: fmm.Formulation,
 ) -> LayerSolveResult:
     """Returns the results of a patterned anisotropic layer eigensolve.
 
@@ -405,7 +405,7 @@ def eigensolve_patterned_anisotropic_media(
         permittivity_yy: The yy-component of the permittivity tensor.
         permittivity_zz: The zz-component of the permittivity tensor.
         expansion: The field expansion to be used.
-        fmm_configuration: Specifies how the Fourier matrices are to be generated.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         The `LayerSolveResult`.
@@ -439,7 +439,7 @@ def eigensolve_patterned_anisotropic_media(
         permittivity_yy=permittivity_yy,
         permittivity_zz=permittivity_zz,
         expansion=expansion,
-        configuration=fmm_configuration,
+        formulation=formulation,
     )
     return _eigensolve_patterned_media(
         wavelength=wavelength,

@@ -8,11 +8,6 @@ import jax.numpy as jnp
 
 from fmmax import basis, fields, fmm, layer, scattering, sources
 
-FMM_CONFIGURATION = fmm.FmmConfiguration(
-    formulation=fmm.FmmFormulation.POL,
-    toeplitz_mode=fmm.ToeplitzMode.STANDARD,
-)
-
 
 def simulate_uled(
     permittivity_ambient: complex = (1.0 + 0.0j),
@@ -33,7 +28,7 @@ def simulate_uled(
     dipole_fwhm: float = 20.0,
     approximate_num_terms: int = 1200,
     truncation: basis.Truncation = basis.Truncation.CIRCULAR,
-    fmm_configuration: fmm.FmmConfiguration = FMM_CONFIGURATION,
+    formulation: fmm.Formulation = fmm.Formulation.POL,
     brillouin_grid_shape: Tuple[int, int] = (1, 1),
 ) -> Tuple[
     jnp.ndarray,
@@ -98,7 +93,7 @@ def simulate_uled(
         approximate_num_terms: The approximate number of terms used in the
             plane wave expansion of the fields.
         truncation: Determines how the Fourier expansion is truncated.
-        fmm_configuration: The configuration for the calculation.
+        formulation: Specifies the formulation to be used.
         brillouin_grid_shape: The shape of the grid of k-points in the first
             Brillouin zone for which the calculation is done.
 
@@ -149,7 +144,7 @@ def simulate_uled(
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
         expansion=expansion,
-        fmm_configuration=fmm_configuration,
+        formulation=formulation,
     )
 
     # Perform the layer eigensolve for each layer in the stack. Use the fact that

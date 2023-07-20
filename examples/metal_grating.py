@@ -22,7 +22,7 @@ def simulate_grating(
     resolution_nm: float = 1.0,
     approximate_num_terms: int = 20,
     truncation: basis.Truncation = basis.Truncation.CIRCULAR,
-    fmm_configuration: fmm.FmmConfiguration = fmm.BASIC_CONFIGURATION,
+    formulation: fmm.Formulation = fmm.Formulation.FFT,
 ) -> Tuple[int, complex, complex]:
     """Computes the TE- and TM-polarized reflection from a 1D stripe grating.
 
@@ -41,7 +41,7 @@ def simulate_grating(
         approximate_num_terms: The approximate number of terms used in the plane
             wave expansion of the fields.
         truncation: Determines the truncation of the expansion.
-        fmm_configuration: Determines how the transverse permittivity matrix is computed.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         The number of terms in the expansion, and the reflection coefficients for TE-
@@ -82,7 +82,7 @@ def simulate_grating(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
         for p in permittivities
     ]
@@ -102,39 +102,30 @@ def convergence_study(
         basis.Truncation.CIRCULAR,
         basis.Truncation.PARALLELOGRAMIC,
     ),
-    fmm_formulations: Tuple[fmm.FmmFormulation, ...] = (
-        fmm.FmmFormulation.FFT,
-        fmm.FmmFormulation.JONES_DIRECT,
-        fmm.FmmFormulation.JONES,
-        fmm.FmmFormulation.NORMAL,
-        fmm.FmmFormulation.POL,
+    fmm_formulations: Tuple[fmm.Formulation, ...] = (
+        fmm.Formulation.FFT,
+        fmm.Formulation.JONES_DIRECT,
+        fmm.Formulation.JONES,
+        fmm.Formulation.NORMAL,
+        fmm.Formulation.POL,
     ),
-    toeplitz_modes: Tuple[fmm.ToeplitzMode, ...] = (
-        fmm.ToeplitzMode.STANDARD,
-        fmm.ToeplitzMode.CIRCULANT,
-    ),
-) -> Tuple[fmm.FmmFormulation, int, complex, complex]:
+) -> Tuple[Tuple[fmm.Formulation, basis.Truncation, int, complex, complex], ...]:
     """Sweeps over number of terms and fmm formulations to study convergence."""
     results = []
-    for fmm_formulation, truncation, toeplitz_mode, n in itertools.product(
+    for formulation, truncation, n in itertools.product(
         fmm_formulations,
         truncations,
-        toeplitz_modes,
         approximate_num_terms,
     ):
-        fmm_configuration = fmm.FmmConfiguration(
-            formulation=fmm_formulation,
-            toeplitz_mode=toeplitz_mode,
-        )
         num_terms, r_te, r_tm = simulate_grating(
             approximate_num_terms=n,
             truncation=truncation,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
-        results.append((fmm_configuration, truncation, num_terms, r_te, r_tm))
+        results.append((formulation, truncation, num_terms, r_te, r_tm))
         print(
-            f"{fmm_formulation.value}/{truncation.value}/{toeplitz_mode.value}"
-            f"/n={num_terms}: r_te={complex(r_te):.3f}, r_tm={complex(r_tm):.3f}"
+            f"{formulation.value}/{truncation.value}/n={num_terms}: "
+            f"r_te={complex(r_te):.3f}, r_tm={complex(r_tm):.3f}"
         )
     return tuple(results)
 
