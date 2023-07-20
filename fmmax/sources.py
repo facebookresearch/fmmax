@@ -11,7 +11,7 @@ def dirac_delta_source(
     location: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
-    expansion=basis.Expansion,
+    expansion: basis.Expansion,
 ) -> jnp.ndarray:
     """Returns the coefficients for a delta source at the specified location.
 
@@ -59,7 +59,7 @@ def gaussian_source(
     location: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
-    expansion=basis.Expansion,
+    expansion: basis.Expansion,
 ) -> jnp.ndarray:
     """Returns the coefficients for a Gaussian source at the specified location.
 
