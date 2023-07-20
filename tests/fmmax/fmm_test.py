@@ -79,18 +79,13 @@ class FftTest(unittest.TestCase):
 class TransversePermittivityTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
-            (fmm.FmmFormulation.JONES_DIRECT, fmm.ToeplitzMode.STANDARD),
-            (fmm.FmmFormulation.JONES_DIRECT, fmm.ToeplitzMode.CIRCULANT),
-            (fmm.FmmFormulation.JONES, fmm.ToeplitzMode.STANDARD),
-            (fmm.FmmFormulation.NORMAL, fmm.ToeplitzMode.STANDARD),
-            (fmm.FmmFormulation.POL, fmm.ToeplitzMode.STANDARD),
+            (fmm.Formulation.JONES_DIRECT,),
+            (fmm.Formulation.JONES,),
+            (fmm.Formulation.NORMAL,),
+            (fmm.Formulation.POL,),
         ]
     )
-    def test_single_matches_batch_vector(self, fmm_formulation, toeplitz_mode):
-        config = fmm.FmmConfiguration(
-            formulation=fmm_formulation,
-            toeplitz_mode=toeplitz_mode,
-        )
+    def test_single_matches_batch_vector(self, fmm_formulation):
         x, y = jnp.meshgrid(
             jnp.linspace(-0.5, 0.5),
             jnp.linspace(-0.5, 0.5),
@@ -100,14 +95,14 @@ class TransversePermittivityTest(unittest.TestCase):
         scale = jnp.arange(1, 5)[:, jnp.newaxis, jnp.newaxis]
         permittivity = 1 + circle * scale
         result_batch = fmm._transverse_permittivity_vector(
-            PRIMITIVE_LATTICE_VECTORS, permittivity, EXPANSION, config
+            PRIMITIVE_LATTICE_VECTORS, permittivity, EXPANSION, fmm_formulation
         )
         result_single = [
             fmm._transverse_permittivity_vector(
                 primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
                 permittivity=p,
                 expansion=EXPANSION,
-                configuration=config,
+                formulation=fmm_formulation,
             )
             for p in permittivity
         ]
@@ -129,22 +124,6 @@ class ToeplitzIndicesTest(unittest.TestCase):
                 self.assertSequenceEqual(idx.shape, (2,))
                 onp.testing.assert_array_equal(-idx + row_coeff, col_coeff)
 
-    def test_circulant(self):
-        basis_coefficients = jnp.array([(0, -2), (0, -1), (0, 0), (0, 1), (0, 2)])
-        expected_indices = jnp.array(
-            [
-                [(0, 0), (0, -1), (0, -2), (0, 2), (0, 1)],
-                [(0, 1), (0, 0), (0, -1), (0, -2), (0, 2)],
-                [(0, 2), (0, 1), (0, 0), (0, -1), (0, -2)],
-                [(0, -2), (0, 2), (0, 1), (0, 0), (0, -1)],
-                [(0, -1), (0, -2), (0, 2), (0, 1), (0, 0)],
-            ]
-        )
-        onp.testing.assert_array_equal(
-            fmm._circulant_toeplitz_indices(basis.Expansion(basis_coefficients)),
-            expected_indices,
-        )
-
 
 class ShapeValidationTest(unittest.TestCase):
     @parameterized.parameterized.expand(
@@ -162,9 +141,7 @@ class ShapeValidationTest(unittest.TestCase):
     def test_fourier_convolution_matrix(self):
         expansion = basis.Expansion(basis_coefficients=jnp.asarray([[-2, -2], [2, 2]]))
         with self.assertRaisesRegex(ValueError, "`shape` is insufficient for"):
-            fmm.fourier_convolution_matrix(
-                jnp.ones((8, 4)), expansion, fmm.ToeplitzMode.STANDARD
-            )
+            fmm.fourier_convolution_matrix(jnp.ones((8, 4)), expansion)
 
     def test_fft(self):
         expansion = basis.Expansion(basis_coefficients=jnp.asarray([[-2, -2], [2, 2]]))
@@ -188,7 +165,7 @@ class AnistropicLayerTest(unittest.TestCase):
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=permittivity,
             expansion=EXPANSION,
-            configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         )
         (
             eta_result,
@@ -202,7 +179,7 @@ class AnistropicLayerTest(unittest.TestCase):
             permittivity_yy=permittivity,
             permittivity_zz=permittivity,
             expansion=EXPANSION,
-            configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         )
         onp.testing.assert_array_equal(eta_result, eta_expected)
         onp.testing.assert_array_equal(z_result, z_expected)

@@ -28,8 +28,8 @@ def simulate_grating(
     Args:
         permittivity_ambient: The permittivity of the ambient.
         wavelength_nm: The excitation wavelength, in nanometers.
-        polar_angle:
-        azimuthal_angle:
+        polar_angle: The polar angle of the incident plane wave.
+        azimuthal_angle: The azimuthal angle of the incident plane wave.
         pitch_nm: The grating pitch, in nanometers.
         grating_width_nm: The width of the lines comprising the grating.
         grating_thickness_nm: The height of the grating.
@@ -56,10 +56,10 @@ def simulate_grating(
         permittivity_ambient,  # zz
     )
 
-    # Get the permittivity tensor elements for the osc, and add the spatial dimensions.
-    permittivities_osc = permittivity_tensor_elements_osc(wavelength_nm)
+    # Get the permittivity tensor elements for the anisotropic, and add the spatial dimensions.
+    permittivities_anisotropic = permittivity_tensor_elements_anisotropic(wavelength_nm)
     permittivities_grating_tooth = [
-        p[..., jnp.newaxis, jnp.newaxis] for p in permittivities_osc
+        p[..., jnp.newaxis, jnp.newaxis] for p in permittivities_anisotropic
     ]
 
     # Get the permittivity tensor elements for the grating using interpolation.
@@ -73,7 +73,7 @@ def simulate_grating(
 
     # Add spatial dimensions to the substrate permittivity tensor elements.
     permittivities_substrate = [
-        p[..., jnp.newaxis, jnp.newaxis] for p in permittivities_osc
+        p[..., jnp.newaxis, jnp.newaxis] for p in permittivities_anisotropic
     ]
 
     # Compute quantities needed for the eigensolve.
@@ -102,7 +102,7 @@ def simulate_grating(
 
     # Perform the appropriate layer eigensolve for each layer in the stack. Note that the
     # ordering of tensor elements in the `permittivities_grating` and `permittivities_substrate`
-    # must must match those in the arguments of `eigensole_patterned_anisotropic_media`.
+    # must must match those in the arguments of `eigensolve_patterned_anisotropic_media`.
     layer_solve_results = [
         layer.eigensolve_isotropic_media(
             wavelength=wavelength_nm,
@@ -110,7 +110,7 @@ def simulate_grating(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity_ambient,
             expansion=expansion,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         ),
         layer.eigensolve_anisotropic_media(
             wavelength_nm,
@@ -118,7 +118,7 @@ def simulate_grating(
             primitive_lattice_vectors,
             *permittivities_grating,
             expansion=expansion,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         ),
         layer.eigensolve_anisotropic_media(
             wavelength_nm,
@@ -126,7 +126,7 @@ def simulate_grating(
             primitive_lattice_vectors,
             *permittivities_substrate,
             expansion=expansion,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         ),
     ]
 
@@ -167,10 +167,10 @@ def simulate_grating(
     return expansion.num_terms, incident_power, reflected_power, transmitted_power
 
 
-def permittivity_tensor_elements_osc(
+def permittivity_tensor_elements_anisotropic(
     wavelength_nm: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    """Returns the permittivity tensor elements of an osc material.
+    """Returns the permittivity tensor elements of an anisotropic material.
 
     Args:
         wavelength_nm: The wavelength for which the permittivity is sought, with

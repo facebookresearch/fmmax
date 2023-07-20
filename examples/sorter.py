@@ -3,8 +3,8 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import jax
+import jax.example_libraries.optimizers as jopt
 import jax.numpy as jnp
-import optax
 
 from fmmax import basis, fields, fmm, layer, scattering, utils
 
@@ -61,7 +61,7 @@ class PolarizationSorterComponent:
         pitch: float = 2.0,
         approximate_num_terms: int = 200,
         truncation: basis.Truncation = basis.Truncation.CIRCULAR,
-        fmm_configuration: fmm.FmmConfiguration = fmm.BASIC_CONFIGURATION,
+        formulation: fmm.Formulation = fmm.Formulation.FFT,
         density_grid_shape: Tuple[int, int] = (128, 128),
         field_grid_shape: Tuple[int, int] = (128, 128),
         field_z_offset: float = 0.0,
@@ -85,7 +85,7 @@ class PolarizationSorterComponent:
             pitch: Pitch for the pixel quad, with units consistent with thicknesses.
             approximate_num_terms: The approximate number of terms in the expansion.
             truncation: Specifies the truncation of terms.
-            fmm_configuration: The configuration for the calculation.
+            formulation: Specifies the formulation to be used.
             density_grid_shape: The shape of the density grid defining the patterning
                 of the sorter layer.
             field_grid_shape: The shape of the grid for the physical grid computation.
@@ -118,7 +118,7 @@ class PolarizationSorterComponent:
             approximate_num_terms=approximate_num_terms,
             truncation=truncation,
         )
-        self._fmm_configuration: fmm.FmmConfiguration = fmm_configuration
+        self._formulation: fmm.Formulation = formulation
         self._density_grid_shape: Tuple[int, int] = density_grid_shape
         self._field_grid_shape: Tuple[int, int] = field_grid_shape
         self._field_z_offset: jnp.ndarray = jnp.asarray(field_z_offset)
@@ -145,7 +145,7 @@ class PolarizationSorterComponent:
         params: Params,
         wavelength: Optional[jnp.ndarray] = None,
         expansion: Optional[basis.Expansion] = None,
-        fmm_configuration: Optional[fmm.FmmConfiguration] = None,
+        formulation: Optional[fmm.Formulation] = None,
         field_grid_shape: Optional[Tuple[int, int]] = None,
         field_z_offset: Optional[jnp.ndarray] = None,
     ) -> Tuple[jnp.ndarray, Aux]:
@@ -158,7 +158,7 @@ class PolarizationSorterComponent:
             params: Parameters for the sorter, e.g. layer thicknesses.
             wavelength: Wavelength, with units consistent with thicknesses.
             expansion: The field expansion used for the calculation.
-            fmm_configuration: The configuration for the calculation.
+            formulation: Specifies the formulation to be used.
             field_grid_shape: The shape of the grid for the physical grid computation.
             field_z_offset: The offset into the substrate at which the power into each
                 quadrant is computed.
@@ -174,8 +174,8 @@ class PolarizationSorterComponent:
             wavelength = self._wavelength
         if expansion is None:
             expansion = self._expansion
-        if fmm_configuration is None:
-            fmm_configuration = self._fmm_configuration
+        if formulation is None:
+            formulation = self._formulation
         if field_grid_shape is None:
             field_grid_shape = self._field_grid_shape
         if field_z_offset is None:
@@ -191,7 +191,7 @@ class PolarizationSorterComponent:
             substrate_permittivity=self._substrate_permittivity,
             wavelength=jnp.asarray(wavelength),
             expansion=expansion,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
             field_grid_shape=field_grid_shape,
             field_z_offset=jnp.asarray(field_z_offset),
         )
@@ -207,7 +207,7 @@ def _simulate_polarization_sorter(
     substrate_permittivity: jnp.ndarray,
     wavelength: jnp.ndarray,
     expansion: basis.Expansion,
-    fmm_configuration: fmm.FmmConfiguration,
+    formulation: fmm.Formulation,
     field_grid_shape: Tuple[int, int],
     field_z_offset: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, Aux]:
@@ -223,7 +223,7 @@ def _simulate_polarization_sorter(
         substrate_permittivity: Permittivity of the substrate.
         wavelength: Wavelength, with units consistent with thicknesses.
         expansion: The field expansion used for the calculation.
-        fmm_configuration: The configuration for the calculation.
+        formulation: Specifies the formulation to be used.
         field_grid_shape: The shape of the grid for the physical grid computation.
         field_z_offset: The offset into the substrate at which the power into each
             quadrant is computed.
@@ -266,7 +266,7 @@ def _simulate_polarization_sorter(
             primitive_lattice_vectors=params["primitive_lattice_vectors"],
             permittivity=p,
             expansion=expansion,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
         for p in permittivities
     ]
@@ -394,12 +394,12 @@ def optimize(steps: int = 1000, approximate_num_terms: int = 400) -> List[jnp.nd
     # leaf-specific optimizers.
     density = params["layers"]["sorter"]["density"]
 
-    opt: optax.GradientTransformation = optax.adam(0.002, b1=0.67, b2=0.9)
-    opt_state = opt.init(density)
+    opt: jopt.Optimizer = jopt.adam(0.002, b1=0.67, b2=0.9)
+    opt_state = opt.init_fn(density)
 
-    def train_step(  # pyre-ignore[3]
-        density: jnp.ndarray,
-        opt_state: Any,  # pyre-ignore[2]
+    def train_step(
+        step: int,
+        opt_state: Any,
     ) -> Tuple[jnp.ndarray, Any, jnp.ndarray, jnp.ndarray, Aux]:
         def loss_fn(
             density: jnp.ndarray,
@@ -410,18 +410,24 @@ def optimize(steps: int = 1000, approximate_num_terms: int = 400) -> List[jnp.nd
             return loss, (response, aux)
 
         (value, (response, aux)), grads = jax.value_and_grad(loss_fn, has_aux=True)(
-            density
+            opt.params_fn(opt_state)
         )
-        updates, opt_state = opt.update(grads, opt_state)
-        density = jnp.asarray(optax.apply_updates(density, updates))
-        density = jnp.clip(density, 0, 1)
-        return density, opt_state, value, response, aux
+        opt_state = opt.update_fn(step, grads, opt_state)
+
+        # Clip the density to the range (0, 1). Since we are using the jax example
+        # optimizer library we must unpack the state and manipulate the stored
+        # parameter, and the finally repack.
+        (density, *aux_leaves), treedef = jax.tree_util.tree_flatten(opt_state)
+        leaves = [density] + aux_leaves
+        opt_state = jax.tree_util.tree_unflatten(treedef, leaves)
+        return opt_state, value, response, aux
 
     values = []
     for i in range(steps):
-        density, opt_state, value, response, aux = train_step(density, opt_state)
+        opt_state, value, response, aux = train_step(i, opt_state)
         values.append(value)
         print(i, value)
+    density = opt.params_fn(opt_state)
 
     # Check if the result is converged.
     params["layers"]["sorter"]["density"] = density

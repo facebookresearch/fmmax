@@ -93,7 +93,7 @@ def simulate_pillars(
     resolution_nm: float = 1.0,
     approximate_num_terms: int = 200,
     truncation: basis.Truncation = basis.Truncation.CIRCULAR,
-    fmm_configuration: fmm.FmmConfiguration = fmm.BASIC_CONFIGURATION,
+    formulation: fmm.Formulation = fmm.Formulation.FFT,
 ) -> Tuple[
     int,
     jnp.ndarray,
@@ -121,7 +121,7 @@ def simulate_pillars(
         resolution_nm: The rasterization resolution for patterned layers.
         approximate_num_terms: The approximate number of terms used in the plane
             wave expansion of the fields.
-        fmm_configuration: Determines how the transverse permittivity matrix is computed.
+        formulation: Specifies the formulation to be used.
 
     Returns:
         The number of terms in the expansion, the te- and tm-polarized reflection
@@ -176,7 +176,7 @@ def simulate_pillars(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            fmm_configuration=fmm_configuration,
+            formulation=formulation,
         )
         for p in permittivities
     ]

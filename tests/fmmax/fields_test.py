@@ -37,7 +37,7 @@ def example_solve(permittivity_batch_shape, wavelength_batch_shape):
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         )
         for p in permittivities
     ]

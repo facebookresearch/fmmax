@@ -50,7 +50,7 @@ class FarfieldProfileTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         )
         s_matrix_before_source = scattering.stack_s_matrix([layer_solve_result], [1.0])
         s_matrix_after_source = s_matrix_before_source
@@ -354,7 +354,7 @@ class IntegratedFluxTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            fmm_configuration=fmm.BASIC_CONFIGURATION,
+            formulation=fmm.Formulation.FFT,
         )
         s_matrix_before_source = scattering.stack_s_matrix([layer_solve_result], [1.0])
         s_matrix_after_source = s_matrix_before_source
