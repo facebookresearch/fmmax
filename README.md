@@ -25,5 +25,3 @@ Batched calculations are supported, and should be used where possible to avoid l
 
 - [2020 Jin] W. Jin, W. Li, M. Orenstein, and S. Fan [Inverse design of lightweight broadband reflector for relativistic lightsail propulsion](https://pubs.acs.org/doi/10.1021/acsphotonics.0c00768), _ACS Photonics_ **7**, 9, 2350-2355 (2020).
     
-- [2016 Auer] M. Auer and K.-H. Brenner, [Localized input fields in rigorous coupled wave analysis](https://opg.optica.org/josaa/abstract.cfm?uri=josaa-31-11-2385), _J. Opt. Soc. Am. A_ **31**, 2385-2393 (2014).
-    
