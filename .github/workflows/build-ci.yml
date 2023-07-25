@@ -1,12 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches:
-    - main
   pull_request:
-    branches:
-    - main
+  push:
 
 defaults:
   run:
@@ -36,6 +32,7 @@ jobs:
       - name: Typecheck with mypy
         run: |
           find fmmax -name "*.py" | xargs mypy
+          find examples -name "*.py" | xargs mypy
         
       - name: Run Python tests
         run: |
