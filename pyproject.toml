@@ -1,14 +1,10 @@
 [project]
+
 name = "fmmax"
-
 version = "0.1.0"
-
 description = "Fourier modal method with Jax"
-
 readme = "README.md"
-
 requires-python = ">=3.7"
-
 license = {file = "LICENSE"}
 
 keywords = ["fmm", "rcwa", "jax", "optics"] 
@@ -30,6 +26,9 @@ dependencies = [
   "numpy",
   "parameterized",
 ]
+
+[project.optional-dependencies]
+test = ["black", "isort", "grcwa"]
 
 [tool.setuptools]
 
