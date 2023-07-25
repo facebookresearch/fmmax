@@ -1,4 +1,7 @@
-"""Defines several utility functions."""
+"""Defines several utility functions.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 from typing import Tuple
 
@@ -44,6 +47,21 @@ def atleast_nd(x: jnp.ndarray, n: int) -> jnp.ndarray:
     """Adds leading dimensions to `x`, ensuring that it is at least n-dimensional."""
     dims_to_add = tuple(range(max(0, n - x.ndim)))
     return jnp.expand_dims(x, axis=dims_to_add)
+
+
+def absolute_axes(axes: Tuple[int, ...], ndim: int) -> Tuple[int, ...]:
+    """Returns the absolute axes for given relative axes and number of array dimensions."""
+    if not all(a in list(range(-ndim, ndim)) for a in axes):
+        raise ValueError(
+            f"All elements of `axes` must be in the range ({ndim}, {ndim - 1}) "
+            f"but got {axes}."
+        )
+    absolute_axes = tuple([d % ndim for d in axes])
+    if len(absolute_axes) != len(set(absolute_axes)):
+        raise ValueError(
+            f"Found duplicates in `axes`; computed absolute axes are {absolute_axes}."
+        )
+    return absolute_axes
 
 
 def interpolate_permittivity(

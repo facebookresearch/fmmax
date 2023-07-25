@@ -1,4 +1,7 @@
-"""Functions related to layer eigenmode calculation for the FMM algorithm."""
+"""Functions related to layer eigenmode calculation for the FMM algorithm.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import dataclasses
 from typing import Tuple
@@ -37,6 +40,64 @@ class LayerSolveResult:
     eta_matrix: jnp.ndarray
     z_permittivity_matrix: jnp.ndarray
     omega_script_k_matrix: jnp.ndarray
+
+    @property
+    def batch_shape(self) -> Tuple[int, ...]:
+        return self.eigenvectors.shape[:-2]
+
+    def __post_init__(self) -> None:
+        """Validates shapes of the `LayerSolveResult` attributes."""
+        if self.wavelength.ndim != len(
+            self.batch_shape
+        ) or not utils.batch_compatible_shapes(self.wavelength.shape, self.batch_shape):
+            raise ValueError(
+                f"`wavelength` must have compatible batch shape, but got shape {self.wavelength.shape} "
+                f"when `eigenvectors` shape is {self.eigenvectors.shape}."
+            )
+        if self.in_plane_wavevector.ndim != len(
+            self.batch_shape
+        ) + 1 or not utils.batch_compatible_shapes(
+            self.in_plane_wavevector.shape[:-1], self.batch_shape
+        ):
+            raise ValueError(
+                f"`in_plane_wavevector` must have compatible batch shape, but got shape "
+                f"{self.in_plane_wavevector.shape} when `eigenvectors` shape is {self.eigenvectors.shape}."
+            )
+        if self.expansion.num_terms * 2 != self.eigenvectors.shape[-1]:
+            raise ValueError(
+                f"`eigenvectors` must have shape compatible with `expansion.num_terms`, but got shape "
+                f"{self.eigenvectors.shape} when `num_terms` shape is {self.expansion.num_terms}."
+            )
+        if self.eigenvalues.shape != self.eigenvectors.shape[:-1]:
+            raise ValueError(
+                f"`eigenvalues` must have compatible shape, but got shape {self.eigenvalues.shape} "
+                f"when `eigenvectors` shape is {self.eigenvectors.shape}."
+            )
+
+        expected_matrix_shape = self.batch_shape + (self.expansion.num_terms,) * 2
+        if self.eta_matrix.ndim != len(
+            expected_matrix_shape
+        ) or not utils.batch_compatible_shapes(
+            self.eta_matrix.shape, expected_matrix_shape
+        ):
+            raise ValueError(
+                f"`eta_matrix` must have shape compatible with `eigenvectors`, but got "
+                f"shapes {self.eta_matrix.shape}  and {self.eigenvectors.shape}."
+            )
+        if self.z_permittivity_matrix.ndim != len(
+            expected_matrix_shape
+        ) or not utils.batch_compatible_shapes(
+            self.z_permittivity_matrix.shape, expected_matrix_shape
+        ):
+            raise ValueError(
+                f"`z_permittivity_matrix` must have shape compatible with `eigenvectors`, but got "
+                f"shapes {self.z_permittivity_matrix.shape}  and {self.eigenvectors.shape}."
+            )
+        if self.omega_script_k_matrix.shape != self.eigenvectors.shape:
+            raise ValueError(
+                f"`omega_script_k_matrix` must have shape matching `eigenvectors`, but got "
+                f"shapes {self.omega_script_k_matrix.shape}  and {self.eigenvectors.shape}."
+            )
 
 
 def eigensolve_isotropic_media(

@@ -1,4 +1,7 @@
-"""An example which simulates a micro-LED (uLED) with an internal source."""
+"""An example which simulates a micro-LED (uLED) with an internal source.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import functools
 import time
@@ -175,7 +178,7 @@ def simulate_uled(
         for offset in dipole_y_offset
     ]
     dipoles = sources.gaussian_source(
-        fwhm=dipole_fwhm,
+        fwhm=jnp.asarray(dipole_fwhm),
         location=jnp.asarray(dipole_locations),
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
@@ -371,7 +374,7 @@ def circle_mask(
 if __name__ == "__main__":
     for approximate_num_terms in (200, 400, 600, 800, 1000, 1200, 1500, 2000, 2500):
         t0 = time.time()
-        extraction_efficiency, total_emitted_power, _, _, _ = simulate_uled(
+        extraction_efficiency, total_emitted_power, *_ = simulate_uled(
             approximate_num_terms=approximate_num_terms,
         )
         print(

@@ -1,4 +1,7 @@
-"""Functions related to scattering matrix computation for the FMM algorithm."""
+"""Functions related to scattering matrix computation for the FMM algorithm.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import dataclasses
 from typing import Sequence, Tuple

@@ -1,4 +1,7 @@
-"""Tests for `fmmax.layer`."""
+"""Tests for `fmmax.layer`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import functools
 import unittest
@@ -431,3 +434,38 @@ class UtilityFunctionTests(unittest.TestCase):
         )
         result = layer._select_eigenvalues_sign(eigenvalues)
         onp.testing.assert_array_equal(result, expected)
+
+
+class LayerSolveResultInputValidationTest(unittest.TestCase):
+    @parameterized.parameterized.expand(
+        [
+            ("wavelength", jnp.ones((1,))),
+            ("in_plane_wavevector", jnp.ones((1,))),
+            ("eigenvalues", jnp.ones((1,))),
+            ("eigenvectors", jnp.ones((3, 4, 5, 1, 1))),
+            ("eta_matrix", jnp.ones((1,))),
+            ("z_permittivity_matrix", jnp.ones((1,))),
+            ("omega_script_k_matrix", jnp.ones((1,))),
+        ]
+    )
+    def test_invalid_shape(self, name, invalid_shape):
+        expansion = basis.generate_expansion(
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+            approximate_num_terms=20,
+            truncation=basis.Truncation.CIRCULAR,
+        )
+        num = expansion.num_terms
+        kwargs = {
+            "wavelength": jnp.ones((3, 1, 1)),
+            "in_plane_wavevector": jnp.ones((1, 4, 5, 2)),
+            "primitive_lattice_vectors": PRIMITIVE_LATTICE_VECTORS,
+            "expansion": expansion,
+            "eigenvalues": jnp.ones((3, 4, 5, 2 * num)),
+            "eigenvectors": jnp.ones((3, 4, 5, 2 * num, 2 * num)),
+            "eta_matrix": jnp.ones((3, 4, 5, num, num)),
+            "z_permittivity_matrix": jnp.ones((3, 4, 5, num, num)),
+            "omega_script_k_matrix": jnp.ones((3, 4, 5, 2 * num, 2 * num)),
+        }
+        kwargs[name] = invalid_shape
+        with self.assertRaisesRegex(ValueError, f"`{name}` must have "):
+            layer.LayerSolveResult(**kwargs)

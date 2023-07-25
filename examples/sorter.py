@@ -1,4 +1,7 @@
-"""An example which sets up a polarization-sorting metasurface component."""
+"""An example which sets up a polarization-sorting metasurface component.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -248,15 +251,13 @@ def _simulate_polarization_sorter(
         substrate_permittivity[jnp.newaxis, jnp.newaxis],
     ]
 
-    thicknesses = jnp.asarray(
-        [
-            params["layers"]["ambient"]["thickness"],
-            params["layers"]["cap"]["thickness"],
-            params["layers"]["sorter"]["thickness"],
-            params["layers"]["spacer"]["thickness"],
-            params["layers"]["substrate"]["thickness"],
-        ]
-    )
+    thicknesses = [
+        params["layers"]["ambient"]["thickness"],
+        params["layers"]["cap"]["thickness"],
+        params["layers"]["sorter"]["thickness"],
+        params["layers"]["spacer"]["thickness"],
+        params["layers"]["substrate"]["thickness"],
+    ]
 
     # Perform the eigensolve for each layer in the stack.
     layer_solve_results = [
@@ -390,8 +391,6 @@ def optimize(steps: int = 1000, approximate_num_terms: int = 400) -> List[jnp.nd
     )
 
     params: Params = psc.init(jax.random.PRNGKey(0))
-    # TODO(mfschubert): Write some utilities for filtering pytrees and applying
-    # leaf-specific optimizers.
     density = params["layers"]["sorter"]["density"]
 
     opt: jopt.Optimizer = jopt.adam(0.002, b1=0.67, b2=0.9)
@@ -400,7 +399,7 @@ def optimize(steps: int = 1000, approximate_num_terms: int = 400) -> List[jnp.nd
     def train_step(
         step: int,
         opt_state: Any,
-    ) -> Tuple[jnp.ndarray, Any, jnp.ndarray, jnp.ndarray, Aux]:
+    ) -> Tuple[Any, jnp.ndarray, jnp.ndarray, Aux]:
         def loss_fn(
             density: jnp.ndarray,
         ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, Aux]]:
@@ -424,7 +423,7 @@ def optimize(steps: int = 1000, approximate_num_terms: int = 400) -> List[jnp.nd
 
     values = []
     for i in range(steps):
-        opt_state, value, response, aux = train_step(i, opt_state)
+        opt_state, value, response, _ = train_step(i, opt_state)
         values.append(value)
         print(i, value)
     density = opt.params_fn(opt_state)

@@ -1,4 +1,7 @@
-"""Validation tests that involve simulations of various structures."""
+"""Validation tests that involve simulations of various structures.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import unittest
 

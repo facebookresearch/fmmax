@@ -1,4 +1,7 @@
-"""Tests for `examples.metal_pillars`."""
+"""Tests for `examples.metal_pillars`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import unittest
 

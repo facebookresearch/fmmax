@@ -1,4 +1,7 @@
-"""Functions related to vectors and field expansion in the FMM scheme."""
+"""Functions related to vectors and field expansion in the FMM scheme.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import dataclasses
 import enum
@@ -362,10 +365,21 @@ jax.tree_util.register_pytree_node(
 )
 
 
+def unflatten_expansion(
+    aux_tuple: Tuple["_HashableArray"],
+    leaves: Tuple,
+) -> Expansion:
+    """Unflattens the `Expansion`."""
+    del leaves
+    wrapped: "_HashableArray" = aux_tuple[0]
+    coeffs: onp.ndarray = wrapped.value
+    return Expansion(basis_coefficients=coeffs)
+
+
 jax.tree_util.register_pytree_node(
     Expansion,
     lambda e: ((), (_HashableArray(e.basis_coefficients),)),
-    lambda hashable_bc_tuple, _: Expansion(hashable_bc_tuple[0].value),
+    unflatten_func=unflatten_expansion,
 )
 
 
@@ -373,7 +387,7 @@ class _HashableArray:
     """Hashable wrapper for numpy arrays."""
 
     def __init__(self, value: onp.ndarray):
-        self.value = value
+        self.value: onp.ndarray = value
 
     def __hash__(self):
         return hash((self.value.shape, self.value.dtype, self.value.tobytes()))

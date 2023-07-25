@@ -1,4 +1,7 @@
-"""Tests for `fmmax.farfield`."""
+"""Tests for `fmmax.farfield`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import functools
 import unittest
@@ -8,7 +11,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, farfield, fields, fmm, layer, scattering, sources
+from fmmax import basis, farfield, fields, fmm, layer, scattering, sources, utils
 
 
 class FarfieldProfileTest(unittest.TestCase):
@@ -69,7 +72,7 @@ class FarfieldProfileTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            brillouin_zone_axes=(0, 1),
+            brillouin_grid_axes=(0, 1),
         )
         # Sum the farfield contributions from the two polarizations, and normalize.
         farfield_flux = jnp.sum(farfield_flux, axis=-2)
@@ -105,14 +108,12 @@ class FarfieldProfileTest(unittest.TestCase):
         )
     )
     def test_farfield_integral_in_different_domains(
-        self, batch_shape, brillouin_zone_axes, polar_angle_cutoff
+        self, batch_shape, brillouin_grid_axes, polar_angle_cutoff
     ):
         # Checks that the farfield can be computed for a variety of batch
         # shapes and brillouin zone axes. Also checks that the integral of
         # flux in k space and in the angular domain agree.
-        absolute_axes = farfield._absolute_axes(
-            brillouin_zone_axes, len(batch_shape) + 2
-        )
+        absolute_axes = utils.absolute_axes(brillouin_grid_axes, len(batch_shape) + 2)
 
         # Compute shapes of dummy variables.
         wavelength_shape = tuple(
@@ -165,7 +166,7 @@ class FarfieldProfileTest(unittest.TestCase):
         # Integrate the flux over k-space. The differential area element in
         # k-space is independent of k.
         integrated_flux_k_space = jnp.sum(
-            jnp.where(k_space_mask, flux, 0), axis=brillouin_zone_axes + (-2,)
+            jnp.where(k_space_mask, flux, 0), axis=brillouin_grid_axes + (-2,)
         )
 
         # Compute the farfield angles, solid angle, and associated flux.
@@ -180,7 +181,7 @@ class FarfieldProfileTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            brillouin_zone_axes=brillouin_zone_axes,
+            brillouin_grid_axes=brillouin_grid_axes,
         )
         farfield_flux = jnp.where(jnp.isnan(farfield_flux), 0, farfield_flux)
         solid_angle = solid_angle[..., jnp.newaxis, jnp.newaxis]
@@ -218,7 +219,7 @@ class IntegratedFluxTest(unittest.TestCase):
         )
     )
     def test_integrated_flux_matches_direct_calculation(
-        self, batch_shape, brillouin_zone_axes, num_sources, upsample_factor
+        self, batch_shape, brillouin_grid_axes, num_sources, upsample_factor
     ):
         # Checks that the calculation of integrated flux "directly" matches that
         # when calcuated by first computing weights, and then taking the inner
@@ -237,15 +238,15 @@ class IntegratedFluxTest(unittest.TestCase):
         )
         wavelength = jax.random.uniform(
             jax.random.PRNGKey(1),
-            [(1 if i in brillouin_zone_axes else d) for i, d in enumerate(batch_shape)],
+            [(1 if i in brillouin_grid_axes else d) for i, d in enumerate(batch_shape)],
         )
         in_plane_wavevector = basis.brillouin_zone_in_plane_wavevector(
-            brillouin_grid_shape=tuple([batch_shape[i] for i in brillouin_zone_axes]),
+            brillouin_grid_shape=tuple([batch_shape[i] for i in brillouin_grid_axes]),
             primitive_lattice_vectors=primitive_lattice_vectors,
         )
         in_plane_wavevector = jnp.expand_dims(
             in_plane_wavevector,
-            axis=[i for i in range(len(batch_shape)) if i not in brillouin_zone_axes],
+            axis=[i for i in range(len(batch_shape)) if i not in brillouin_grid_axes],
         )
 
         def angle_bounds_fn(polar_angle, azimuthal_angle):
@@ -261,7 +262,7 @@ class IntegratedFluxTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            brillouin_zone_axes=brillouin_zone_axes,
+            brillouin_grid_axes=brillouin_grid_axes,
             angle_bounds_fn=angle_bounds_fn,
             upsample_factor=upsample_factor,
         )
@@ -273,7 +274,7 @@ class IntegratedFluxTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            brillouin_zone_axes=brillouin_zone_axes,
+            brillouin_grid_axes=brillouin_grid_axes,
             angle_bounds_fn=angle_bounds_fn,
             upsample_factor=upsample_factor,
         )
@@ -308,7 +309,7 @@ class IntegratedFluxTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            brillouin_zone_axes=(0, 1),
+            brillouin_grid_axes=(0, 1),
             angle_bounds_fn=angle_bounds_fn,
         )
         integrated_flux_no_upsample = integrated_flux_fn(upsample_factor=1)
@@ -380,7 +381,7 @@ class IntegratedFluxTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            brillouin_zone_axes=(0, 1),
+            brillouin_grid_axes=(0, 1),
         )
 
         integrated_flux = farfield.integrated_flux(
@@ -389,7 +390,7 @@ class IntegratedFluxTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            brillouin_zone_axes=(0, 1),
+            brillouin_grid_axes=(0, 1),
             angle_bounds_fn=lambda polar_angle, _: jnp.full(polar_angle.shape, True),
             upsample_factor=10,
         )
@@ -569,18 +570,6 @@ class UnflattenTest(unittest.TestCase):
             transposed_flux, (1,) * len(unstacked_batch_shape) + (nkx, nky, 1)
         )
         onp.testing.assert_array_equal(expected, unstacked)
-
-    @parameterized.parameterized.expand(([(0, 0), 3], [(1, -2), 3]))
-    def test_absolute_axes_duplicates(self, axes, ndim):
-        with self.assertRaisesRegex(ValueError, "Found duplicates in `axes`"):
-            farfield._absolute_axes(axes, ndim)
-
-    @parameterized.parameterized.expand(([(3,), 3], [(-4,), 3]))
-    def test_absolute_axes_out_of_range(self, axes, ndim):
-        with self.assertRaisesRegex(
-            ValueError, "All elements of `axes` must be in the range"
-        ):
-            farfield._absolute_axes(axes, ndim)
 
     @parameterized.parameterized.expand(
         (

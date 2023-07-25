@@ -1,4 +1,7 @@
-"""An example which computes wavelength-dependent reflection of metallic pillars."""
+"""An example which computes wavelength-dependent reflection of metallic pillars.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 from typing import Tuple
 
@@ -129,11 +132,6 @@ def simulate_pillars(
         to compute fields. These intermediate results are the layer solve results, the
         layer thicknesses, and the interior scattering matrices.
     """
-    permittivity_ambient = jnp.asarray(permittivity_ambient)
-    permittivity_planarization = jnp.asarray(permittivity_planarization)
-    polar_angle = jnp.asarray(polar_angle)
-
-    # Compute the permittivity of the pillar layer.
     density = pillar_density(pitch_nm, pillar_diameter_nm, resolution_nm)
     permittivity_ag = permittivity_ag_drude(wavelength_nm)[:, jnp.newaxis, jnp.newaxis]
     permittivity_pillars = utils.interpolate_permittivity(
@@ -157,9 +155,9 @@ def simulate_pillars(
 
     in_plane_wavevector = basis.plane_wave_in_plane_wavevector(
         wavelength=wavelength_nm,
-        polar_angle=polar_angle,
+        polar_angle=jnp.asarray(polar_angle),
         azimuthal_angle=jnp.zeros(()),
-        permittivity=permittivity_ambient,
+        permittivity=jnp.asarray(permittivity_ambient),
     )
     primitive_lattice_vectors = basis.LatticeVectors(
         u=pitch_nm * basis.X, v=pitch_nm * basis.Y
