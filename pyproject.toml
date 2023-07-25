@@ -1,0 +1,37 @@
+[project]
+
+name = "fmmax"
+version = "0.1.0"
+description = "Fourier modal method with Jax"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE"}
+
+keywords = ["fmm", "rcwa", "jax", "optics"] 
+
+authors = [
+  {name = "Martin Schubert", email = "mfschubert@gmail.com" },
+  {name = "Alec Hammond", email = "alec.m.hammond@gmail.com" },
+]
+
+maintainers = [
+  {name = "Martin Schubert", email = "mfschubert@gmail.com" },
+  {name = "Alec Hammond", email = "alec.m.hammond@gmail.com" },
+]
+
+# TODO add gpu channels
+dependencies = [
+  "jax",
+  "jaxlib",
+  "numpy",
+  "parameterized",
+]
+
+[project.optional-dependencies]
+test = ["black", "isort", "grcwa"]
+
+[tool.setuptools]
+
+[build-system]
+requires = ["setuptools>=43.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
