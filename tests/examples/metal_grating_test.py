@@ -1,4 +1,7 @@
-"""Tests for `examples.metal_grating`."""
+"""Tests for `examples.metal_grating`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import unittest
 

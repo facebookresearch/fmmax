@@ -1,4 +1,7 @@
-"""Tests for `fmmax.utils`."""
+"""Tests for `fmmax.utils`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import itertools
 import unittest
@@ -418,3 +421,29 @@ class BoxDownsampleTest(unittest.TestCase):
         self.assertSequenceEqual(upsampled.shape, expected_shape)
         downsampled_upsampled = utils.box_downsample(upsampled, original.shape)
         onp.testing.assert_allclose(downsampled_upsampled, original, rtol=1e-6)
+
+
+class AbsoluteAxesTest(unittest.TestCase):
+    @parameterized.parameterized.expand(([(0, 0), 3], [(1, -2), 3]))
+    def test_absolute_axes_duplicates(self, axes, ndim):
+        with self.assertRaisesRegex(ValueError, "Found duplicates in `axes`"):
+            utils.absolute_axes(axes, ndim)
+
+    @parameterized.parameterized.expand(([(3,), 3], [(-4,), 3]))
+    def test_absolute_axes_out_of_range(self, axes, ndim):
+        with self.assertRaisesRegex(
+            ValueError, "All elements of `axes` must be in the range"
+        ):
+            utils.absolute_axes(axes, ndim)
+
+    @parameterized.parameterized.expand(
+        (
+            [(0, 1, 2, 3), 4, (0, 1, 2, 3)],
+            [(0, 1, 2, 3), 6, (0, 1, 2, 3)],
+            [(-4, -3, -2, -1), 4, (0, 1, 2, 3)],
+            [(-6, -5, -4, -3), 6, (0, 1, 2, 3)],
+        )
+    )
+    def test_absolute_axes_match_expected(self, axes, ndim, expected_axes):
+        absolute_axes = utils.absolute_axes(axes, ndim)
+        self.assertSequenceEqual(absolute_axes, expected_axes)

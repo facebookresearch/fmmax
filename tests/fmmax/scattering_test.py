@@ -1,4 +1,7 @@
-"""Tests for `fmmax.scattering`."""
+"""Tests for `fmmax.scattering`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import dataclasses
 import unittest
@@ -50,11 +53,11 @@ def _dummy_solve_result(
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
         expansion=expansion,
-        eigenvalues=_random_normal_complex(key_eigenvalues, (dim,)),
-        eigenvectors=_random_normal_complex(key_eigenvectors, (dim, dim)),
+        eigenvalues=_random_normal_complex(key_eigenvalues, (2 * dim,)),
+        eigenvectors=_random_normal_complex(key_eigenvectors, (2 * dim, 2 * dim)),
         eta_matrix=_random_normal_complex(key_eigenvectors, (dim, dim)),
         z_permittivity_matrix=_random_normal_complex(key_eigenvectors, (dim, dim)),
-        omega_script_k_matrix=_random_normal_complex(key_omega_k, (dim, dim)),
+        omega_script_k_matrix=_random_normal_complex(key_omega_k, (2 * dim, 2 * dim)),
     )
 
 

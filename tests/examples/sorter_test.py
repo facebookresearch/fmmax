@@ -1,4 +1,7 @@
-"""Tests for `examples.sorter`."""
+"""Tests for `examples.sorter`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import unittest
 
