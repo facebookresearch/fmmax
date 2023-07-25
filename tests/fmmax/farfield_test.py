@@ -11,8 +11,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import (basis, farfield, fields, fmm, layer, scattering, sources,
-                   utils)
+from fmmax import basis, farfield, fields, fmm, layer, scattering, sources, utils
 
 
 class FarfieldProfileTest(unittest.TestCase):
