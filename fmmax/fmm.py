@@ -192,10 +192,7 @@ def _transverse_permittivity_vector(
     delta_matrix = jnp.block([[delta_hat, zeros], [zeros, delta_hat]])
 
     vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
-    tx, ty = vector_fn(
-        arr=permittivity,
-        primitive_lattice_vectors=primitive_lattice_vectors,
-    )
+    tx, ty = vector_fn(permittivity, primitive_lattice_vectors)
 
     Pxx, Pxy, Pyx, Pyy = tangent_terms(tx, ty)
     p_matrix = jnp.block(
@@ -303,7 +300,7 @@ def fft(
     Returns:
         The transformed `x`.
     """
-    axes = utils.absolute_axes(axes, x.ndim)
+    axes: Tuple[int, int] = utils.absolute_axes(axes, x.ndim)  # type: ignore[no-redef]
     _validate_shape_for_expansion(tuple([x.shape[ax] for ax in axes]), expansion)
 
     x_fft = jnp.fft.fft2(x, axes=axes, norm="forward")

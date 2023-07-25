@@ -251,15 +251,13 @@ def _simulate_polarization_sorter(
         substrate_permittivity[jnp.newaxis, jnp.newaxis],
     ]
 
-    thicknesses = jnp.asarray(
-        [
-            params["layers"]["ambient"]["thickness"],
-            params["layers"]["cap"]["thickness"],
-            params["layers"]["sorter"]["thickness"],
-            params["layers"]["spacer"]["thickness"],
-            params["layers"]["substrate"]["thickness"],
-        ]
-    )
+    thicknesses = [
+        params["layers"]["ambient"]["thickness"],
+        params["layers"]["cap"]["thickness"],
+        params["layers"]["sorter"]["thickness"],
+        params["layers"]["spacer"]["thickness"],
+        params["layers"]["substrate"]["thickness"],
+    ]
 
     # Perform the eigensolve for each layer in the stack.
     layer_solve_results = [

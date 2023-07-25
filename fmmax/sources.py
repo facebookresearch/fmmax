@@ -46,7 +46,7 @@ def amplitudes_for_fields(
         )
 
     batch_shape = layer_solve_result.batch_shape
-    brillouin_grid_axes = utils.absolute_axes(brillouin_grid_axes, len(batch_shape))
+    brillouin_grid_axes: Tuple[int, int] = utils.absolute_axes(brillouin_grid_axes, len(batch_shape))  # type: ignore[no-redef]
     brillouin_grid_shape = (
         batch_shape[brillouin_grid_axes[0]],
         batch_shape[brillouin_grid_axes[1]],

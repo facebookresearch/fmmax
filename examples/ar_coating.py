@@ -7,7 +7,7 @@ from typing import Sequence, Tuple
 
 import jax.numpy as jnp
 import numpy as onp
-import scipy.optimize as spo
+import scipy.optimize as spo  # type: ignore[import]
 
 from fmmax import basis, layer, scattering
 
