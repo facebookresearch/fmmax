@@ -1,4 +1,7 @@
-"""Tests for `fmmax.fields`."""
+"""Tests for `fmmax.fields`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import dataclasses
 import unittest
@@ -436,7 +439,7 @@ class Fields3DTest(unittest.TestCase):
             )
 
 
-class FieldCoordiantesTest(unittest.TestCase):
+class UnitCellCoordiantesTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
             [(1, 1), (3, 2), (0, 1, 2), (0, 1)],
@@ -444,11 +447,15 @@ class FieldCoordiantesTest(unittest.TestCase):
             [(2, 2), (2, 1), (0, 0.5, 1.0, 1.5), (0, 0.5)],
         ]
     )
-    def test_values_match_expected(self, shape, num_unit_cells, expected_i, expected_j):
-        i, j = fields._field_coordinates(shape, num_unit_cells)
-        onp.testing.assert_array_equal(
-            i, jnp.broadcast_to(jnp.asarray(expected_i)[:, jnp.newaxis], i.shape)
+    def test_values_match_expected(self, shape, num_unit_cells, expected_x, expected_y):
+        x, y = fields.unit_cell_coordinates(
+            primitive_lattice_vectors=basis.LatticeVectors(u=basis.X, v=basis.Y),
+            shape=shape,
+            num_unit_cells=num_unit_cells,
         )
         onp.testing.assert_array_equal(
-            j, jnp.broadcast_to(jnp.asarray(expected_j)[jnp.newaxis, :], j.shape)
+            x, jnp.broadcast_to(jnp.asarray(expected_x)[:, jnp.newaxis], x.shape)
+        )
+        onp.testing.assert_array_equal(
+            y, jnp.broadcast_to(jnp.asarray(expected_y)[jnp.newaxis, :], y.shape)
         )

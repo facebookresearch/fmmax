@@ -1,4 +1,7 @@
-"""Functions related to tangent vector field generation."""
+"""Functions related to tangent vector field generation.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import functools
 from typing import Any, Callable, Dict, Tuple
@@ -282,16 +285,17 @@ def _tangent_field_with_loss(
     if use_jones:
         tx, ty = normalize_jones(tx, ty)
 
+    loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = functools.partial(
+        _field_loss,
+        tx0=tx0,
+        ty0=ty0,
+        alignment_weight=alignment_weight,
+        smoothness_weight=smoothness_weight,
+    )
     return _optimize_tangent_field(
         tx=tx,
         ty=ty,
-        loss_fn=functools.partial(
-            _field_loss,
-            tx0=tx0,
-            ty0=ty0,
-            alignment_weight=alignment_weight,
-            smoothness_weight=smoothness_weight,
-        ),
+        loss_fn=loss_fn,
         optimizer=optimizer,
         steps_dim_multiple=steps_dim_multiple,
     )
@@ -300,7 +304,7 @@ def _tangent_field_with_loss(
 def _optimize_tangent_field(
     tx: jnp.ndarray,
     ty: jnp.ndarray,
-    loss_fn: Callable[[jnp.ndarray, jnp.ndarray], float],
+    loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray],
     optimizer: jopt.Optimizer,
     steps_dim_multiple: int,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:

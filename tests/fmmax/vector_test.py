@@ -1,4 +1,7 @@
-"""Tests for `fmmax.vector`."""
+"""Tests for `fmmax.vector`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import unittest
 

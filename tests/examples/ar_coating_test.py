@@ -1,4 +1,7 @@
-"""Tests for `examples.ar_coating`."""
+"""Tests for `examples.ar_coating`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import unittest
 

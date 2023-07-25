@@ -1,4 +1,7 @@
-"""Tests for `examples.uled`."""
+"""Tests for `examples.uled`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import unittest
 

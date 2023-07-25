@@ -1,4 +1,7 @@
-"""A 1D anisotropic grating example."""
+"""A 1D anisotropic grating example.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 from typing import Tuple
 
@@ -45,15 +48,16 @@ def simulate_grating(
         transmitted power for each order.
     """
     # Add spatial dimensions to the scalar ambient permittivity.
-    permittivity_ambient = jnp.asarray(permittivity_ambient)[jnp.newaxis, jnp.newaxis]
+    permittivity_ambient_ = jnp.asarray(permittivity_ambient)[jnp.newaxis, jnp.newaxis]
+    del permittivity_ambient
 
     # Define the permittivity tensor elements for the grating gap.
     permittivities_grating_gap = (
-        permittivity_ambient,  # xx
-        jnp.zeros_like(permittivity_ambient),  # xy
-        jnp.zeros_like(permittivity_ambient),  # yx
-        permittivity_ambient,  # yy
-        permittivity_ambient,  # zz
+        permittivity_ambient_,  # xx
+        jnp.zeros_like(permittivity_ambient_),  # xy
+        jnp.zeros_like(permittivity_ambient_),  # yx
+        permittivity_ambient_,  # yy
+        permittivity_ambient_,  # zz
     )
 
     # Get the permittivity tensor elements for the anisotropic, and add the spatial dimensions.
@@ -97,7 +101,7 @@ def simulate_grating(
         wavelength=wavelength_nm,
         polar_angle=polar_angle,
         azimuthal_angle=azimuthal_angle,
-        permittivity=permittivity_ambient,
+        permittivity=permittivity_ambient_,
     )
 
     # Perform the appropriate layer eigensolve for each layer in the stack. Note that the
@@ -108,7 +112,7 @@ def simulate_grating(
             wavelength=wavelength_nm,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
-            permittivity=permittivity_ambient,
+            permittivity=permittivity_ambient_,
             expansion=expansion,
             formulation=fmm.Formulation.FFT,
         ),

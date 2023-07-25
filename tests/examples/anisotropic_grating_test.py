@@ -1,4 +1,7 @@
-"""Tests for `examples.anisotropic_grating`."""
+"""Tests for `examples.anisotropic_grating`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import unittest
 

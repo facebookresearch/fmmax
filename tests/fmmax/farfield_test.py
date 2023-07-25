@@ -1,4 +1,7 @@
-"""Tests for `fmmax.farfield`."""
+"""Tests for `fmmax.farfield`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import functools
 import unittest
@@ -16,6 +19,7 @@ from fmmax import (
     layer,
     scattering,
     sources,
+    utils,
 )
 
 
@@ -118,9 +122,7 @@ class FarfieldProfileTest(unittest.TestCase):
         # Checks that the farfield can be computed for a variety of batch
         # shapes and brillouin zone axes. Also checks that the integral of
         # flux in k space and in the angular domain agree.
-        absolute_axes = farfield._absolute_axes(
-            brillouin_zone_axes, len(batch_shape) + 2
-        )
+        absolute_axes = utils.absolute_axes(brillouin_zone_axes, len(batch_shape) + 2)
 
         # Compute shapes of dummy variables.
         wavelength_shape = tuple(
@@ -577,18 +579,6 @@ class UnflattenTest(unittest.TestCase):
             transposed_flux, (1,) * len(unstacked_batch_shape) + (nkx, nky, 1)
         )
         onp.testing.assert_array_equal(expected, unstacked)
-
-    @parameterized.parameterized.expand(([(0, 0), 3], [(1, -2), 3]))
-    def test_absolute_axes_duplicates(self, axes, ndim):
-        with self.assertRaisesRegex(ValueError, "Found duplicates in `axes`"):
-            farfield._absolute_axes(axes, ndim)
-
-    @parameterized.parameterized.expand(([(3,), 3], [(-4,), 3]))
-    def test_absolute_axes_out_of_range(self, axes, ndim):
-        with self.assertRaisesRegex(
-            ValueError, "All elements of `axes` must be in the range"
-        ):
-            farfield._absolute_axes(axes, ndim)
 
     @parameterized.parameterized.expand(
         (

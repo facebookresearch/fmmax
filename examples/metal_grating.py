@@ -1,4 +1,7 @@
-"""A 1D metallic grating example, including convergence analysis."""
+"""A 1D metallic grating example, including convergence analysis.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import itertools
 from typing import Tuple

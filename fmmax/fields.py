@@ -1,4 +1,7 @@
-"""Functions related to fields in the FMM algorithm."""
+"""Functions related to fields in the FMM algorithm.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 from typing import Sequence, Tuple
 
@@ -297,7 +300,7 @@ def fields_from_wave_amplitudes(
     )
 
     # The matrix from equation 35 of [2012 Liu].
-    matrix = _field_conversion_matrix(layer_solve_result)
+    matrix = field_conversion_matrix(layer_solve_result)
 
     # Obtain the transverse electric and magnetic fields.
     amplitudes = jnp.concatenate([forward_amplitude, backward_amplitude], axis=-2)
@@ -337,7 +340,7 @@ def fields_from_wave_amplitudes(
     return (ex, ey, ez), (hx, hy, hz)
 
 
-def _field_conversion_matrix(layer_solve_result: layer.LayerSolveResult) -> jnp.ndarray:
+def field_conversion_matrix(layer_solve_result: layer.LayerSolveResult) -> jnp.ndarray:
     """Returns the matrix which converts wave amplitudes to transverse fields."""
     # The matrix is from equation 35 of [2012 Liu].
     q = layer_solve_result.eigenvalues
@@ -391,12 +394,11 @@ def fields_on_grid(
         electric_field + magnetic_field,
         num_terms=layer_solve_result.expansion.num_terms,
     )
-    primitive_lattice_vectors = layer_solve_result.primitive_lattice_vectors
-
-    i, j = _field_coordinates(shape, num_unit_cells)
-    x = i * primitive_lattice_vectors.u[0] + j * primitive_lattice_vectors.v[0]
-    y = i * primitive_lattice_vectors.u[1] + j * primitive_lattice_vectors.v[1]
-
+    x, y = unit_cell_coordinates(
+        primitive_lattice_vectors=layer_solve_result.primitive_lattice_vectors,
+        shape=shape,
+        num_unit_cells=num_unit_cells,
+    )
     kx = layer_solve_result.in_plane_wavevector[..., 0, jnp.newaxis, jnp.newaxis]
     ky = layer_solve_result.in_plane_wavevector[..., 1, jnp.newaxis, jnp.newaxis]
     phase = jnp.exp(1j * (kx * x + ky * y))[..., jnp.newaxis]
@@ -426,21 +428,24 @@ def fields_on_grid(
     return grid_electric_field, grid_magnetic_field, (x, y)
 
 
-def _field_coordinates(
+def unit_cell_coordinates(
+    primitive_lattice_vectors: basis.LatticeVectors,
     shape: Tuple[int, int],
     num_unit_cells: Tuple[int, int],
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Computes the coordinates of fields, given the shape and number of unit cells."""
+    """Computes coordinates within unit cells, given the shape and number of unit cells."""
     i_stop = num_unit_cells[0] * shape[0]
     j_stop = num_unit_cells[1] * shape[1]
-    coords: Tuple[int, int] = tuple(
+    i, j = tuple(
         jnp.meshgrid(
             jnp.arange(0, i_stop) / shape[0],
             jnp.arange(0, j_stop) / shape[1],
             indexing="ij",
         )
     )
-    return coords
+    x = i * primitive_lattice_vectors.u[0] + j * primitive_lattice_vectors.v[0]
+    y = i * primitive_lattice_vectors.u[1] + j * primitive_lattice_vectors.v[1]
+    return x, y
 
 
 def stack_amplitudes_interior(
@@ -646,7 +651,7 @@ def stack_fields_3d(
             f"{len(layer_thicknesses)}, and {len(layer_znum)}, respectively."
         )
 
-    z0 = 0
+    z0 = jnp.zeros(())
     zs = []
     efields = []
     hfields = []
@@ -669,10 +674,10 @@ def stack_fields_3d(
         zs.append(z_offset + z0)
         z0 += layer_thickness
 
-    efields = jnp.concatenate(efields, axis=-2)
-    hfields = jnp.concatenate(hfields, axis=-2)
+    merged_efields = jnp.concatenate(efields, axis=-2)
+    merged_hfields = jnp.concatenate(hfields, axis=-2)
     z = jnp.concatenate(zs)
-    return efields, hfields, (x, y, z)  # pyre-ignore[61]
+    return merged_efields, merged_hfields, (x, y, z)
 
 
 def layer_fields_3d(
@@ -749,15 +754,15 @@ def layer_fields_3d(
         backward_amplitude=backward_amplitude,
         layer_solve_result=layer_solve_result,
     )
-    eg, hg, (x, y) = fields_on_grid(
+    eg_tuple, hg_tuple, (x, y) = fields_on_grid(
         electric_field=ef,
         magnetic_field=hf,
         layer_solve_result=layer_solve_result,
         shape=grid_shape,
         num_unit_cells=num_unit_cells,
     )
-    eg = jnp.asarray(eg)
-    hg = jnp.asarray(hg)
+    eg = jnp.asarray(eg_tuple)
+    hg = jnp.asarray(hg_tuple)
 
     # Restore the original amplitude batch dimension.
     eg = jnp.reshape(eg, eg.shape[:-1] + (layer_znum, amplitude_batch_size))

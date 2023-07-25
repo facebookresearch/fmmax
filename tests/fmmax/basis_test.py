@@ -1,4 +1,7 @@
-"""Tests for `fmmax.basis`."""
+"""Tests for `fmmax.basis`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import unittest
 

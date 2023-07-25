@@ -1,4 +1,7 @@
-"""A thin film antireflection coating example."""
+"""A thin film antireflection coating example.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 from typing import Sequence, Tuple
 
@@ -65,13 +68,13 @@ def compute_reflection(
         truncation=basis.Truncation.CIRCULAR,
     )
 
-    thicknesses = (
-        (jnp.zeros(1),) + tuple([jnp.asarray(t) for t in thicknesses]) + (jnp.zeros(1),)
+    thicknesses_with_ambient = (
+        [jnp.zeros(1)] + [jnp.asarray(t) for t in thicknesses] + [jnp.zeros(1)]
     )
     permittivities = (
-        (jnp.asarray(refractive_index_ambient**2),)
-        + tuple([jnp.asarray(n**2) for n in refractive_indices])
-        + (jnp.asarray(refractive_index_substrate**2),)
+        [jnp.asarray(refractive_index_ambient**2)]
+        + [jnp.asarray(n**2) for n in refractive_indices]
+        + [jnp.asarray(refractive_index_substrate**2)]
     )
     permittivities = [p[..., jnp.newaxis, jnp.newaxis] for p in permittivities]
 
@@ -85,7 +88,7 @@ def compute_reflection(
         )
         for p in permittivities
     ]
-    s_matrix = scattering.stack_s_matrix(layer_solve_results, thicknesses)
+    s_matrix = scattering.stack_s_matrix(layer_solve_results, thicknesses_with_ambient)
     r_te = s_matrix.s21[..., 0, 0]
     r_tm = s_matrix.s21[..., expansion.num_terms, expansion.num_terms]
     return r_te, r_tm

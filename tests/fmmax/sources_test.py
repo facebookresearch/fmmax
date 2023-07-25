@@ -1,7 +1,11 @@
-"""Tests for `fmmax.sources`."""
+"""Tests for `fmmax.sources`.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
 
 import unittest
 
+import jax
 import jax.numpy as jnp
 import numpy as onp
 import parameterized
@@ -35,7 +39,113 @@ BATCH_LAYER_SOLVE_RESULT = layer.eigensolve_isotropic_media(
 )
 
 
-class SourcesTest(unittest.TestCase):
+class FieldSourcesTest(unittest.TestCase):
+    def test_amplitudes_match_expected(self):
+        # Generate random amplitudes, compute the resulting fields, and extract
+        # the amplitudes resulting from those fields. Compare the extracted
+        # amplitudes to the original amplitudes.
+        brillouin_grid_shape = (5, 5)
+        in_plane_wavevector = basis.brillouin_zone_in_plane_wavevector(
+            brillouin_grid_shape=brillouin_grid_shape,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+        )
+        layer_solve_result = layer.eigensolve_isotropic_media(
+            permittivity=jnp.asarray([[1.0]]),
+            wavelength=WAVELENGTH,
+            in_plane_wavevector=in_plane_wavevector,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+            expansion=EXPANSION,
+            formulation=fmm.Formulation.FFT,
+        )
+        fwd_amplitude = jax.random.normal(
+            jax.random.PRNGKey(0), brillouin_grid_shape + (2 * EXPANSION.num_terms, 3)
+        )
+        bwd_amplitude = jax.random.normal(
+            jax.random.PRNGKey(1), brillouin_grid_shape + (2 * EXPANSION.num_terms, 3)
+        )
+
+        efield, hfield = fields.fields_from_wave_amplitudes(
+            fwd_amplitude, bwd_amplitude, layer_solve_result
+        )
+        (ex, ey, _), (hx, hy, _), _ = fields.fields_on_grid(
+            efield,
+            hfield,
+            layer_solve_result,
+            shape=(20, 20),
+            num_unit_cells=brillouin_grid_shape,
+        )
+        ex = jnp.mean(ex, axis=(0, 1))
+        ey = jnp.mean(ey, axis=(0, 1))
+        hx = jnp.mean(hx, axis=(0, 1))
+        hy = jnp.mean(hy, axis=(0, 1))
+        (
+            fwd_amplitude_extracted,
+            bwd_amplitude_extracted,
+        ) = sources.amplitudes_for_fields(
+            ex,
+            ey,
+            hx,
+            hy,
+            layer_solve_result,
+            brillouin_grid_axes=(0, 1),
+        )
+        onp.testing.assert_allclose(fwd_amplitude_extracted, fwd_amplitude, rtol=5e-3)
+        onp.testing.assert_allclose(bwd_amplitude_extracted, bwd_amplitude, rtol=5e-3)
+
+    def test_field_shape_validation(self):
+        brillouin_grid_shape = (5, 5)
+        in_plane_wavevector = basis.brillouin_zone_in_plane_wavevector(
+            brillouin_grid_shape=brillouin_grid_shape,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+        )
+        layer_solve_result = layer.eigensolve_isotropic_media(
+            permittivity=jnp.asarray([[1.0]]),
+            wavelength=WAVELENGTH,
+            in_plane_wavevector=in_plane_wavevector,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+            expansion=EXPANSION,
+            formulation=fmm.Formulation.FFT,
+        )
+        with self.assertRaisesRegex(
+            ValueError, "All fields must be rank 3 with matching shape"
+        ):
+            sources.amplitudes_for_fields(
+                ex=jnp.ones((20, 20, 1)),
+                ey=jnp.ones((20, 20, 1)),
+                hx=jnp.ones((20, 20, 1)),
+                hy=jnp.ones((20, 20)),
+                layer_solve_result=layer_solve_result,
+                brillouin_grid_axes=(0, 1),
+            )
+
+    def test_field_shape_brillouin_grid_compatible_validation(self):
+        brillouin_grid_shape = (3, 3)
+        in_plane_wavevector = basis.brillouin_zone_in_plane_wavevector(
+            brillouin_grid_shape=brillouin_grid_shape,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+        )
+        layer_solve_result = layer.eigensolve_isotropic_media(
+            permittivity=jnp.asarray([[1.0]]),
+            wavelength=WAVELENGTH,
+            in_plane_wavevector=in_plane_wavevector,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+            expansion=EXPANSION,
+            formulation=fmm.Formulation.FFT,
+        )
+        with self.assertRaisesRegex(
+            ValueError, "Field shapes must be evenly divisible by the Brillouin"
+        ):
+            sources.amplitudes_for_fields(
+                ex=jnp.ones((20, 20, 1)),
+                ey=jnp.ones((20, 20, 1)),
+                hx=jnp.ones((20, 20, 1)),
+                hy=jnp.ones((20, 20, 1)),
+                layer_solve_result=layer_solve_result,
+                brillouin_grid_axes=(0, 1),
+            )
+
+
+class InternalSourcesTest(unittest.TestCase):
     @parameterized.parameterized.expand([[(2,)], [(1, 3)], [(1, 3, 2)]])
     def test_gaussian_location_shape_validation(self, invalid_shape):
         with self.assertRaisesRegex(
@@ -192,7 +302,7 @@ class SourcesTest(unittest.TestCase):
         onp.testing.assert_allclose(gaussian_dipole, dirac_delta_dipole)
 
 
-class InternalSourceTest(unittest.TestCase):
+class AmplitudesFromInternalSourcesTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
             (1, 0, True, False),
