@@ -178,7 +178,7 @@ def simulate_uled(
         for offset in dipole_y_offset
     ]
     dipoles = sources.gaussian_source(
-        fwhm=dipole_fwhm,
+        fwhm=jnp.asarray(dipole_fwhm),
         location=jnp.asarray(dipole_locations),
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,

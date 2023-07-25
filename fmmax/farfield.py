@@ -22,7 +22,7 @@ def farfield_profile(
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
     expansion: basis.Expansion,
-    brillouin_zone_axes: Tuple[int, int],
+    brillouin_grid_axes: Tuple[int, int],
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Computes a farfield profile.
 
@@ -37,7 +37,7 @@ def farfield_profile(
             order, batch-compatible with `flux`.
         primitive_lattice_vectors: The primitive lattice vectors of the unit cell.
         expansion: The expansion used for the fields.
-        brillouin_zone_axes: Specifies the two axes of `flux` corresponding to
+        brillouin_grid_axes: Specifies the two axes of `flux` corresponding to
             the Brillouin zone grid.
 
     Returns:
@@ -45,7 +45,7 @@ def farfield_profile(
         and the farfield power.
     """
     assert flux.shape[-2] == 2 * expansion.num_terms
-    brillouin_zone_axes = utils.absolute_axes(brillouin_zone_axes, flux.ndim)
+    brillouin_grid_axes: Tuple[int, int] = utils.absolute_axes(brillouin_grid_axes, flux.ndim)  # type: ignore[no-redef]
 
     ndim_batch = flux.ndim - 2
     wavelength = utils.atleast_nd(wavelength, ndim_batch)
@@ -57,13 +57,13 @@ def farfield_profile(
         expansion=expansion,
     )
     transverse_wavevectors = unflatten_transverse_wavevectors(
-        transverse_wavevectors, expansion, brillouin_zone_axes
+        transverse_wavevectors, expansion, brillouin_grid_axes
     )
-    flux = unflatten_flux(flux, expansion, brillouin_zone_axes)
+    flux = unflatten_flux(flux, expansion, brillouin_grid_axes)
 
     # Remove the brillouin zone axes from `wavelength`, making it compatible
     # with the unflattened flux and transverse wavevectors.
-    wavelength = jnp.squeeze(wavelength, axis=brillouin_zone_axes)
+    wavelength = jnp.squeeze(wavelength, axis=brillouin_grid_axes)
 
     polar_angle, azimuthal_angle = angles_from_unflattened_transverse_wavevectors(
         transverse_wavevectors=transverse_wavevectors,
@@ -184,7 +184,7 @@ def integrated_flux(
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
     expansion: basis.Expansion,
-    brillouin_zone_axes: Tuple[int, int],
+    brillouin_grid_axes: Tuple[int, int],
     angle_bounds_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray],
     upsample_factor: int,
 ) -> jnp.ndarray:
@@ -198,7 +198,7 @@ def integrated_flux(
             order, batch-compatible with `flux`.
         primitive_lattice_vectors: The primitive lattice vectors of the unit cell.
         expansion: The expansion used for the fields.
-        brillouin_zone_axes: Specifies the two axes of `flux` corresponding to
+        brillouin_grid_axes: Specifies the two axes of `flux` corresponding to
             the Brillouin zone grid.
         angle_bounds_fn: A function with signature `fn(polar_angle, azimuthal_angle)`
             returning a mask that is `True` for angles that should be included in
@@ -210,7 +210,7 @@ def integrated_flux(
         The integrated flux, with shape equal to the batch dimensions of flux,
         excluding those for the brillouin zone grid.
     """
-    brillouin_zone_axes = utils.absolute_axes(brillouin_zone_axes, flux.ndim)
+    brillouin_grid_axes: Tuple[int, int] = utils.absolute_axes(brillouin_grid_axes, flux.ndim)  # type: ignore[no-redef]
 
     # Compute the weights array, which reduce the integration weights to
     # an inner product.
@@ -220,13 +220,13 @@ def integrated_flux(
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
         expansion=expansion,
-        brillouin_zone_axes=brillouin_zone_axes,
+        brillouin_grid_axes=brillouin_grid_axes,
         angle_bounds_fn=angle_bounds_fn,
         upsample_factor=upsample_factor,
     )
 
     # Sum over the Brillouin zone and Fourier order axes.
-    return jnp.sum(weights * flux, axis=brillouin_zone_axes + (-2,))
+    return jnp.sum(weights * flux, axis=brillouin_grid_axes + (-2,))
 
 
 def _integrated_flux_weights(
@@ -235,12 +235,12 @@ def _integrated_flux_weights(
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
     expansion: basis.Expansion,
-    brillouin_zone_axes: Tuple[int, int],
+    brillouin_grid_axes: Tuple[int, int],
     angle_bounds_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray],
     upsample_factor: int,
 ) -> jnp.ndarray:
     """Returns the integration weights for the bounds defined by `angle_bounds_fn`."""
-    brillouin_zone_axes = utils.absolute_axes(brillouin_zone_axes, flux.ndim)
+    brillouin_grid_axes: Tuple[int, int] = utils.absolute_axes(brillouin_grid_axes, flux.ndim)  # type: ignore[no-redef]
 
     def _integrated_fn(flux):
         assert flux.shape[-1] == 1
@@ -251,7 +251,7 @@ def _integrated_flux_weights(
                 in_plane_wavevector=in_plane_wavevector,
                 primitive_lattice_vectors=primitive_lattice_vectors,
                 expansion=expansion,
-                brillouin_zone_axes=brillouin_zone_axes,
+                brillouin_grid_axes=brillouin_grid_axes,
                 angle_bounds_fn=angle_bounds_fn,
                 upsample_factor=upsample_factor,
             )
@@ -269,13 +269,13 @@ def _integrated_flux_upsampled(
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
     expansion: basis.Expansion,
-    brillouin_zone_axes: Tuple[int, int],
+    brillouin_grid_axes: Tuple[int, int],
     angle_bounds_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray],
     upsample_factor: int,
 ) -> jnp.ndarray:
     """Computes the flux within the bounds defined by `angle_bounds_fn`."""
     assert upsample_factor >= 1
-    brillouin_zone_axes = utils.absolute_axes(brillouin_zone_axes, flux.ndim)
+    brillouin_grid_axes: Tuple[int, int] = utils.absolute_axes(brillouin_grid_axes, flux.ndim)  # type: ignore[no-redef]
 
     ndim_batch = flux.ndim - 2
     wavelength = utils.atleast_nd(wavelength, ndim_batch)
@@ -287,9 +287,9 @@ def _integrated_flux_upsampled(
         expansion=expansion,
     )
 
-    flux = unflatten_flux(flux, expansion, brillouin_zone_axes)
+    flux = unflatten_flux(flux, expansion, brillouin_grid_axes)
     transverse_wavevectors = unflatten_transverse_wavevectors(
-        transverse_wavevectors, expansion, brillouin_zone_axes
+        transverse_wavevectors, expansion, brillouin_grid_axes
     )
 
     # Remove the `nan`s that are found at array locations having no associated
@@ -321,7 +321,7 @@ def _integrated_flux_upsampled(
 
     # Remove the brillouin grid axes from wavelength, and insert axes
     # for the unstacked wavevector.
-    wavelength = jnp.squeeze(wavelength, brillouin_zone_axes)
+    wavelength = jnp.squeeze(wavelength, brillouin_grid_axes)
 
     # Compute polar and azimuthal angles.
     polar_angle, azimuthal_angle = angles_from_unflattened_transverse_wavevectors(
@@ -419,7 +419,7 @@ def unflatten_flux(
     """
     assert flux.ndim >= 4
     assert flux.shape[-2] == 2 * expansion.num_terms
-    brillouin_grid_axes = utils.absolute_axes(brillouin_grid_axes, flux.ndim)
+    brillouin_grid_axes: Tuple[int, int] = utils.absolute_axes(brillouin_grid_axes, flux.ndim)  # type: ignore[no-redef]
 
     # The flux array has values for two polarizations at each Fourier order. Split
     # these and treat them as a batch dimension.
@@ -458,9 +458,7 @@ def unflatten_transverse_wavevectors(
     """
     assert transverse_wavevectors.ndim >= 4
     assert transverse_wavevectors.shape[-2:] == (expansion.num_terms, 2)
-    brillouin_grid_axes = utils.absolute_axes(
-        brillouin_grid_axes, transverse_wavevectors.ndim
-    )
+    brillouin_grid_axes: Tuple[int, int] = utils.absolute_axes(brillouin_grid_axes, transverse_wavevectors.ndim)  # type: ignore[no-redef]
 
     # Transpose so the axes associated with the Fourier orders and Brillouin zone
     # grid are the trailing axes, as needed by `unflatten`.

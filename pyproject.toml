@@ -24,11 +24,12 @@ dependencies = [
   "jax",
   "jaxlib",
   "numpy",
-  "parameterized",
+  "scipy",
 ]
 
 [project.optional-dependencies]
-test = ["black", "isort", "grcwa"]
+tests = ["grcwa", "parameterized", "pytest"]
+dev = ["black", "fmmax[tests]", "isort", "mypy"]
 
 [tool.setuptools]
 
