@@ -31,6 +31,11 @@ jobs:
           find . -name "*.py" | xargs black --check
           find . -name "*.py" | xargs isort --profile black --check-only
 
+      - name: Validate docstrings
+        run: |
+          darglint fmmax --strictness=short --ignore-raise=ValueError
+          darglint examples --strictness=short --ignore-raise=ValueError
+
       - name: Typecheck with mypy
         run: |
           find fmmax -name "*.py" | xargs mypy

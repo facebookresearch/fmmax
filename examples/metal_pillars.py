@@ -124,6 +124,7 @@ def simulate_pillars(
         resolution_nm: The rasterization resolution for patterned layers.
         approximate_num_terms: The approximate number of terms used in the plane
             wave expansion of the fields.
+        truncation: Determines the truncation of the expansion.
         formulation: Specifies the formulation to be used.
 
     Returns:

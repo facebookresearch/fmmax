@@ -36,8 +36,6 @@ def simulate_grating(
         pitch_nm: The grating pitch, in nanometers.
         grating_width_nm: The width of the lines comprising the grating.
         grating_thickness_nm: The height of the grating.
-        planarization_thickness_nm: The thickness of the planarization layer above
-            the grating.
         resolution_nm: The rasterization resolution for patterned layers.
         approximate_num_terms: The approximate number of terms used in the plane
             wave expansion of the fields.

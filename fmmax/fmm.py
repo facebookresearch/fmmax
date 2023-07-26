@@ -272,7 +272,7 @@ def _standard_toeplitz_indices(expansion: basis.Expansion) -> jnp.ndarray:
     Args:
         expansion: The field expansion to be used.
 
-    Returns:s
+    Returns:
         The indices, with shape `(num, num, 2)`.
     """
     i, j = jnp.meshgrid(

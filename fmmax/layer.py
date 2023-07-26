@@ -327,7 +327,6 @@ def eigensolve_uniform_anisotropic_media(
         permittivity_yy: The yy-component of the permittivity tensor.
         permittivity_zz: The zz-component of the permittivity tensor.
         expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used.
 
     Returns:
         The `LayerSolveResult`.

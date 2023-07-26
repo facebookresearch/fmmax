@@ -33,8 +33,7 @@ def amplitudes_for_fields(
         hx: The x-oriented magnetic field on the real-space grid.
         hy: The y-oriented magnetic field on the real-space grid.
         layer_solve_result: The eigensolve result for the layer containing the fields.
-        brillouin_zone_grid_axes: The batch axes corresponding to the Brillouin zone
-            grid.
+        brillouin_grid_axes: The batch axes corresponding to the Brillouin zone grid.
 
     Returns:
         The forward and backward wave amplitudes.
