@@ -283,10 +283,15 @@ def _eig_host(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Wraps jnp.linalg.eig so that it can be jit-ed on a machine with GPUs."""
     eigenvalues_shape = jax.ShapeDtypeStruct(matrix.shape[:-1], complex)
     eigenvectors_shape = jax.ShapeDtypeStruct(matrix.shape, complex)
-    return host_callback.call(
+
+    def _eig_cpu(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
         # We force this computation to be performed on the cpu by jit-ing and
         # explicitly specifying the device.
-        lambda m: tuple(jax.jit(jnp.linalg.eig, device=jax.devices("cpu")[0])(m)),
+        with jax.default_device(jax.devices("cpu")[0]):
+            return jax.jit(jnp.linalg.eig)(matrix)
+
+    return host_callback.call(
+        _eig_cpu,
         matrix.astype(complex),
         result_shape=(eigenvalues_shape, eigenvectors_shape),
     )
