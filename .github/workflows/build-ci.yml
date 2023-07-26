@@ -30,6 +30,7 @@ jobs:
         run: |
           find . -name "*.py" | xargs black --check
           find . -name "*.py" | xargs isort --profile black --check-only
+          darglint . --strictness=short --ignore-raise=ValueError
 
       - name: Typecheck with mypy
         run: |

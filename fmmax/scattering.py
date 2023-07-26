@@ -76,8 +76,8 @@ def stack_s_matrix(
     identity matrix, and start and end layer data is for the same layer.
 
     Args:
-        solve_results: The eigensolve results for layers in the stack.
-        thicknesses: The thicknesses for layers in the stack.
+        layer_solve_results: The eigensolve results for layers in the stack.
+        layer_thicknesses: The thicknesses for layers in the stack.
 
     Returns:
         The `ScatteringMatrix`.
@@ -98,8 +98,8 @@ def stack_s_matrices_interior(
     to the "before" substack and the "after" substack.
 
     Args:
-        solve_results: The eigensolve results for layers in the stack.
-        thicknesses: The thicknesses for layers in the stack.
+        layer_solve_results: The eigensolve results for layers in the stack.
+        layer_thicknesses: The thicknesses for layers in the stack.
 
     Returns:
         The tuple of `(scattering_matrix_before, scattering_matrix_after)`.
@@ -139,8 +139,8 @@ def _stack_s_matrices(
     first and second layer, etc.
 
     Args:
-        solve_results: The eigensolve results for layers in the stack.
-        thicknesses: The thicknesses for layers in the stack.
+        layer_solve_results: The eigensolve results for layers in the stack.
+        layer_thicknesses: The thicknesses for layers in the stack.
 
     Returns:
         The tuple of `ScatteringMatrix`.
@@ -267,7 +267,7 @@ def _extend_s_matrix(
         next_layer_thickness: The thickness for the layer to append.
 
     Returns:
-      The new `ScatteringMatrix`.
+        The new `ScatteringMatrix`.
     """
     # Alias for brevity: eigenvalues, eigenvectors, and omega-k matrix.
     q = layer_solve_result.eigenvalues

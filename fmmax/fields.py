@@ -380,9 +380,9 @@ def fields_on_grid(
     of batched matrix-vector multiplication.
 
     Args:
-        electric_fields: `(ex, ey, ez)` electric field Fourier amplitudes.
-        magnetic_fields: `(hx, hy, hz)` magnetic field Fourier amplitudes.
-        layer_solve_results: The results of the layer eigensolve.
+        electric_field: `(ex, ey, ez)` electric field Fourier amplitudes.
+        magnetic_field: `(hx, hy, hz)` magnetic field Fourier amplitudes.
+        layer_solve_result: The results of the layer eigensolve.
         shape: The shape of the grid.
         num_unit_cells: The number of unit cells along each direction.
 
@@ -696,8 +696,8 @@ def layer_fields_3d(
             start of the layer.
         backward_amplitude_end: The backward-going wave amplitudes, defined at the
             end of the layer.
-        layer_solve_results: The results of the layer eigensolve for each layer.
-        layer_thicknesses: The thickness of each layer.
+        layer_solve_result: The results of the layer eigensolve.
+        layer_thickness: The layer thickness.
         layer_znum: The number of gridpoints in the z-direction for the layer.
         grid_shape: The shape of the xy real-space grid.
         num_unit_cells: The number of unit cells along each direction.

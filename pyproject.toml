@@ -29,7 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 tests = ["grcwa", "parameterized", "pytest"]
-dev = ["black", "fmmax[tests]", "isort", "mypy"]
+dev = ["black", "darglint", "fmmax[tests]", "isort", "mypy"]
 
 [tool.setuptools]
 
