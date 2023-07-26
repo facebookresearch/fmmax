@@ -33,7 +33,8 @@ jobs:
 
       - name: Validate docstrings
         run: |
-          darglint . --strictness=short --ignore-raise=ValueError
+          darglint fmmax --strictness=short --ignore-raise=ValueError
+          darglint examples --strictness=short --ignore-raise=ValueError
 
       - name: Typecheck with mypy
         run: |
