@@ -66,7 +66,7 @@ def amplitudes_for_fields(
         ex.shape[-2] // brillouin_grid_shape[1],
     )
 
-    (x, y,) = fields.unit_cell_coordinates(
+    x, y = fields.unit_cell_coordinates(
         primitive_lattice_vectors=layer_solve_result.primitive_lattice_vectors,
         shape=unit_cell_shape,
         num_unit_cells=brillouin_grid_shape,
