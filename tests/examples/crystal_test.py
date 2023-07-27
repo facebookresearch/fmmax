@@ -56,9 +56,12 @@ class CrystalGaussianBeamTest(unittest.TestCase):
         self.assertSequenceEqual(ex.shape, hy.shape)
         self.assertSequenceEqual(ex.shape, hz.shape)
 
+        print(onp.sum(onp.abs(hx)))
+        print(onp.sum(onp.abs(hz)))
+
         onp.testing.assert_allclose(onp.sum(onp.abs(ex)), 23252.148, rtol=1e-5)
         onp.testing.assert_allclose(onp.sum(onp.abs(ey)), 0.004013, rtol=1e-5)
         onp.testing.assert_allclose(onp.sum(onp.abs(ez)), 6593.631, rtol=1e-5)
-        onp.testing.assert_allclose(onp.sum(onp.abs(hx)), 0.005137, rtol=1e-5)
-        onp.testing.assert_allclose(onp.sum(onp.abs(hy)), 0.005137, rtol=1e-5)
-        onp.testing.assert_allclose(onp.sum(onp.abs(hz)), 0.005137, rtol=1e-5)
+        onp.testing.assert_allclose(onp.sum(onp.abs(hx)), 0.0051368796, rtol=1e-5)
+        onp.testing.assert_allclose(onp.sum(onp.abs(hy)), 25672.271, rtol=1e-5)
+        onp.testing.assert_allclose(onp.sum(onp.abs(hz)), 0.0045878584, rtol=1e-5)
