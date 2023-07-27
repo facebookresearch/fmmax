@@ -129,23 +129,11 @@ class RotationMatrixTest(unittest.TestCase):
             [(0, 0, 1), (0, 1, 0), jnp.pi / 2, jnp.pi / 2, 0],
             [(1, 0, 0), (0, 1, 0), 0, 0, jnp.pi / 2],
             # Check rotations about the propagation axis.
-            [
-                (-0.1, 0, 1),
-                (1, 0, 0.1),
-                jnp.pi / 2,
-                0,
-                0,
-            ],
+            [(-0.1, 0, 1), (1, 0, 0.1), jnp.pi / 2, 0, 0],
             [(-0.1, 0, 1), (1, -0.1, 0.0), jnp.pi / 2, 0, jnp.pi / 2],
             [(-0.1, 0, 1), (1, 0.0, -0.1), jnp.pi / 2, 0, jnp.pi],
             [(-0.1, 0, 1), (1, 0.1, 0.0), jnp.pi / 2, 0, 3 * jnp.pi / 2],
-            [
-                (-0.1, 0, 1),
-                (1, 0.0, 0.1),
-                jnp.pi / 2,
-                0,
-                2 * jnp.pi,
-            ],
+            [(-0.1, 0, 1), (1, 0.0, 0.1), jnp.pi / 2, 0, 2 * jnp.pi],
         ]
     )
     def test_rotation_matches_expected(
