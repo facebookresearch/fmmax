@@ -13,7 +13,6 @@ from skimage import measure  # type: ignore[import]
 
 from fmmax import basis, beams, fields, fmm, layer, scattering, sources
 
-
 PERMITTIVITY_AMBIENT: complex = (1.0 + 0.0j) ** 2
 PERMITTIVITY_SLAB: complex = (1.5 + 0.0j) ** 2
 THICKNESS_AMBIENT: float = 2.0
@@ -132,8 +131,8 @@ def simulate_crystal_with_internal_source(
     s_matrix_after_source = s_matrices_interior_after_source[-1][0]
 
     # Generate the Fourier representation of a point dipole.
-    dipole_x = pitch * brillouin_grid_shape[0] // 2 
-    dipole_y = pitch * brillouin_grid_shape[1] // 2 
+    dipole_x = pitch * brillouin_grid_shape[0] // 2
+    dipole_y = pitch * brillouin_grid_shape[1] // 2
     dipole = sources.dirac_delta_source(
         location=jnp.asarray([[dipole_x, dipole_y]]),
         in_plane_wavevector=in_plane_wavevector,
@@ -451,14 +450,17 @@ def plot_dipole_fields(
             "resolution_fields": resolution_fields,
         }
     )
-    (ex, _, _), _, (x, _, z), (_, section_xz, _) = (
-        simulate_crystal_with_internal_source(**sim_kwargs)
-    )
-    
+    (
+        (ex, _, _),
+        _,
+        (x, _, z),
+        (_, section_xz, _),
+    ) = simulate_crystal_with_internal_source(**sim_kwargs)
+
     # Determine the y index at which to take the cross section.
     unit_cell_ydim = x.shape[1] // brillouin_grid_shape[1]
     y_idx = unit_cell_ydim * (brillouin_grid_shape[1] // 2)
-    
+
     xplot, zplot = jnp.meshgrid(x[:, y_idx], z, indexing="ij")
     field_plot = ex[:, y_idx, :, 0].real
 
@@ -471,7 +473,7 @@ def plot_dipole_fields(
     contours = measure.find_contours(onp.array(section_xz))
     scale_factor = pitch / resolution
     for c in contours:
-        ax.plot(c[:, 0] / scale_factor, c[:, 1] / scale_factor, 'k')
+        ax.plot(c[:, 0] / scale_factor, c[:, 1] / scale_factor, "k")
 
     ax.axis("equal")
     ax.axis("off")
