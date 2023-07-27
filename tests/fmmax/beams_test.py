@@ -150,3 +150,57 @@ class RotationMatrixTest(unittest.TestCase):
         onp.testing.assert_allclose(
             rotated_coords, jnp.asarray(expected_rotated_coords), atol=1e-7
         )
+
+
+class GaussianBeamTest(unittest.TestCase):
+    def test_cross_sections(self):
+        # compute the cross section of a beam propagating in different
+        # directions, and ensure it remains consistent.
+
+        wavelength = 1.0
+        n = 1.0
+        k = 2 * jnp.pi * n / wavelength
+        beam_waist = 2.0
+        beam_center = jnp.asarray([1.0, 1.0, 1.0])
+
+        offset = 1.0
+        N = 50
+        start = -5.0
+        stop = 5.0
+
+        k_vector_x_p = k * jnp.asarray([1, 1, 0])
+        polarization = jnp.asarray([0, 0, 1])
+        x = jnp.linspace(start, stop, N)
+        y = jnp.linspace(start, stop, N)
+        z = jnp.asarray([offset])
+        X, Y, Z = jnp.meshgrid(x, y, z, indexing="ij")
+        r_pts = jnp.vstack([X.flatten(), Y.flatten(), Z.flatten()]).T
+        xEx, xEy, xEz, xHx, xHy, xHz = beams.get_gaussianbeam_EH(
+            r_pts, k_vector_x_p, beam_waist, beam_center, polarization
+        )
+
+        k_vector_y_p = k * jnp.asarray([0, 1, 1])
+        polarization = jnp.asarray([1, 0, 0])
+        x = jnp.asarray([offset])
+        y = jnp.linspace(start, stop, N)
+        z = jnp.linspace(start, stop, N)
+        X, Y, Z = jnp.meshgrid(x, y, z, indexing="ij")
+        r_pts = jnp.vstack([X.flatten(), Y.flatten(), Z.flatten()]).T
+        yEx, yEy, yEz, yHx, yHy, yHz = beams.get_gaussianbeam_EH(
+            r_pts, k_vector_y_p, beam_waist, beam_center, polarization
+        )
+
+        k_vector_z_p = k * jnp.asarray([1, 0, 1])
+        polarization = jnp.asarray([0, 1, 0])
+        x = jnp.linspace(start, stop, N)
+        y = jnp.asarray([offset])
+        z = jnp.linspace(start, stop, N)
+        X, Y, Z = jnp.meshgrid(x, y, z, indexing="ij")
+        r_pts = jnp.vstack([X.flatten(), Y.flatten(), Z.flatten()]).T
+        zEx, zEy, zEz, zHx, zHy, zHz = beams.get_gaussianbeam_EH(
+            r_pts, k_vector_z_p, beam_waist, beam_center, polarization
+        )
+
+        onp.testing.assert_allclose(xEz, yEx)
+        onp.testing.assert_allclose(yEx, zEy)
+        onp.testing.assert_allclose(xEz, zEy)
