@@ -173,8 +173,8 @@ def simulate_crystal_with_internal_source(
 
     # Compute some cross sections for visualizing the structure.
     section_xy, section_xz, section_yz = crystal_cross_sections(
-        thickness_ambient=thickness_ambient_,
-        thickness_slab=thickness_slab_,
+        thickness_ambient=float(thickness_ambient_),
+        thickness_slab=float(thickness_slab_),
         pitch=pitch,
         diameter=diameter,
         resolution=resolution,
