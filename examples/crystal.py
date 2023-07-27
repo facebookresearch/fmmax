@@ -7,9 +7,9 @@ import functools
 from typing import Tuple
 
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type: ignore[import]
 import numpy as onp
-from skimage import measure
+from skimage import measure  # type: ignore[import]
 
 from fmmax import basis, beams, fields, fmm, layer, scattering, sources
 
@@ -321,7 +321,7 @@ def simulate_crystal_with_gaussian_beam(
 
     x, y = basis.unit_cell_coordinates(
         primitive_lattice_vectors=primitive_lattice_vectors,
-        shape=permittivity_crystal.shape,
+        shape=permittivity_crystal.shape,  # type: ignore[arg-type]
         num_unit_cells=brillouin_grid_shape,
     )
     (beam_ex, beam_ey, _), (beam_hx, beam_hy, _) = beams.rotated_fields(
@@ -484,4 +484,3 @@ def plot_dipole_fields(
 
 if __name__ == "__main__":
     plot_dipole_fields()
-    
