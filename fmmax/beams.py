@@ -6,6 +6,7 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 from typing import Callable, Tuple
 
 import jax.numpy as jnp
+from jax import vmap
 
 # -----------------------------------------------------------------------------
 # Functions related to arbitrary reorientation of beams.
@@ -67,13 +68,13 @@ def rotated_fields(
     rotated_hfield = jnp.stack((hxr, hyr, hzr), axis=-1)
 
     # Rotate the fields back onto the original coordinate system.
-    efield = mat @ rotated_efield[..., None]
+    efield = mat @ rotated_efield[..., jnp.newaxis]
     ex, ey, ez = jnp.split(efield, 3, axis=-2)
     ex = jnp.squeeze(ex, axis=(-2, -1))
     ey = jnp.squeeze(ey, axis=(-2, -1))
     ez = jnp.squeeze(ez, axis=(-2, -1))
 
-    hfield = mat @ rotated_hfield[..., None]
+    hfield = mat @ rotated_hfield[..., jnp.newaxis]
     hx, hy, hz = jnp.split(hfield, 3, axis=-2)
     hx = jnp.squeeze(hx, axis=(-2, -1))
     hy = jnp.squeeze(hy, axis=(-2, -1))
@@ -174,7 +175,7 @@ def _compute_gaussian_beam_fields(
     N = r_pts.shape[0]
 
     k_norm = _special_norm(k_vector)
-    R_vector = r_pts - dipole_center[None, :]
+    R_vector = r_pts - dipole_center[jnp.newaxis, :]
     R = _special_norm(R_vector)
 
     # Terms that are used multiple times. Also helps with readability.
@@ -185,28 +186,36 @@ def _compute_gaussian_beam_fields(
     term3 = k_norm / R * (1j - 1 / (k_norm * R))
 
     # Outer product term
-    RR = R_vector[:, :, None] * R_vector[:, None, :]
+    RR = R_vector[:, :, jnp.newaxis] * R_vector[:, jnp.newaxis, :]
 
     # Cross product term
-    R_cross_I = jnp.zeros((N, 3, 3), dtype=jnp.complex64)
     I3 = jnp.eye(3)
-    # TODO vectorize this
-    for n in range(N):
-        for c in range(3):
-            R_cross_I = R_cross_I.at[n, c, :].set(jnp.cross(R_vector[n, :], I3[c, :]))
+    simple_cross = lambda x, y: jnp.cross(x,y)
+    cross_over_matrix = vmap(simple_cross, (None, 0), 0)
+    cross_over_pts = vmap(cross_over_matrix, (0, None), 0)
+    R_cross_I = cross_over_pts(R_vector, I3)
 
     # Phasor (spherical wave) term
     exp_fac = jnp.exp(ikr) / (4 * jnp.pi * R)
 
     # Compute full tensor for E and H
-    E_full = exp_fac[:, None, None] * (
-        term1[:, None, None] * I3[None, :, :] + term2[:, None, None] * RR
+    E_full = exp_fac[:, jnp.newaxis, jnp.newaxis] * (
+        term1[:, jnp.newaxis, jnp.newaxis] * I3[jnp.newaxis, :, :]
+        + term2[:, jnp.newaxis, jnp.newaxis] * RR
     )
-    H_full = exp_fac[:, None, None] * term3[:, None, None] * R_cross_I
+    H_full = (
+        exp_fac[:, jnp.newaxis, jnp.newaxis]
+        * term3[:, jnp.newaxis, jnp.newaxis]
+        * R_cross_I
+    )
 
     # Project onto the polarization vector
-    E_pol = jnp.einsum("ijk, ijk -> ij", E_full, polarization[None, None, :])
-    H_pol = jnp.einsum("ijk, ijk -> ij", H_full, polarization[None, None, :])
+    E_pol = jnp.einsum(
+        "ijk, ijk -> ij", E_full, polarization[jnp.newaxis, jnp.newaxis, :]
+    )
+    H_pol = jnp.einsum(
+        "ijk, ijk -> ij", H_full, polarization[jnp.newaxis, jnp.newaxis, :]
+    )
 
     return E_pol, H_pol
 
@@ -297,14 +306,14 @@ def get_gaussianbeam_EH(
         "ij, ij -> i", k_vector[jnp.newaxis, :], (r_pts - beam_center[jnp.newaxis, :])
     )
     E = jnp.where(
-        onplane[:, None] == 0.0,
+        onplane[:, jnp.newaxis] == 0.0,
         (E_outgoing - E_incoming),
-        jnp.where(onplane[:, None] < 0.0, E_incoming, E_outgoing),
+        jnp.where(onplane[:, jnp.newaxis] < 0.0, E_incoming, E_outgoing),
     )
     H = jnp.where(
-        onplane[:, None] == 0.0,
+        onplane[:, jnp.newaxis] == 0.0,
         (H_outgoing - H_incoming),
-        jnp.where(onplane[:, None] < 0.0, H_incoming, H_outgoing),
+        jnp.where(onplane[:, jnp.newaxis] < 0.0, H_incoming, H_outgoing),
     )
 
     # Clean up
