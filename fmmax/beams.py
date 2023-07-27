@@ -33,6 +33,11 @@ def rotated_fields(
     at coordinates `(x, y, z)`, which are rotated from `(xf, yf, zf)`, by
     the specified `polar_angle`, `azimuthal_angle`, and `polarization_angle`.
 
+    A beam propagating in the `zf` direction, polarized in the `xf` direction
+    will be propagating in the direction specified by `polar_angle` and
+    `azimuthal_angle`, with polarization rotated about the propagation
+    direction by `polarization_angle`.
+
     Args:
         field_fn: Function which returns the fields in the field coordinate
             system.
