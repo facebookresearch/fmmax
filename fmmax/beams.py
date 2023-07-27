@@ -56,21 +56,25 @@ def rotated_fields(
     rotated_coords = [jnp.squeeze(r, axis=-1) for r in rotated_coords]
 
     # Compute the fields on the rotated coordinate system.
-    rotated_efield, rotated_hfield = field_fn(*rotated_coords)
+    (exr, eyr, ezr), (hxr, hyr, hzr) = field_fn(*rotated_coords)
 
-    rotated_efield = jnp.stack(rotated_efield, axis=-1)
-    rotated_hfield = jnp.stack(rotated_hfield, axis=-1)
+    rotated_efield = jnp.stack((exr, eyr, ezr), axis=-1)
+    rotated_hfield = jnp.stack((hxr, hyr, hzr), axis=-1)
 
     # Rotate the fields back onto the original coordinate system.
     efield = mat @ rotated_efield[..., jnp.newaxis]
-    efield = jnp.split(efield, 3, axis=-2)
-    efield = [jnp.squeeze(ef, axis=(-2, -1)) for ef in efield]
+    ex, ey, ez = jnp.split(efield, 3, axis=-2)
+    ex = jnp.squeeze(ex, axis=(-2, -1))
+    ey = jnp.squeeze(ey, axis=(-2, -1))
+    ez = jnp.squeeze(ez, axis=(-2, -1))
 
     hfield = mat @ rotated_hfield[..., jnp.newaxis]
-    hfield = jnp.split(hfield, 3, axis=-2)
-    hfield = [jnp.squeeze(hf, axis=(-2, -1)) for hf in hfield]
+    hx, hy, hz = jnp.split(hfield, 3, axis=-2)
+    hx = jnp.squeeze(hx, axis=(-2, -1))
+    hy = jnp.squeeze(hy, axis=(-2, -1))
+    hz = jnp.squeeze(hz, axis=(-2, -1))
 
-    return efield, hfield
+    return (ex, ey, ez), (hx, hy, hz)
 
 
 def rotation_matrix(
