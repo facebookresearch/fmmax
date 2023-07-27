@@ -205,8 +205,7 @@ def simulate_crystal_with_gaussian_beam(
 ]:
     """Simulates a Gaussian beam incident on photonic crystal slab.
 
-    The crystal has a square unit cell with circular holes, having cross section
-    and dipole position as illustrated below.
+    The crystal has a square unit cell with circular holes as illustrated below.
                      ________________
                     |                |
                     |XX            XX|
