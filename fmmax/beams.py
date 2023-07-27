@@ -46,14 +46,11 @@ def rotated_fields(
     Returns:
         The fields `((ex, ey, ez), (hx, hy, hz))` at the specified coordinates.
     """
-
-    # Compute the (x, y, z) locations in the beam coordinate system.
-
     coords = jnp.stack([x, y, z], axis=-1)
     mat = rotation_matrix(polar_angle, azimuthal_angle, polarization_angle)
     mat = jnp.expand_dims(mat, range(x.ndim))
 
-    # Solve for the rotated coordinates.
+    # Solve for the (x, y, z) locations in the rotated coordinate system.
     rotated_coords = jnp.linalg.solve(mat, coords)
     rotated_coords = jnp.split(rotated_coords, 3, axis=-1)
     rotated_coords = [jnp.squeeze(r, axis=-1) for r in rotated_coords]
