@@ -15,7 +15,7 @@ def simulate_crystal_with_internal_source(
     permittivity_ambient: complex = (1.0 + 0.0j) ** 2,
     permittivity_slab: complex = (1.5 + 0.0j) ** 2,
     thickness_ambient: float = 2.0,
-    thickness_slab: float = 0.4,
+    thickness_slab: float = 0.8,
     pitch: float = 1.0,
     diameter: float = 0.7,
     resolution: float = 0.01,
@@ -32,8 +32,10 @@ def simulate_crystal_with_internal_source(
     """Simulates a dipole source inside a photonic crystal slab.
 
     The crystal has a square unit cell with circular holes, having cross section
-    and dipole position as illustrated below. The dipole is located at (0, 0), is
-    x-oriented and centered vertically within the photonic crystal slab.
+    and dipole position as illustrated below. The dipole is located the lower-left
+    corner of the unit cell centered in the supercell defined by the Brillouin grid
+    shape. The dipole is x-oriented and centered vertically within the photonic
+    crystal slab.
                      ________________
                     |                |
                     |XX            XX|
@@ -164,12 +166,9 @@ def simulate_crystal_with_internal_source(
 
     # Perform the Brillouin zone integration by averaging over the Brillouin zone
     # grid batch axes.
-    ex = jnp.mean(ex, axis=(0, 1))
-    ey = jnp.mean(ey, axis=(0, 1))
-    ez = jnp.mean(ez, axis=(0, 1))
-    hx = jnp.mean(hx, axis=(0, 1))
-    hy = jnp.mean(hy, axis=(0, 1))
-    hz = jnp.mean(hz, axis=(0, 1))
+    ex, ey, ez, hx, hy, hz = [
+        jnp.mean(field, axis=(0, 1)) for field in (ex, ey, ez, hx, hy, hz)
+    ]
 
     # Compute some cross sections for visualizing the structure.
     section_xy, section_xz, section_yz = crystal_cross_sections(
@@ -190,7 +189,7 @@ def simulate_crystal_with_gaussian_beam(
     permittivity_ambient: complex = (1.0 + 0.0j) ** 2,
     permittivity_slab: complex = (1.5 + 0.0j) ** 2,
     thickness_ambient: float = 2.0,
-    thickness_slab: float = 0.4,
+    thickness_slab: float = 0.8,
     pitch: float = 1.0,
     diameter: float = 0.7,
     resolution: float = 0.01,
@@ -217,6 +216,10 @@ def simulate_crystal_with_gaussian_beam(
                     |________________|
 
     Args:
+        polar_angle: The polar angle of the incident beam.
+        azimuthal_angle: The azimuthal angle of the incident beam.
+        polarization_angle: The angle giving the polarization rotation about the
+            propagation axis.
         permittivity_ambient: Permittivity of the region above and below the slab, and
             of the holes in the slab.
         permittivity_slab: Permittivity of the slab.
@@ -282,14 +285,12 @@ def simulate_crystal_with_gaussian_beam(
         layer_solve_results=[
             solve_result_ambient,
             solve_result_crystal,
-            solve_result_ambient],
-        layer_thicknesses=[
-            thickness_ambient_,
-            thickness_slab_,
-            thickness_ambient_],
+            solve_result_ambient,
+        ],
+        layer_thicknesses=[thickness_ambient_, thickness_slab_, thickness_ambient_],
     )
 
-    # Define a function that gives us the fields for a plane wave. We will 
+    # Define a function that gives us the fields for a plane wave. We will
     # use this to compute the corresponding amplitudes.
     def _beam_field_fn(x, y, z):
         del x, y
@@ -300,7 +301,7 @@ def simulate_crystal_with_gaussian_beam(
         hy = ex
         hz = jnp.zeros_like(ex)
         return (ex, ey, ez), (hx, hy, hz)
-    
+
     x, y = basis.unit_cell_coordinates(
         primitive_lattice_vectors=primitive_lattice_vectors,
         shape=permittivity_crystal.shape,
@@ -316,10 +317,10 @@ def simulate_crystal_with_gaussian_beam(
         polarization_angle=jnp.asarray(polarization_angle),
     )
     fwd_amplitude, _ = sources.amplitudes_for_fields(
-        ex=beam_ex,
-        ey=beam_ey,
-        hx=beam_hx,
-        hy=beam_hy,
+        ex=beam_ex[..., jnp.newaxis],
+        ey=beam_ey[..., jnp.newaxis],
+        hx=beam_hx[..., jnp.newaxis],
+        hy=beam_hy[..., jnp.newaxis],
         layer_solve_result=solve_result_ambient,
         brillouin_grid_axes=(0, 1),
     )
@@ -328,20 +329,18 @@ def simulate_crystal_with_gaussian_beam(
     amplitudes_interior = fields.stack_amplitudes_interior(
         s_matrices_interior=s_matrices_interior,
         forward_amplitude_0_start=fwd_amplitude,
-        bwd_amplitude_N_end=jnp.zeros_like(fwd_amplitude),
+        backward_amplitude_N_end=jnp.zeros_like(fwd_amplitude),
     )
     (ex, ey, ez), (hx, hy, hz), (x, y, z) = fields.stack_fields_3d_auto_grid(
         amplitudes_interior=amplitudes_interior,
         layer_solve_results=[
             solve_result_ambient,
             solve_result_crystal,
-            solve_result_crystal,
             solve_result_ambient,
         ],
         layer_thicknesses=[
             thickness_ambient_,
-            thickness_slab_ / 2,
-            thickness_slab_ / 2,
+            thickness_slab_,
             thickness_ambient_,
         ],
         resolution=resolution_fields,
@@ -350,12 +349,9 @@ def simulate_crystal_with_gaussian_beam(
 
     # Perform the Brillouin zone integration by averaging over the Brillouin zone
     # grid batch axes.
-    ex = jnp.mean(ex, axis=(0, 1))
-    ey = jnp.mean(ey, axis=(0, 1))
-    ez = jnp.mean(ez, axis=(0, 1))
-    hx = jnp.mean(hx, axis=(0, 1))
-    hy = jnp.mean(hy, axis=(0, 1))
-    hz = jnp.mean(hz, axis=(0, 1))
+    ex, ey, ez, hx, hy, hz = [
+        jnp.mean(field, axis=(0, 1)) for field in (ex, ey, ez, hx, hy, hz)
+    ]
 
     # Compute some cross sections for visualizing the structure.
     section_xy, section_xz, section_yz = crystal_cross_sections(
