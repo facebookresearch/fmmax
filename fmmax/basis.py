@@ -129,6 +129,26 @@ def reciprocal(lattice_vectors: LatticeVectors) -> LatticeVectors:
     return LatticeVectors(u=uprime, v=vprime)
 
 
+def unit_cell_coordinates(
+    primitive_lattice_vectors: LatticeVectors,
+    shape: Tuple[int, int],
+    num_unit_cells: Tuple[int, int],
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Computes coordinates within unit cells, given the shape and number of unit cells."""
+    i_stop = num_unit_cells[0] * shape[0]
+    j_stop = num_unit_cells[1] * shape[1]
+    i, j = tuple(
+        jnp.meshgrid(
+            jnp.arange(0, i_stop) / shape[0],
+            jnp.arange(0, j_stop) / shape[1],
+            indexing="ij",
+        )
+    )
+    x = i * primitive_lattice_vectors.u[0] + j * primitive_lattice_vectors.v[0]
+    y = i * primitive_lattice_vectors.u[1] + j * primitive_lattice_vectors.v[1]
+    return x, y
+
+
 # -----------------------------------------------------------------------------
 # Functions related to transverse wavevectors.
 # -----------------------------------------------------------------------------

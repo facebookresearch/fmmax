@@ -394,7 +394,7 @@ def fields_on_grid(
         electric_field + magnetic_field,
         num_terms=layer_solve_result.expansion.num_terms,
     )
-    x, y = unit_cell_coordinates(
+    x, y = basis.unit_cell_coordinates(
         primitive_lattice_vectors=layer_solve_result.primitive_lattice_vectors,
         shape=shape,
         num_unit_cells=num_unit_cells,
@@ -426,26 +426,6 @@ def fields_on_grid(
         _field_on_grid(hz) * phase,
     )
     return grid_electric_field, grid_magnetic_field, (x, y)
-
-
-def unit_cell_coordinates(
-    primitive_lattice_vectors: basis.LatticeVectors,
-    shape: Tuple[int, int],
-    num_unit_cells: Tuple[int, int],
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Computes coordinates within unit cells, given the shape and number of unit cells."""
-    i_stop = num_unit_cells[0] * shape[0]
-    j_stop = num_unit_cells[1] * shape[1]
-    i, j = tuple(
-        jnp.meshgrid(
-            jnp.arange(0, i_stop) / shape[0],
-            jnp.arange(0, j_stop) / shape[1],
-            indexing="ij",
-        )
-    )
-    x = i * primitive_lattice_vectors.u[0] + j * primitive_lattice_vectors.v[0]
-    y = i * primitive_lattice_vectors.u[1] + j * primitive_lattice_vectors.v[1]
-    return x, y
 
 
 def stack_amplitudes_interior(

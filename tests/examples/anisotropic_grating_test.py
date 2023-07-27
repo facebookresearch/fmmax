@@ -11,7 +11,7 @@ import numpy as onp
 from examples import anisotropic_grating
 
 
-class MetalGratingTest(unittest.TestCase):
+class AnisotropicGratingTest(unittest.TestCase):
     def test_regression(self):
         # Checks that results match reference values. This helps protect against
         # regressions in accuracy of the simulator.
