@@ -24,11 +24,11 @@ dependencies = [
   "jax",
   "jaxlib",
   "numpy",
-  "scipy",
 ]
 
 [project.optional-dependencies]
-tests = ["grcwa", "parameterized", "pytest"]
+examples = ["matplotlib", "scikit-image", "scipy"]
+tests = ["grcwa", "parameterized", "pytest", "fmmax[examples]"]
 dev = ["black", "darglint", "fmmax[tests]", "isort", "mypy"]
 
 [tool.setuptools]

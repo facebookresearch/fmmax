@@ -7,22 +7,38 @@ import functools
 from typing import Tuple
 
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as onp
+from skimage import measure
 
 from fmmax import basis, beams, fields, fmm, layer, scattering, sources
 
 
+PERMITTIVITY_AMBIENT: complex = (1.0 + 0.0j) ** 2
+PERMITTIVITY_SLAB: complex = (1.5 + 0.0j) ** 2
+THICKNESS_AMBIENT: float = 2.0
+THICKNESS_SLAB: float = 0.8
+PITCH: float = 1.0
+DIAMETER: float = 0.7
+RESOLUTION: float = 0.01
+RESOLUTION_FIELDS: float = 0.05
+WAVELENGTH: float = 0.63
+APPROXIMATE_NUM_TERMS: int = 50
+BRILLOUIN_GRID_SHAPE: Tuple[int, int] = (8, 8)
+
+
 def simulate_crystal_with_internal_source(
-    permittivity_ambient: complex = (1.0 + 0.0j) ** 2,
-    permittivity_slab: complex = (1.5 + 0.0j) ** 2,
-    thickness_ambient: float = 2.0,
-    thickness_slab: float = 0.8,
-    pitch: float = 1.0,
-    diameter: float = 0.7,
-    resolution: float = 0.01,
-    resolution_fields: float = 0.05,
-    wavelength: float = 0.63,
-    approximate_num_terms: int = 50,
-    brillouin_grid_shape: Tuple[int, int] = (5, 5),
+    permittivity_ambient: complex = PERMITTIVITY_AMBIENT,
+    permittivity_slab: complex = PERMITTIVITY_SLAB,
+    thickness_ambient: float = THICKNESS_AMBIENT,
+    thickness_slab: float = THICKNESS_SLAB,
+    pitch: float = PITCH,
+    diameter: float = DIAMETER,
+    resolution: float = RESOLUTION,
+    resolution_fields: float = RESOLUTION_FIELDS,
+    wavelength: float = WAVELENGTH,
+    approximate_num_terms: int = APPROXIMATE_NUM_TERMS,
+    brillouin_grid_shape: Tuple[int, int] = BRILLOUIN_GRID_SHAPE,
 ) -> Tuple[
     Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # (ex, ey, ez)
     Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # (hx, hy, hz)
@@ -116,8 +132,10 @@ def simulate_crystal_with_internal_source(
     s_matrix_after_source = s_matrices_interior_after_source[-1][0]
 
     # Generate the Fourier representation of a point dipole.
+    dipole_x = pitch * brillouin_grid_shape[0] // 2 
+    dipole_y = pitch * brillouin_grid_shape[1] // 2 
     dipole = sources.dirac_delta_source(
-        location=jnp.asarray([[0, 0]]),
+        location=jnp.asarray([[dipole_x, dipole_y]]),
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
         expansion=expansion,
@@ -186,17 +204,17 @@ def simulate_crystal_with_gaussian_beam(
     polar_angle: float = 0.0,
     azimuthal_angle: float = 0.0,
     polarization_angle: float = 0.0,
-    permittivity_ambient: complex = (1.0 + 0.0j) ** 2,
-    permittivity_slab: complex = (1.5 + 0.0j) ** 2,
-    thickness_ambient: float = 2.0,
-    thickness_slab: float = 0.8,
-    pitch: float = 1.0,
-    diameter: float = 0.7,
-    resolution: float = 0.01,
-    resolution_fields: float = 0.05,
-    wavelength: float = 0.63,
-    approximate_num_terms: int = 50,
-    brillouin_grid_shape: Tuple[int, int] = (5, 5),
+    permittivity_ambient: complex = PERMITTIVITY_AMBIENT,
+    permittivity_slab: complex = PERMITTIVITY_SLAB,
+    thickness_ambient: float = THICKNESS_AMBIENT,
+    thickness_slab: float = THICKNESS_SLAB,
+    pitch: float = PITCH,
+    diameter: float = DIAMETER,
+    resolution: float = RESOLUTION,
+    resolution_fields: float = RESOLUTION_FIELDS,
+    wavelength: float = WAVELENGTH,
+    approximate_num_terms: int = APPROXIMATE_NUM_TERMS,
+    brillouin_grid_shape: Tuple[int, int] = BRILLOUIN_GRID_SHAPE,
 ) -> Tuple[
     Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # (ex, ey, ez)
     Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # (hx, hy, hz)
@@ -416,3 +434,54 @@ def crystal_cross_sections(
     yz_section = jnp.tile(yz_section, (num_unit_cells[1], 1))
 
     return xy_section, xz_section, yz_section
+
+
+def plot_dipole_fields(
+    pitch: float = PITCH,
+    resolution: float = RESOLUTION,
+    resolution_fields: float = RESOLUTION_FIELDS,
+    brillouin_grid_shape: Tuple[int, int] = BRILLOUIN_GRID_SHAPE,
+    **sim_kwargs,
+) -> None:
+    """Plots an xz slice of the x-oriented electric field."""
+    sim_kwargs.update(
+        {
+            "brillouin_grid_shape": brillouin_grid_shape,
+            "resolution": resolution,
+            "resolution_fields": resolution_fields,
+        }
+    )
+    (ex, _, _), _, (x, _, z), (_, section_xz, _) = (
+        simulate_crystal_with_internal_source(**sim_kwargs)
+    )
+    
+    # Determine the y index at which to take the cross section.
+    unit_cell_ydim = x.shape[1] // brillouin_grid_shape[1]
+    y_idx = unit_cell_ydim * (brillouin_grid_shape[1] // 2)
+    
+    xplot, zplot = jnp.meshgrid(x[:, y_idx], z, indexing="ij")
+    field_plot = ex[:, y_idx, :, 0].real
+
+    plt.figure(figsize=(jnp.amax(xplot), jnp.amax(zplot)), dpi=300)
+    ax = plt.subplot(111)
+    im = plt.pcolormesh(xplot, zplot, field_plot, shading="nearest", cmap="bwr")
+
+    im.set_clim([-jnp.amax(field_plot), jnp.amax(field_plot)])
+
+    contours = measure.find_contours(onp.array(section_xz))
+    scale_factor = pitch / resolution
+    for c in contours:
+        ax.plot(c[:, 0] / scale_factor, c[:, 1] / scale_factor, 'k')
+
+    ax.axis("equal")
+    ax.axis("off")
+    ax.set_ylim(ax.get_ylim()[::-1])
+
+    plt.subplots_adjust(left=0, bottom=0, right=1, top=1)
+
+    plt.savefig("crystal_dipole.png", bbox_inches="tight")
+
+
+if __name__ == "__main__":
+    plot_dipole_fields()
+    
