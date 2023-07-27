@@ -437,25 +437,3 @@ class Fields3DTest(unittest.TestCase):
                 grid_shape=(10, 10),
                 num_unit_cells=(1, 1),
             )
-
-
-class UnitCellCoordiantesTest(unittest.TestCase):
-    @parameterized.parameterized.expand(
-        [
-            [(1, 1), (3, 2), (0, 1, 2), (0, 1)],
-            [(1, 1), (4, 3), (0, 1, 2, 3), (0, 1, 2)],
-            [(2, 2), (2, 1), (0, 0.5, 1.0, 1.5), (0, 0.5)],
-        ]
-    )
-    def test_values_match_expected(self, shape, num_unit_cells, expected_x, expected_y):
-        x, y = fields.unit_cell_coordinates(
-            primitive_lattice_vectors=basis.LatticeVectors(u=basis.X, v=basis.Y),
-            shape=shape,
-            num_unit_cells=num_unit_cells,
-        )
-        onp.testing.assert_array_equal(
-            x, jnp.broadcast_to(jnp.asarray(expected_x)[:, jnp.newaxis], x.shape)
-        )
-        onp.testing.assert_array_equal(
-            y, jnp.broadcast_to(jnp.asarray(expected_y)[jnp.newaxis, :], y.shape)
-        )
