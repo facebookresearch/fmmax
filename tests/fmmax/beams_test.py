@@ -96,14 +96,17 @@ class RotatedFieldsTest(unittest.TestCase):
         )
 
         expected_fields = rotated_plane_wave_fields(x, y, z)
-        fields = beams.rotated_fields(
+        fields = beams.shifted_rotated_fields(
             plane_wave_fields,
             x,
             y,
             z,
-            polar_angle,
-            azimuthal_angle,
-            polarization_angle,
+            beam_origin_x=0,
+            beam_origin_y=0,
+            beam_origin_z=0,
+            polar_angle=polar_angle,
+            azimuthal_angle=azimuthal_angle,
+            polarization_angle=polarization_angle,
         )
         with self.subTest("ex"):
             onp.testing.assert_allclose(fields[0][0], expected_fields[0][0], atol=1e-5)
@@ -117,6 +120,39 @@ class RotatedFieldsTest(unittest.TestCase):
             onp.testing.assert_allclose(fields[1][1], expected_fields[1][1], atol=1e-5)
         with self.subTest("hz"):
             onp.testing.assert_allclose(fields[1][2], expected_fields[1][2], atol=1e-5)
+
+    @parameterized.parameterized.expand(
+        [
+            [0, 0, 0],
+            [0.5, 0, 0],
+            [0, 0.5, 0],
+            [0, 0, 0.5],
+        ]
+    )
+    def test_shifts_match_expected(self, beam_origin_x, beam_origin_y, beam_origin_z):
+        def field_fn(x, y, z):
+            ex = jnp.exp(-(x**2) - y**2 - z**2)
+            return (ex, ex, ex), (ex, ex, ex)
+
+        def shifted_field_fn(x, y, z):
+            ex = jnp.exp(
+                -((x - beam_origin_x) ** 2)
+                - (y - beam_origin_y) ** 2
+                - (z - beam_origin_z) ** 2
+            )
+            return (ex, ex, ex), (ex, ex, ex)
+
+        x, y, z = jnp.meshgrid(
+            jnp.linspace(0, 1),
+            jnp.linspace(0, 2),
+            jnp.linspace(-1, 1),
+            indexing="ij",
+        )
+        fields = beams.shifted_rotated_fields(
+            field_fn, x, y, z, beam_origin_x, beam_origin_y, beam_origin_z, 0, 0, 0
+        )
+        expected = shifted_field_fn(x, y, z)
+        onp.testing.assert_allclose(fields, expected)
 
 
 class RotationMatrixTest(unittest.TestCase):

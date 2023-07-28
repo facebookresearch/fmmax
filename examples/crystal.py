@@ -23,7 +23,7 @@ RESOLUTION: float = 0.01
 RESOLUTION_FIELDS: float = 0.05
 WAVELENGTH: float = 0.63
 APPROXIMATE_NUM_TERMS: int = 50
-BRILLOUIN_GRID_SHAPE: Tuple[int, int] = (8, 8)
+BRILLOUIN_GRID_SHAPE: Tuple[int, int] = (9, 9)
 
 
 def simulate_crystal_with_internal_source(
@@ -200,9 +200,11 @@ def simulate_crystal_with_internal_source(
 
 
 def simulate_crystal_with_gaussian_beam(
-    polar_angle: float = 0.0,
+    polar_angle: float = 0.15 * jnp.pi,
     azimuthal_angle: float = 0.0,
     polarization_angle: float = 0.0,
+    beam_waist: float = 1.0,
+    beam_focus_offset: float = 0.0,
     permittivity_ambient: complex = PERMITTIVITY_AMBIENT,
     permittivity_slab: complex = PERMITTIVITY_SLAB,
     thickness_ambient: float = THICKNESS_AMBIENT,
@@ -306,28 +308,52 @@ def simulate_crystal_with_gaussian_beam(
         layer_thicknesses=[thickness_ambient_, thickness_slab_, thickness_ambient_],
     )
 
-    # Define a function that gives us the fields for a plane wave. We will
-    # use this to compute the corresponding amplitudes.
-    def _beam_field_fn(x, y, z):
-        del x, y
-        ex = jnp.exp(1j * 2 * jnp.pi / wavelength * z)
+    # Now compute the eigenmode amplitudes for an incident Gaussian beam.
+    # This is done by first obtaining the electric and magnetic fields for the
+    # beam, and then solving for the eigenmodes.
+    # TODO: replace paraxial Gaussian with a more rigorous expression.
+
+    def _paraxial_gaussian_field_fn(x, y, z):
+        # Returns the fields of a z-propagating, x-polarized Gaussian beam.
+        # See https://en.wikipedia.org/wiki/Gaussian_beam
+        k = 2 * jnp.pi / wavelength
+        z_r = jnp.pi * beam_waist**2 * jnp.sqrt(permittivity_ambient) / wavelength
+        w_z = beam_waist * jnp.sqrt(1 + (z / z_r) ** 2)
+        r = jnp.sqrt(x**2 + y**2)
+        ex = (
+            beam_waist
+            / w_z
+            * jnp.exp(-(r**2) / w_z**2)
+            * jnp.exp(
+                1j
+                * (
+                    (k * z)  # Phase
+                    + k * r**2 / 2 * z / (z**2 + z_r**2)  # Wavefront curvature
+                    - jnp.arctan(z / z_r)  # Gouy phase
+                )
+            )
+        )
         ey = jnp.zeros_like(ex)
         ez = jnp.zeros_like(ex)
         hx = jnp.zeros_like(ex)
-        hy = ex
+        hy = ex / jnp.sqrt(permittivity_ambient)
         hz = jnp.zeros_like(ex)
         return (ex, ey, ez), (hx, hy, hz)
 
+    # Solve for the fields of the beam with the desired rotation and shift.
     x, y = basis.unit_cell_coordinates(
         primitive_lattice_vectors=primitive_lattice_vectors,
         shape=permittivity_crystal.shape,  # type: ignore[arg-type]
         num_unit_cells=brillouin_grid_shape,
     )
-    (beam_ex, beam_ey, _), (beam_hx, beam_hy, _) = beams.rotated_fields(
-        field_fn=_beam_field_fn,
+    (beam_ex, beam_ey, _), (beam_hx, beam_hy, _) = beams.shifted_rotated_fields(
+        field_fn=_paraxial_gaussian_field_fn,
         x=x,
         y=y,
         z=jnp.zeros_like(x),
+        beam_origin_x=jnp.amax(x) / 2,
+        beam_origin_y=jnp.amax(y) / 2,
+        beam_origin_z=thickness_ambient_ - beam_focus_offset,
         polar_angle=jnp.asarray(polar_angle),
         azimuthal_angle=jnp.asarray(azimuthal_angle),
         polarization_angle=jnp.asarray(polarization_angle),
@@ -442,9 +468,10 @@ def plot_dipole_fields(
     brillouin_grid_shape: Tuple[int, int] = BRILLOUIN_GRID_SHAPE,
     **sim_kwargs,
 ) -> None:
-    """Plots an xz slice of the x-oriented electric field."""
+    """Plots an electric field slice for the crystal with embedded source."""
     sim_kwargs.update(
         {
+            "pitch": pitch,
             "brillouin_grid_shape": brillouin_grid_shape,
             "resolution": resolution,
             "resolution_fields": resolution_fields,
@@ -464,7 +491,7 @@ def plot_dipole_fields(
     xplot, zplot = jnp.meshgrid(x[:, y_idx], z, indexing="ij")
     field_plot = ex[:, y_idx, :, 0].real
 
-    plt.figure(figsize=(jnp.amax(xplot), jnp.amax(zplot)), dpi=300)
+    plt.figure(figsize=(jnp.amax(xplot), jnp.amax(zplot)), dpi=80)
     ax = plt.subplot(111)
     im = plt.pcolormesh(xplot, zplot, field_plot, shading="nearest", cmap="bwr")
 
@@ -484,5 +511,55 @@ def plot_dipole_fields(
     plt.savefig("crystal_dipole.png", bbox_inches="tight")
 
 
+def plot_gaussian_fields(
+    pitch: float = PITCH,
+    resolution: float = RESOLUTION,
+    resolution_fields: float = RESOLUTION_FIELDS,
+    brillouin_grid_shape: Tuple[int, int] = BRILLOUIN_GRID_SHAPE,
+    **sim_kwargs,
+) -> None:
+    """Plots an electric field slice for the crystal with Gaussian beam."""
+    sim_kwargs.update(
+        {
+            "pitch": pitch,
+            "brillouin_grid_shape": brillouin_grid_shape,
+            "resolution": resolution,
+            "resolution_fields": resolution_fields,
+        }
+    )
+    (
+        (ex, ey, ez),
+        (hx, hy, hz),
+        (x, y, z),
+        (section_xy, section_xz, section_yz),
+    ) = simulate_crystal_with_gaussian_beam(**sim_kwargs)
+
+    # Determine the y index at which to take the cross section.
+    y_idx = y.shape[1] // 2
+
+    xplot, zplot = jnp.meshgrid(x[:, y_idx], z, indexing="ij")
+    field_plot = ex[:, y_idx, :, 0].real
+
+    plt.figure(figsize=(jnp.amax(xplot), jnp.amax(zplot)), dpi=80)
+    ax = plt.subplot(111)
+    im = plt.pcolormesh(xplot, zplot, field_plot, shading="nearest", cmap="bwr")
+
+    im.set_clim([-jnp.amax(field_plot), jnp.amax(field_plot)])
+
+    contours = measure.find_contours(onp.array(section_xz))
+    scale_factor = pitch / resolution
+    for c in contours:
+        ax.plot(c[:, 0] / scale_factor, c[:, 1] / scale_factor, "k")
+
+    ax.axis("equal")
+    ax.axis("off")
+    ax.set_ylim(ax.get_ylim()[::-1])
+
+    plt.subplots_adjust(left=0, bottom=0, right=1, top=1)
+
+    plt.savefig("crystal_gaussian.png", bbox_inches="tight")
+
+
 if __name__ == "__main__":
     plot_dipole_fields()
+    plot_gaussian_fields()

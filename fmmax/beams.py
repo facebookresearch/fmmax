@@ -17,11 +17,14 @@ Fields = Tuple[
 ]
 
 
-def rotated_fields(
+def shifted_rotated_fields(
     field_fn: Callable[[jnp.ndarray, jnp.ndarray, jnp.ndarray], Fields],
     x: jnp.ndarray,
     y: jnp.ndarray,
     z: jnp.ndarray,
+    beam_origin_x: jnp.ndarray,
+    beam_origin_y: jnp.ndarray,
+    beam_origin_z: jnp.ndarray,
     polar_angle: jnp.ndarray,
     azimuthal_angle: jnp.ndarray,
     polarization_angle: jnp.ndarray,
@@ -40,10 +43,15 @@ def rotated_fields(
 
     Args:
         field_fn: Function which returns the fields in the field coordinate
-            system.
+            system. The fields should be for a beam propagating in the zf
+            direction, i.e. in the z-direction of the beam coordinate system.
         x: x-coordinates of the desired output fields.
         y: y-coordinates of the desired output fields.
         z: z-coordinates of the desired output fields.
+        beam_origin_x: The x-origin of the beam coordinate system in the
+            `(x, y, z)` unit system.
+        beam_origin_y: The y-origin of the beam coordinate system.
+        beam_origin_z: The z-origin of the beam coordinate system.
         polar_angle: The rotation angle about the y-axis.
         azimuthal_angle: The rotation angle about the z-axis.
         polarization_angle: The rotation angle about the propagation axis.
@@ -51,17 +59,27 @@ def rotated_fields(
     Returns:
         The fields `((ex, ey, ez), (hx, hy, hz))` at the specified coordinates.
     """
-    coords = jnp.stack([x, y, z], axis=-1)
     mat = rotation_matrix(polar_angle, azimuthal_angle, polarization_angle)
     mat = jnp.expand_dims(mat, range(x.ndim))
 
-    # Solve for the (x, y, z) locations in the rotated coordinate system.
+    # Solve for the `(xf, yf, zf)` locations in the field coordinate system
+    # which, when rotated as specified, give us the locations `(x, y, z)`.
+    assert x.shape == y.shape == z.shape
+    coords = jnp.stack([x, y, z], axis=-1)
     rotated_coords = jnp.linalg.solve(mat, coords)
     rotated_coords = jnp.split(rotated_coords, 3, axis=-1)
-    rotated_coords = [jnp.squeeze(r, axis=-1) for r in rotated_coords]
+    xf, yf, zf = [jnp.squeeze(r, axis=-1) for r in rotated_coords]
 
-    # Compute the fields on the rotated coordinate system.
-    (exr, eyr, ezr), (hxr, hyr, hzr) = field_fn(*rotated_coords)
+    # Solve for the rotated origin.
+    origin = jnp.stack([beam_origin_x, beam_origin_y, beam_origin_z], axis=-1)
+    origin = jnp.expand_dims(origin, range(0, mat.ndim - 2))
+    rotated_origin = jnp.linalg.solve(mat, origin)
+    assert rotated_origin.size == 3
+    rotated_origin = jnp.split(rotated_origin, 3, axis=-1)
+    xf0, yf0, zf0 = [jnp.squeeze(r) for r in rotated_origin]
+
+    # Compute the fields on the rotated, shifted coordinate system.
+    (exr, eyr, ezr), (hxr, hyr, hzr) = field_fn(xf - xf0, yf - yf0, zf - zf0)
 
     rotated_efield = jnp.stack((exr, eyr, ezr), axis=-1)
     rotated_hfield = jnp.stack((hxr, hyr, hzr), axis=-1)
