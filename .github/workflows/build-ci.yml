@@ -29,7 +29,7 @@ jobs:
       - name: Lint Python files
         run: |
           find . -name "*.py" | xargs black --check
-          find . -name "*.py" | xargs isort --profile black --check-onlys
+          find . -name "*.py" | xargs isort --profile black --check-only
 
       - name: Validate docstrings
         run: |
