@@ -12,7 +12,7 @@ Brillouin zone integration [2022 Lopez-Fraguas] allows modeling of localized sou
 ![Gaussian beam incident on photonic crystal](/img/crystal_beam.gif)
 
 ## Vector FMM formulations
-Vector FMM formulations introduce local coordinate systems at each point in the unit cell, which are normal and tangent to all interfaces. This allows normal and tangent field components to be treated differently and improves convergence. FMMAX implements several vector formulations of the FMM, with automatic vector field generation based on functional minimization similar to [2012 Liu]. We implement the _Pol_, _Normal_, and _Jones_ methods of that reference, and introduce a new _Jones direct_ method which we have found to have superior convergence. The `vector` example computes vector fields by these methods for an example structure.
+Vector FMM formulations introduce local coordinate systems at each point in the unit cell, which are normal and tangent to all interfaces. This allows normal and tangent field components to be treated differently and improves convergence. FMMAX implements several vector formulations of the FMM, with automatic vector field generation based on functional minimization similar to [2012 Liu]. We implement the _Pol_, _Normal_, and _Jones_ methods of that reference, and introduce a new _Jones direct_ method which we have found to have superior convergence. The `vector_fields` example computes vector fields by these methods for an example structure.
 
 ![Comparison of automatically-generated vector fields](/img/vector_fields.png)
 
