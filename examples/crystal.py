@@ -238,6 +238,9 @@ def simulate_crystal_with_gaussian_beam(
         azimuthal_angle: The azimuthal angle of the incident beam.
         polarization_angle: The angle giving the polarization rotation about the
             propagation axis.
+        beam_waist: The Gaussian beam waist.
+        beam_focus_offset: The offset of the Gaussian beam focus from the top of the
+            photonic crystal slab.
         permittivity_ambient: Permittivity of the region above and below the slab, and
             of the holes in the slab.
         permittivity_slab: Permittivity of the slab.
