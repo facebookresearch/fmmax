@@ -451,10 +451,10 @@ def plot_dipole_fields(
         }
     )
     (
-        (ex, _, _),
-        _,
-        (x, _, z),
-        (_, section_xz, _),
+        (ex, ey, ez),
+        (hx, hy, hz),
+        (x, y, z),
+        (section_xy, section_xz, section_yz),
     ) = simulate_crystal_with_internal_source(**sim_kwargs)
 
     # Determine the y index at which to take the cross section.
