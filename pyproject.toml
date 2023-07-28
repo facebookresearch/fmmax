@@ -28,8 +28,8 @@ dependencies = [
 
 [project.optional-dependencies]
 examples = ["matplotlib", "scikit-image", "scipy"]
-tests = ["fmmax[examples]", "grcwa", "parameterized", "pytest"]
-dev = ["black", "darglint", "fmmax[tests]", "isort", "mypy"]
+tests = ["grcwa", "parameterized", "pytest"]
+dev = ["black", "darglint", "fmmax[examples]", "fmmax[tests]", "isort", "mypy"]
 
 [tool.setuptools]
 
