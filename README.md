@@ -11,7 +11,7 @@ The main implementation -- including the _Pol_, _Normal_, and _Jones_ vector FMM
 ## Brillouin zone integration
 Brillouin zone integration allows modeling of localized sources in periodic structures. In the `crystal` example, we use this method to model a Gaussian beam incident upon a photonic crystal slab.
 
-![Mode converter](/img/crystal_beam.png)
+![Mode converter](/img/crystal_beam.gif)
 
 ## Conventions
 - The speed of light, vacuum permittivity, and vacuum permeability are all 1.
