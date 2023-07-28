@@ -8,6 +8,11 @@ FMMAX includes vector formulations of the FMM, which dramatically improve conver
 
 The main implementation -- including the _Pol_, _Normal_, and _Jones_ vector FMM formulations -- follows the derivations in [2012 Liu], which is also the basis of the popular [S4](https://web.stanford.edu/group/fan/S4/) code. FMMAX also includes a new _Jones direct_ formulation which improves convergence in some cases. Scattering matrix calculations follows the method of [1999 Whittaker]. Another helpful reference is the [grcwa](https://github.com/weiliangjinca/grcwa) code associated with \[2020 Jin], which is an autograd port of S4 and is used as a reference in some tests.
 
+## Brillouin zone integration
+Brillouin zone integration allows modeling of localized sources in periodic structures. In the `crystal` example, we use this method to model a Gaussian beam incident upon a photonic crystal slab.
+
+![Mode converter](/img/crystal_beam.png)
+
 ## Conventions
 - The speed of light, vacuum permittivity, and vacuum permeability are all 1.
 - Fields evolve in time as $\exp(-i \omega t)$.
