@@ -1,7 +1,7 @@
 [project]
 
 name = "fmmax"
-version = "0.1.0"
+version = "0.1.1"
 description = "Fourier modal method with Jax"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -31,8 +31,8 @@ tests = ["grcwa", "parameterized", "pytest"]
 examples = ["matplotlib", "scikit-image", "scipy"]
 dev = ["black", "darglint", "fmmax[examples, tests]", "isort", "mypy"]
 
-[tool.setuptools]
-py-modules = ["fmmax"]
+[tool.setuptools.packages.find]
+include=["fmmax*"]
 
 [build-system]
 requires = ["setuptools>=43.0.0", "wheel"]

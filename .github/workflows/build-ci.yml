@@ -43,4 +43,5 @@ jobs:
         
       - name: Run Python tests
         run: |
-          python -m pytest
+          pytest tests/fmmax
+          python -m pytest tests/examples
