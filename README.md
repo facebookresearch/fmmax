@@ -26,6 +26,13 @@ Vector FMM formulations introduce local coordinate systems at each point in the 
 ## Batching
 Batched calculations are supported, and should be used where possible to avoid looping. The batch axes are the leading axes, except for the wave amplitudes and electromagnetic fields, where a trailing batch axis is assumed. This allows e.g. computing the transmission through a structure for multiple polarizations via a matrix-matrix operation (`transmitted_amplitudes = S11 @ incident_amplitudes`), rather than a batched matrix-vector operation.
 
+## Installation
+
+FMMAX can be installed via pip:
+```
+pip install fmmax
+```
+
 ## Citing FMMAX
 
 If you use FMMAX, please consider citing our paper,
