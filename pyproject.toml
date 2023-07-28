@@ -25,9 +25,9 @@ dependencies = [
   "jaxlib",
   "numpy",
   # Dependencies used in examples. TODO: separate these?
-  "matplotlib",
-  "scikit-image",
-  "scipy"
+  #"matplotlib",
+  #"scikit-image",
+  #"scipy"
 ]
 
 [project.optional-dependencies]
