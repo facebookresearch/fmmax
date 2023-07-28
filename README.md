@@ -4,7 +4,7 @@ FMMAX is a an implementation of the Fourier modal method (FMM) in [JAX](https://
 
 The FMM -- also known as rigorous coupled wave analysis (RCWA) -- is a semianalytical method that solves Maxwell's equations in periodic stratified media, where in-plane directions are treated with a truncated Fourier basis and the normal direction is handled by a scattering matrix approach [1999 Whittaker, 2012 Liu, 2020 Jin]. This allows certain classes of structures to be modeled with relatively low computational cost.
 
-Our use of JAX enables GPU acceleration and automatic differentiation of FMM simulations. Besides these features, FMMAX is differentiated from other FMM codes by its support for Brillouin zone integration and advanced vector FMM formulations which improve convergence.
+Our use of JAX enables GPU acceleration and automatic differentiation of FMM simulations. Besides these features, FMMAX is differentiated from other codes by its support for Brillouin zone integration and advanced vector FMM formulations which improve convergence.
 
 ## Brillouin zone integration
 Brillouin zone integration [2022 Lopez-Fraguas] allows modeling of localized sources in periodic structures. Check out the `crystal` example to see how we model a Gaussian beam incident upon a photonic crystal slab, or to model an isolated dipole embedded within the slab. The Gaussian beam fields are shown below.
@@ -12,7 +12,7 @@ Brillouin zone integration [2022 Lopez-Fraguas] allows modeling of localized sou
 ![Gaussian beam incident on photonic crystal](/img/crystal_beam.gif)
 
 ## Vector FMM formulations
-FMMAX implements several vector formulations of the FMM, with automatic vector field generation based on functional minimization similar to [2012 Liu]. We implement the _Pol_, _Normal_, and _Jones_ methods of that reference, and introduce a new _Jones direct_ method which we have found to have superior convergence. The `vector` example computes vector fields by these methods for an example structure.
+Vector FMM formulations introduce local coordinate systems at each point in the unit cell, which are normal and tangent to all interfaces. This allows normal and tangent field components to be treated differently and improves convergence. FMMAX implements several vector formulations of the FMM, with automatic vector field generation based on functional minimization similar to [2012 Liu]. We implement the _Pol_, _Normal_, and _Jones_ methods of that reference, and introduce a new _Jones direct_ method which we have found to have superior convergence. The `vector` example computes vector fields by these methods for an example structure.
 
 ![Comparison of automatically-generated vector fields](/img/vector_fields.png)
 
