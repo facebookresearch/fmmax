@@ -24,15 +24,12 @@ dependencies = [
   "jax",
   "jaxlib",
   "numpy",
-  # Dependencies used in examples. TODO: separate these?
-  "matplotlib",
-  "scikit-image",
-  "scipy"
 ]
 
 [project.optional-dependencies]
 tests = ["grcwa", "parameterized", "pytest"]
-dev = ["black", "darglint", "fmmax[tests]", "isort", "mypy"]
+examples = ["matplotlib", "scikit-image", "scipy"]
+dev = ["black", "darglint", "fmmax[examples, tests]", "isort", "mypy"]
 
 [tool.setuptools]
 py-modules = ["fmmax"]
