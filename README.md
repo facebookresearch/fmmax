@@ -2,19 +2,19 @@
 
 FMMAX is a an implementation of the Fourier modal method (FMM) in [JAX](https://github.com/google/jax). 
 
-The FMM -- also known as rigorous coupled wave analysis (RCWA) -- is a semianalytical method that solves Maxwell's equations in periodic stratified media, where in-plane directions are treated with a truncated Fourier basis and the normal direction is handled by a scattering matrix approach. This allows certain classes of structures to be modeled with relatively low computational cost.
+The FMM -- also known as rigorous coupled wave analysis (RCWA) -- is a semianalytical method that solves Maxwell's equations in periodic stratified media, where in-plane directions are treated with a truncated Fourier basis and the normal direction is handled by a scattering matrix approach [1999 Whittaker, 2012 Liu, 2020 Jin]. This allows certain classes of structures to be modeled with relatively low computational cost.
 
-FMMAX includes vector formulations of the FMM, which dramatically improve convergence for structures having large permittivity contrast. It also allows for Brillouin zone integration to model localized fields in periodic structures. Finally, the use of JAX enables GPU acceleration and automatic differentiation of FMM simulations.
-
-The main implementation -- including the _Pol_, _Normal_, and _Jones_ vector FMM formulations -- follows the derivations in [2012 Liu], which is also the basis of the popular [S4](https://web.stanford.edu/group/fan/S4/) code. FMMAX also includes a new _Jones direct_ formulation which improves convergence in some cases. Scattering matrix calculations follows the method of [1999 Whittaker]. Another helpful reference is the [grcwa](https://github.com/weiliangjinca/grcwa) code associated with \[2020 Jin], which is an autograd port of S4 and is used as a reference in some tests.
+Our use of JAX enables GPU acceleration and automatic differentiation of FMM simulations. Besides these features, FMMAX is differentiated from other FMM codes by its support for Brillouin zone integration and advanced vector FMM formulations which improve convergence.
 
 ## Brillouin zone integration
-Brillouin zone integration [2022 Lopez-Fraguas] allows modeling of localized sources in periodic structures. Check out the `crystal.py` example to see how we model a Gaussian beam incident upon a photonic crystal slab, or to model an isolated dipole embedded within the slab. The Gaussian beam fields are shown below.
+Brillouin zone integration [2022 Lopez-Fraguas] allows modeling of localized sources in periodic structures. Check out the `crystal` example to see how we model a Gaussian beam incident upon a photonic crystal slab, or to model an isolated dipole embedded within the slab. The Gaussian beam fields are shown below.
 
-![Mode converter](/img/crystal_beam.gif)
+![Gaussian beam incident on photonic crystal](/img/crystal_beam.gif)
 
 ## Vector FMM formulations
-FMMAX implements several vector formulations of the FMM, with automatic vector field generation based on functional minimization similar to [2012 Liu]. We implement the _Pol_, _Normal_, and _Jones_ methods of that reference, and introduce a new _Jones direct_ method which we have found to have superior convergence. The `vector.py` example computes vector fields by these methods for several example structures.
+FMMAX implements several vector formulations of the FMM, with automatic vector field generation based on functional minimization similar to [2012 Liu]. We implement the _Pol_, _Normal_, and _Jones_ methods of that reference, and introduce a new _Jones direct_ method which we have found to have superior convergence. The `vector` example computes vector fields by these methods for an example structure.
+
+![Comparison of automatically-generated vector fields](/img/vector_fields.png)
 
 ## FMM Conventions
 - The speed of light, vacuum permittivity, and vacuum permeability are all 1.
@@ -25,6 +25,19 @@ FMMAX implements several vector formulations of the FMM, with automatic vector f
 
 ## Batching
 Batched calculations are supported, and should be used where possible to avoid looping. The batch axes are the leading axes, except for the wave amplitudes and electromagnetic fields, where a trailing batch axis is assumed. This allows e.g. computing the transmission through a structure for multiple polarizations via a matrix-matrix operation (`transmitted_amplitudes = S11 @ incident_amplitudes`), rather than a batched matrix-vector operation.
+
+## Citing FMMAX
+
+If you use FMMAX, please consider citing our paper,
+
+```
+@unpublished{schubert_fmm_2023,
+  title = {Fourier modal method for inverse design of metasurface-enhanced micro-LEDs},
+  author = {Schubert, Martin F. and Hammond, Alec},
+  note = {Manuscript in preparation},
+  year = {2023},
+}
+```
 
 ## License
 FMMAX is licensed under the [MIT license](https://github.com/facebookresearch/fmmax/blob/main/LICENSE).
