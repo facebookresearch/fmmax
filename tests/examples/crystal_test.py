@@ -30,10 +30,10 @@ class CrystalDipoleTest(unittest.TestCase):
         self.assertSequenceEqual(ex.shape, hz.shape)
 
         onp.testing.assert_allclose(
-            onp.mean(onp.abs((ex, ey, ez))), 0.397823, rtol=1e-4
+            onp.mean(onp.abs((ex, ey, ez))), 0.466922, rtol=1e-4
         )
         onp.testing.assert_allclose(
-            onp.mean(onp.abs((hx, hy, hz))), 0.479442, rtol=1e-4
+            onp.mean(onp.abs((hx, hy, hz))), 0.306188, rtol=1e-4
         )
 
 
@@ -57,8 +57,6 @@ class CrystalGaussianBeamTest(unittest.TestCase):
         self.assertSequenceEqual(ex.shape, hz.shape)
 
         onp.testing.assert_allclose(
-            onp.mean(onp.abs((ex, ey, ez))), 0.145445, rtol=1e-4
+            onp.mean(onp.abs((ex, ey, ez))), 0.227245, rtol=1e-4
         )
-        onp.testing.assert_allclose(
-            onp.mean(onp.abs((hx, hy, hz))), 0.124095, rtol=1e-4
-        )
+        onp.testing.assert_allclose(onp.mean(onp.abs((hx, hy, hz))), 0.17809, rtol=1e-4)

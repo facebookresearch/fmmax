@@ -269,7 +269,7 @@ def simulate_uled(
             layer_solve_results_before_source + layer_solve_results_after_source
         ),
         layer_thicknesses=thicknesses_before_source + thicknesses_after_source,
-        resolution=resolution_fields,
+        grid_spacing=resolution_fields,
         num_unit_cells=brillouin_grid_shape,
     )
 

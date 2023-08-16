@@ -233,7 +233,7 @@ def compute_fields(
         amplitudes_interior=amplitudes_interior,
         layer_solve_results=layer_solve_results,
         layer_thicknesses=thicknesses,
-        resolution=resolution_nm,
+        grid_spacing=resolution_nm,
         num_unit_cells=(1, 1),
     )
     return efields, hfields

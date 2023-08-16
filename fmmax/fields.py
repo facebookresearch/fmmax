@@ -3,7 +3,8 @@
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
-from typing import Sequence, Tuple
+import functools
+from typing import Callable, Sequence, Tuple
 
 import jax.numpy as jnp
 
@@ -357,6 +358,26 @@ def field_conversion_matrix(layer_solve_result: layer.LayerSolveResult) -> jnp.n
     return jnp.block([[mat, -mat], [phi, phi]])
 
 
+# -----------------------------------------------------------------------------
+# Functions compute fields at grid locations in a single xy plane.
+# -----------------------------------------------------------------------------
+
+
+# Type for functions that compute fields at grid locations.
+FieldsXYSliceFn = Callable[
+    [
+        Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # Ex, Ey, Ez Fourier amplitudes
+        Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # Hx, Hy, Hz Fourier amplitudes
+        layer.LayerSolveResult,
+    ],
+    Tuple[
+        Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # Ex, Ey, Ez
+        Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # Hx, Hy, Hz
+        Tuple[jnp.ndarray, jnp.ndarray],  # x, y
+    ],
+]
+
+
 def fields_on_grid(
     electric_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
     magnetic_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
@@ -426,6 +447,87 @@ def fields_on_grid(
         _field_on_grid(hz) * phase,
     )
     return grid_electric_field, grid_magnetic_field, (x, y)
+
+
+def fields_on_coordinates(
+    electric_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    magnetic_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    layer_solve_result: layer.LayerSolveResult,
+    x: jnp.ndarray,
+    y: jnp.ndarray,
+) -> Tuple[
+    Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    Tuple[jnp.ndarray, jnp.ndarray],
+]:
+    """Computes the fields at specified coordinates.
+
+    The calculation is for a batch of fields, with the batch axis being the
+    final axis. There can also be leading batch axes. Accordingly, fields
+    should have shape `(..., 2 * num_terms, num_amplitudes)`. The trailing batch
+    dimension is preferred because it allows matrix-matrix multiplication instead
+    of batched matrix-vector multiplication.
+
+    Args:
+        electric_field: `(ex, ey, ez)` electric field Fourier amplitudes.
+        magnetic_field: `(hx, hy, hz)` magnetic field Fourier amplitudes.
+        layer_solve_result: The results of the layer eigensolve.
+        x: The x-coordinates where the fields are sought.
+        y: The y-coordinates where the fields are sought, with shape matching
+            that of `x`.
+
+    Returns:
+        The electric field `(ex, ey, ez)`, magnetic field `(hx, hy, hz)`,
+        and the grid coordinates `(x, y)`. The field arrays each have shape
+        `batch_shape + coordinates_shape + (num_amplitudes)`.
+    """
+    _validate_amplitudes_shape(
+        electric_field + magnetic_field,
+        num_terms=layer_solve_result.expansion.num_terms,
+    )
+    assert x.shape == y.shape
+
+    coordinates_shape = x.shape
+    ex_shape = electric_field[0].shape
+    field_shape = ex_shape[:-2] + coordinates_shape + (ex_shape[-1],)
+    x = x.flatten()
+    y = y.flatten()
+
+    transverse_wavevectors = basis.transverse_wavevectors(
+        in_plane_wavevector=layer_solve_result.in_plane_wavevector,
+        primitive_lattice_vectors=layer_solve_result.primitive_lattice_vectors,
+        expansion=layer_solve_result.expansion,
+    )
+    kx = transverse_wavevectors[..., 0, jnp.newaxis]
+    ky = transverse_wavevectors[..., 1, jnp.newaxis]
+
+    def _field_at_coordinates(fourier_field):
+        field = (
+            fourier_field[..., jnp.newaxis, :]
+            * jnp.exp(1j * (kx * x + ky * y))[..., jnp.newaxis]
+        )
+        field = jnp.sum(field, axis=-3)
+        return field.reshape(field_shape)
+
+    ex, ey, ez = electric_field
+    grid_electric_field = (
+        _field_at_coordinates(ex),
+        _field_at_coordinates(ey),
+        _field_at_coordinates(ez),
+    )
+
+    hx, hy, hz = magnetic_field
+    grid_magnetic_field = (
+        _field_at_coordinates(hx),
+        _field_at_coordinates(hy),
+        _field_at_coordinates(hz),
+    )
+    return grid_electric_field, grid_magnetic_field, (x, y)
+
+
+# -----------------------------------------------------------------------------
+# Functions to wave amplitudes inside a stack of layers.
+# -----------------------------------------------------------------------------
 
 
 def stack_amplitudes_interior(
@@ -556,11 +658,16 @@ def amplitudes_interior(
     return forward_amplitude_i_start, backward_amplitude_i_end
 
 
+# -----------------------------------------------------------------------------
+# Functions to compute fields on the 3D real-space grid.
+# -----------------------------------------------------------------------------
+
+
 def stack_fields_3d_auto_grid(
     amplitudes_interior: Sequence[Tuple[jnp.ndarray, jnp.ndarray]],
     layer_solve_results: Sequence[layer.LayerSolveResult],
     layer_thicknesses: Sequence[jnp.ndarray],
-    resolution: float,
+    grid_spacing: float,
     num_unit_cells: Tuple[int, int],
 ) -> Tuple[jnp.ndarray, jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]]:
     """Computes the three-dimensional fields in a stack on the real-space grid.
@@ -572,7 +679,9 @@ def stack_fields_3d_auto_grid(
             for each layer, defined at the start and end of each layer, respectively.
         layer_solve_results: The results of the layer eigensolve for each layer.
         layer_thicknesses: The thickness of each layer.
-        resolution: The resolution of the grid on which the field is computed.
+        grid_spacing: The approximate spacing of gridpoints on which the field is
+            computed. The actual grid spacing is modified to align with the layer
+            and unit cell boundaries.
         num_unit_cells: The number of unit cells along each direction.
 
     Returns:
@@ -580,11 +689,11 @@ def stack_fields_3d_auto_grid(
     """
     primitive_lattice_vectors = layer_solve_results[0].primitive_lattice_vectors
     grid_shape = (
-        int(jnp.round(jnp.linalg.norm(primitive_lattice_vectors.u) / resolution)),
-        int(jnp.round(jnp.linalg.norm(primitive_lattice_vectors.v) / resolution)),
+        int(jnp.round(jnp.linalg.norm(primitive_lattice_vectors.u) / grid_spacing)),
+        int(jnp.round(jnp.linalg.norm(primitive_lattice_vectors.v) / grid_spacing)),
     )
 
-    layer_znum = tuple([int(jnp.round(t / resolution)) for t in layer_thicknesses])
+    layer_znum = tuple([int(jnp.round(t / grid_spacing)) for t in layer_thicknesses])
 
     return stack_fields_3d(
         amplitudes_interior=amplitudes_interior,
@@ -618,46 +727,52 @@ def stack_fields_3d(
     Returns:
         The electric and magnetic fields and grid coordinates, `(ef, hf, (x, y, z))`.
     """
-    if not (
-        len(amplitudes_interior)
-        == len(layer_solve_results)
-        == len(layer_thicknesses)
-        == len(layer_znum)
-    ):
-        raise ValueError(
-            f"`amplitudes_interior`, `layer_solve_results`, `layer_thicknesses`, "
-            f"and `layer_znum` must all have the same length, but got lengths "
-            f"{len(amplitudes_interior)}, {len(layer_solve_results)}, "
-            f"{len(layer_thicknesses)}, and {len(layer_znum)}, respectively."
-        )
-
-    z0 = jnp.zeros(())
-    zs = []
-    efields = []
-    hfields = []
-    for layer_amplitudes, layer_solve_result, layer_thickness, znum in zip(
-        amplitudes_interior, layer_solve_results, layer_thicknesses, layer_znum
-    ):
-        forward_amplitude_start, backward_amplitude_end = layer_amplitudes
-        assert forward_amplitude_start.shape == backward_amplitude_end.shape
-        eg, hg, (x, y, z_offset) = layer_fields_3d(
-            forward_amplitude_start=forward_amplitude_start,
-            backward_amplitude_end=backward_amplitude_end,
-            layer_solve_result=layer_solve_result,
-            layer_thickness=layer_thickness,
-            layer_znum=znum,
-            grid_shape=grid_shape,
+    return _stack_fields_3d(
+        amplitudes_interior=amplitudes_interior,
+        layer_solve_results=layer_solve_results,
+        layer_thicknesses=layer_thicknesses,
+        layer_znum=layer_znum,
+        fields_xy_slice_fn=functools.partial(
+            fields_on_grid,
+            shape=grid_shape,
             num_unit_cells=num_unit_cells,
-        )
-        efields.append(eg)
-        hfields.append(hg)
-        zs.append(z_offset + z0)
-        z0 += layer_thickness
+        ),
+    )
 
-    merged_efields = jnp.concatenate(efields, axis=-2)
-    merged_hfields = jnp.concatenate(hfields, axis=-2)
-    z = jnp.concatenate(zs)
-    return merged_efields, merged_hfields, (x, y, z)
+
+def stack_fields_3d_on_coordinates(
+    amplitudes_interior: Sequence[Tuple[jnp.ndarray, jnp.ndarray]],
+    layer_solve_results: Sequence[layer.LayerSolveResult],
+    layer_thicknesses: Sequence[jnp.ndarray],
+    layer_znum: Sequence[int],
+    x: jnp.ndarray,
+    y: jnp.ndarray,
+) -> Tuple[jnp.ndarray, jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]]:
+    """Computes the three-dimensional fields in a stack at specified coordinates.
+
+    This function may be significantly faster than `stack_fields_3d` in cases where
+    fields in the full simulation domain are not required.
+
+    Args:
+        amplitudes_interior: The forward- and backward-propagating wave amplitude
+            for each layer, defined at the start and end of each layer, respectively.
+        layer_solve_results: The results of the layer eigensolve for each layer.
+        layer_thicknesses: The thickness of each layer.
+        layer_znum: The number of gridpoints in the z-direction for each layer.
+        x: The x-coordinates where the fields are sought.
+        y: The y-coordinates where the fields are sought, with shape matching
+            that of `x`.
+
+    Returns:
+        The electric and magnetic fields and grid coordinates, `(ef, hf, (x, y, z))`.
+    """
+    return _stack_fields_3d(
+        amplitudes_interior=amplitudes_interior,
+        layer_solve_results=layer_solve_results,
+        layer_thicknesses=layer_thicknesses,
+        layer_znum=layer_znum,
+        fields_xy_slice_fn=functools.partial(fields_on_coordinates, x=x, y=y),
+    )
 
 
 def layer_fields_3d(
@@ -681,6 +796,140 @@ def layer_fields_3d(
         layer_znum: The number of gridpoints in the z-direction for the layer.
         grid_shape: The shape of the xy real-space grid.
         num_unit_cells: The number of unit cells along each direction.
+
+    Returns:
+        The electric and magnetic fields and grid coordinates, `(ef, hf, (x, y, z))`.
+    """
+    return _layer_fields_3d(
+        forward_amplitude_start=forward_amplitude_start,
+        backward_amplitude_end=backward_amplitude_end,
+        layer_solve_result=layer_solve_result,
+        layer_thickness=layer_thickness,
+        layer_znum=layer_znum,
+        fields_xy_slice_fn=functools.partial(
+            fields_on_grid,
+            shape=grid_shape,
+            num_unit_cells=num_unit_cells,
+        ),
+    )
+
+
+def layer_fields_3d_on_coordinates(
+    forward_amplitude_start: jnp.ndarray,
+    backward_amplitude_end: jnp.ndarray,
+    layer_solve_result: layer.LayerSolveResult,
+    layer_thickness: jnp.ndarray,
+    layer_znum: int,
+    x: jnp.ndarray,
+    y: jnp.ndarray,
+) -> Tuple[jnp.ndarray, jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]]:
+    """Computes the three-dimensional fields in a layer at specified coordinates
+
+    This function may be significantly faster than `layer_fields_3d` in cases where
+    fields in the full simulation domain are not required.
+
+    Args:
+        forward_amplitude_start: The forward-going wave amplitudes, defined at the
+            start of the layer.
+        backward_amplitude_end: The backward-going wave amplitudes, defined at the
+            end of the layer.
+        layer_solve_result: The results of the layer eigensolve.
+        layer_thickness: The layer thickness.
+        layer_znum: The number of gridpoints in the z-direction for the layer.
+        x: The x-coordinates where the fields are sought.
+        y: The y-coordinates where the fields are sought, with shape matching
+            that of `x`.
+
+    Returns:
+        The electric and magnetic fields and grid coordinates, `(ef, hf, (x, y, z))`.
+    """
+    return _layer_fields_3d(
+        forward_amplitude_start=forward_amplitude_start,
+        backward_amplitude_end=backward_amplitude_end,
+        layer_solve_result=layer_solve_result,
+        layer_thickness=layer_thickness,
+        layer_znum=layer_znum,
+        fields_xy_slice_fn=functools.partial(fields_on_coordinates, x=x, y=y),
+    )
+
+
+def _stack_fields_3d(
+    amplitudes_interior: Sequence[Tuple[jnp.ndarray, jnp.ndarray]],
+    layer_solve_results: Sequence[layer.LayerSolveResult],
+    layer_thicknesses: Sequence[jnp.ndarray],
+    layer_znum: Sequence[int],
+    fields_xy_slice_fn: FieldsXYSliceFn,
+) -> Tuple[jnp.ndarray, jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]]:
+    """Computes the three-dimensional fields in a stack on the real-space grid.
+
+    Args:
+        amplitudes_interior: The forward- and backward-propagating wave amplitude
+            for each layer, defined at the start and end of each layer, respectively.
+        layer_solve_results: The results of the layer eigensolve for each layer.
+        layer_thicknesses: The thickness of each layer.
+        layer_znum: The number of gridpoints in the z-direction for each layer.
+        fields_xy_slice_fn: Computes the fields for each xy slice given the field
+            Fourier amplitudes and layer solve result.
+
+    Returns:
+        The electric and magnetic fields and grid coordinates, `(ef, hf, (x, y, z))`.
+    """
+    _validate_matching_lengths(
+        amplitudes_interior, layer_solve_results, layer_thicknesses, layer_znum
+    )
+
+    z0 = jnp.zeros(())
+    zs = []
+    efields = []
+    hfields = []
+    for layer_amplitudes, layer_solve_result, layer_thickness, znum in zip(
+        amplitudes_interior,
+        layer_solve_results,
+        layer_thicknesses,
+        layer_znum,
+        strict=True,
+    ):
+        forward_amplitude_start, backward_amplitude_end = layer_amplitudes
+        assert forward_amplitude_start.shape == backward_amplitude_end.shape
+        eg, hg, (x, y, z_offset) = _layer_fields_3d(
+            forward_amplitude_start=forward_amplitude_start,
+            backward_amplitude_end=backward_amplitude_end,
+            layer_solve_result=layer_solve_result,
+            layer_thickness=layer_thickness,
+            layer_znum=znum,
+            fields_xy_slice_fn=fields_xy_slice_fn,
+        )
+        efields.append(eg)
+        hfields.append(hg)
+        zs.append(z_offset + z0)
+        z0 += layer_thickness
+
+    merged_efields = jnp.concatenate(efields, axis=-2)
+    merged_hfields = jnp.concatenate(hfields, axis=-2)
+    z = jnp.concatenate(zs)
+    return merged_efields, merged_hfields, (x, y, z)
+
+
+def _layer_fields_3d(
+    forward_amplitude_start: jnp.ndarray,
+    backward_amplitude_end: jnp.ndarray,
+    layer_solve_result: layer.LayerSolveResult,
+    layer_thickness: jnp.ndarray,
+    layer_znum: int,
+    fields_xy_slice_fn: FieldsXYSliceFn,
+) -> Tuple[jnp.ndarray, jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]]:
+    """Computes the three-dimensional fields in a layer on the real-space grid.
+
+    Args:
+        forward_amplitude_start: The forward-going wave amplitudes, defined at the
+            start of the layer.
+        backward_amplitude_end: The backward-going wave amplitudes, defined at the
+            end of the layer.
+        layer_solve_result: The results of the layer eigensolve.
+        layer_thickness: The layer thickness.
+        layer_znum: The number of gridpoints in the z-direction for the layer.
+        fields_xy_slice_fn: Computes the fields for each xy slice given the field
+            Fourier amplitudes and layer solve result.
 
     Returns:
         The electric and magnetic fields and grid coordinates, `(ef, hf, (x, y, z))`.
@@ -734,12 +983,10 @@ def layer_fields_3d(
         backward_amplitude=backward_amplitude,
         layer_solve_result=layer_solve_result,
     )
-    eg_tuple, hg_tuple, (x, y) = fields_on_grid(
-        electric_field=ef,
-        magnetic_field=hf,
-        layer_solve_result=layer_solve_result,
-        shape=grid_shape,
-        num_unit_cells=num_unit_cells,
+    eg_tuple, hg_tuple, (x, y) = fields_xy_slice_fn(
+        electric_field=ef,  # type: ignore[call-arg]
+        magnetic_field=hf,  # type: ignore[call-arg]
+        layer_solve_result=layer_solve_result,  # type: ignore[call-arg]
     )
     eg = jnp.asarray(eg_tuple)
     hg = jnp.asarray(hg_tuple)
@@ -749,3 +996,10 @@ def layer_fields_3d(
     hg = jnp.reshape(hg, hg.shape[:-1] + (layer_znum, amplitude_batch_size))
 
     return eg, hg, (x, y, z_offset)
+
+
+def _validate_matching_lengths(*sequences: Sequence) -> None:
+    """Validates that all of `args` have matching length."""
+    lengths = [len(s) for s in sequences]
+    if not all([l == lengths[0] for l in lengths]):
+        raise ValueError(f"Encountered incompatible lengths, got lengths of {lengths}")
