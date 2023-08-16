@@ -20,7 +20,7 @@ THICKNESS_SLAB: float = 0.8
 PITCH: float = 1.0
 DIAMETER: float = 0.7
 RESOLUTION: float = 0.01
-RESOLUTION_FIELDS: float = 0.05
+RESOLUTION_FIELDS: float = 0.01
 WAVELENGTH: float = 0.63
 APPROXIMATE_NUM_TERMS: int = 50
 BRILLOUIN_GRID_SHAPE: Tuple[int, int] = (9, 9)
@@ -75,7 +75,8 @@ def simulate_crystal_with_internal_source(
 
     Returns:
         The electric and magnetic fields, and the grid coordinates, `((ex, ey, ez),
-        (hx, hy, hz), (x,y, z))`.
+        (hx, hy, hz), (x, y, z))`. The fields are returned for an xz slice centered
+        on the dipole.
     """
     thickness_ambient_ = jnp.asarray(thickness_ambient)
     thickness_slab_ = jnp.asarray(thickness_slab)
@@ -163,7 +164,10 @@ def simulate_crystal_with_internal_source(
         backward_amplitude_before_end=bwd_amplitude_before_end,
         forward_amplitude_after_start=fwd_amplitude_after_start,
     )
-    (ex, ey, ez), (hx, hy, hz), (x, y, z) = fields.stack_fields_3d_auto_grid(
+    # Coordinates where fields are to be evaluated.
+    x = jnp.arange(0, pitch * brillouin_grid_shape[0], resolution_fields)
+    y = jnp.ones_like(x) * pitch * brillouin_grid_shape[1] // 2
+    (ex, ey, ez), (hx, hy, hz), (x, y, z) = fields.stack_fields_3d_on_coordinates(
         amplitudes_interior=amplitudes_interior,
         layer_solve_results=[
             solve_result_ambient,
@@ -177,8 +181,14 @@ def simulate_crystal_with_internal_source(
             thickness_slab_ / 2,
             thickness_ambient_,
         ],
-        resolution=resolution_fields,
-        num_unit_cells=brillouin_grid_shape,
+        layer_znum=[
+            int(thickness_ambient_ / resolution_fields),
+            int(thickness_slab_ / resolution_fields / 2),
+            int(thickness_slab_ / resolution_fields / 2),
+            int(thickness_ambient_ / resolution_fields),
+        ],
+        x=x,
+        y=y,
     )
 
     # Perform the Brillouin zone integration by averaging over the Brillouin zone
@@ -256,7 +266,8 @@ def simulate_crystal_with_gaussian_beam(
 
     Returns:
         The electric and magnetic fields, and the grid coordinates, `((ex, ey, ez),
-        (hx, hy, hz), (x,y, z))`.
+        (hx, hy, hz), (x, y, z))`. The fields are returned for an xz slice centered
+        on the incident beam.
     """
     thickness_ambient_ = jnp.asarray(thickness_ambient)
     thickness_slab_ = jnp.asarray(thickness_slab)
@@ -376,7 +387,10 @@ def simulate_crystal_with_gaussian_beam(
         forward_amplitude_0_start=fwd_amplitude,
         backward_amplitude_N_end=jnp.zeros_like(fwd_amplitude),
     )
-    (ex, ey, ez), (hx, hy, hz), (x, y, z) = fields.stack_fields_3d_auto_grid(
+    # Coordinates where fields are to be evaluated.
+    x = jnp.arange(0, pitch * brillouin_grid_shape[0], resolution_fields)
+    y = jnp.ones_like(x) * pitch * brillouin_grid_shape[1] / 2
+    (ex, ey, ez), (hx, hy, hz), (x, y, z) = fields.stack_fields_3d_on_coordinates(
         amplitudes_interior=amplitudes_interior,
         layer_solve_results=[
             solve_result_ambient,
@@ -388,8 +402,13 @@ def simulate_crystal_with_gaussian_beam(
             thickness_slab_,
             thickness_ambient_,
         ],
-        resolution=resolution_fields,
-        num_unit_cells=brillouin_grid_shape,
+        layer_znum=[
+            int(thickness_ambient_ / resolution_fields),
+            int(thickness_slab_ / resolution_fields),
+            int(thickness_ambient_ / resolution_fields),
+        ],
+        x=x,
+        y=y,
     )
 
     # Perform the Brillouin zone integration by averaging over the Brillouin zone
@@ -487,12 +506,8 @@ def plot_dipole_fields(
         (section_xy, section_xz, section_yz),
     ) = simulate_crystal_with_internal_source(**sim_kwargs)
 
-    # Determine the y index at which to take the cross section.
-    unit_cell_ydim = x.shape[1] // brillouin_grid_shape[1]
-    y_idx = unit_cell_ydim * (brillouin_grid_shape[1] // 2)
-
-    xplot, zplot = jnp.meshgrid(x[:, y_idx], z, indexing="ij")
-    field_plot = ex[:, y_idx, :, 0].real
+    xplot, zplot = jnp.meshgrid(x, z, indexing="ij")
+    field_plot = ex[:, :, 0].real
 
     plt.figure(figsize=(jnp.amax(xplot), jnp.amax(zplot)), dpi=80)
     ax = plt.subplot(111)
@@ -537,11 +552,8 @@ def plot_gaussian_fields(
         (section_xy, section_xz, section_yz),
     ) = simulate_crystal_with_gaussian_beam(**sim_kwargs)
 
-    # Determine the y index at which to take the cross section.
-    y_idx = y.shape[1] // 2
-
-    xplot, zplot = jnp.meshgrid(x[:, y_idx], z, indexing="ij")
-    field_plot = ex[:, y_idx, :, 0].real
+    xplot, zplot = jnp.meshgrid(x, z, indexing="ij")
+    field_plot = ex[:, :, 0].real
 
     plt.figure(figsize=(jnp.amax(xplot), jnp.amax(zplot)), dpi=80)
     ax = plt.subplot(111)
