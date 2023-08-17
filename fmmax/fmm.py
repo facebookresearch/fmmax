@@ -58,7 +58,7 @@ def fourier_matrices_patterned_isotropic_media(
             equation 15 of [2012 Liu], computed in the manner prescribed by
             `fmm_formulation`.
     """
-    if formulation == Formulation.FFT:
+    if formulation is Formulation.FFT:
         transverse_permittivity_matrix = _transverse_permittivity_fft(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity,
@@ -121,7 +121,7 @@ def fourier_matrices_patterned_anisotropic_media(
             `fmm_formulation`.
     """
     del primitive_lattice_vectors
-    if formulation != Formulation.FFT:
+    if not (formulation is Formulation.FFT):
         raise ValueError(f"Only `Formulation.FFT` is supported, but got {formulation}.")
 
     transform = functools.partial(
