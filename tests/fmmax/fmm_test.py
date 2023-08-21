@@ -166,7 +166,7 @@ class AnistropicLayerTest(unittest.TestCase):
             transverse_expected,
         ) = fmm.fourier_matrices_patterned_isotropic_media(
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
-            permittivity=permittivity,
+            arr=permittivity,
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
         )
@@ -176,11 +176,11 @@ class AnistropicLayerTest(unittest.TestCase):
             transverse_result,
         ) = fmm.fourier_matrices_patterned_anisotropic_media(
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
-            permittivity_xx=permittivity,
-            permittivity_xy=jnp.zeros_like(permittivity),
-            permittivity_yx=jnp.zeros_like(permittivity),
-            permittivity_yy=permittivity,
-            permittivity_zz=permittivity,
+            arr_xx=permittivity,
+            arr_xy=jnp.zeros_like(permittivity),
+            arr_yx=jnp.zeros_like(permittivity),
+            arr_yy=permittivity,
+            arr_zz=permittivity,
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
         )

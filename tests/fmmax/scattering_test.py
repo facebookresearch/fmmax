@@ -46,18 +46,20 @@ def _dummy_solve_result(
     primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
     expansion=EXPANSION,
 ):
-    key_eigenvalues, key_eigenvectors, key_omega_k = jax.random.split(key, 3)
+    keys = jax.random.split(key, 7)
     dim = expansion.basis_coefficients.shape[0]
     return layer.LayerSolveResult(
         wavelength=wavelength,
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
         expansion=expansion,
-        eigenvalues=_random_normal_complex(key_eigenvalues, (2 * dim,)),
-        eigenvectors=_random_normal_complex(key_eigenvectors, (2 * dim, 2 * dim)),
-        eta_matrix=_random_normal_complex(key_eigenvectors, (dim, dim)),
-        z_permittivity_matrix=_random_normal_complex(key_eigenvectors, (dim, dim)),
-        omega_script_k_matrix=_random_normal_complex(key_omega_k, (2 * dim, 2 * dim)),
+        eigenvalues=_random_normal_complex(keys[0], (2 * dim,)),
+        eigenvectors=_random_normal_complex(keys[1], (2 * dim, 2 * dim)),
+        z_permittivity_matrix=_random_normal_complex(keys[2], (dim, dim)),
+        inverse_z_permittivity_matrix=_random_normal_complex(keys[3], (dim, dim)),
+        z_permeability_matrix=_random_normal_complex(keys[4], (dim, dim)),
+        inverse_z_permeability_matrix=_random_normal_complex(keys[5], (dim, dim)),
+        omega_script_k_matrix=_random_normal_complex(keys[6], (2 * dim, 2 * dim)),
     )
 
 

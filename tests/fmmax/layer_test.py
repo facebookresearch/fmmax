@@ -359,7 +359,7 @@ class AnistropicLayerTest(unittest.TestCase):
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
         )
-        result = layer.eigensolve_patterned_anisotropic_media(
+        result = layer.eigensolve_patterned_general_anisotropic_media(
             wavelength=wavelength,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -368,6 +368,11 @@ class AnistropicLayerTest(unittest.TestCase):
             permittivity_yx=jnp.zeros_like(permittivity),
             permittivity_yy=permittivity,
             permittivity_zz=permittivity,
+            permeability_xx=jnp.ones_like(permittivity),
+            permeability_xy=jnp.zeros_like(permittivity),
+            permeability_yx=jnp.zeros_like(permittivity),
+            permeability_yy=jnp.ones_like(permittivity),
+            permeability_zz=jnp.ones_like(permittivity),
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
         )
@@ -379,7 +384,12 @@ class AnistropicLayerTest(unittest.TestCase):
         permittivity_yx = jnp.asarray([[0.2]])
         permittivity_yy = jnp.asarray([[2.5]])
         permittivity_zz = jnp.asarray([[3.0]])
-        uniform_result = layer.eigensolve_uniform_anisotropic_media(
+        permeability_xx = jnp.asarray([[5.0]])
+        permeability_xy = jnp.asarray([[0.2]])
+        permeability_yx = jnp.asarray([[0.4]])
+        permeability_yy = jnp.asarray([[1.5]])
+        permeability_zz = jnp.asarray([[1.3]])
+        uniform_result = layer.eigensolve_uniform_general_anisotropic_media(
             wavelength=WAVELENGTH,
             in_plane_wavevector=IN_PLANE_WAVEVECTOR,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -388,12 +398,17 @@ class AnistropicLayerTest(unittest.TestCase):
             permittivity_yx=permittivity_yx,
             permittivity_yy=permittivity_yy,
             permittivity_zz=permittivity_zz,
+            permeability_xx=permeability_xx,
+            permeability_xy=permeability_xy,
+            permeability_yx=permeability_yx,
+            permeability_yy=permeability_yy,
+            permeability_zz=permeability_zz,
             expansion=EXPANSION,
         )
         uniform_eigenvalues, uniform_eigenvectors = _sort_eigs(
             uniform_result.eigenvalues, uniform_result.eigenvectors
         )
-        patterned_result = layer.eigensolve_patterned_anisotropic_media(
+        patterned_result = layer.eigensolve_patterned_general_anisotropic_media(
             wavelength=WAVELENGTH,
             in_plane_wavevector=IN_PLANE_WAVEVECTOR,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -402,6 +417,11 @@ class AnistropicLayerTest(unittest.TestCase):
             permittivity_yx=jnp.broadcast_to(permittivity_yx, (64, 64)),
             permittivity_yy=jnp.broadcast_to(permittivity_yy, (64, 64)),
             permittivity_zz=jnp.broadcast_to(permittivity_zz, (64, 64)),
+            permeability_xx=jnp.broadcast_to(permeability_xx, (64, 64)),
+            permeability_xy=jnp.broadcast_to(permeability_xy, (64, 64)),
+            permeability_yx=jnp.broadcast_to(permeability_yx, (64, 64)),
+            permeability_yy=jnp.broadcast_to(permeability_yy, (64, 64)),
+            permeability_zz=jnp.broadcast_to(permeability_zz, (64, 64)),
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
         )
@@ -443,8 +463,10 @@ class LayerSolveResultInputValidationTest(unittest.TestCase):
             ("in_plane_wavevector", jnp.ones((1,))),
             ("eigenvalues", jnp.ones((1,))),
             ("eigenvectors", jnp.ones((3, 4, 5, 1, 1))),
-            ("eta_matrix", jnp.ones((1,))),
             ("z_permittivity_matrix", jnp.ones((1,))),
+            ("inverse_z_permittivity_matrix", jnp.ones((1,))),
+            ("z_permeability_matrix", jnp.ones((1,))),
+            ("inverse_z_permeability_matrix", jnp.ones((1,))),
             ("omega_script_k_matrix", jnp.ones((1,))),
         ]
     )
@@ -462,8 +484,10 @@ class LayerSolveResultInputValidationTest(unittest.TestCase):
             "expansion": expansion,
             "eigenvalues": jnp.ones((3, 4, 5, 2 * num)),
             "eigenvectors": jnp.ones((3, 4, 5, 2 * num, 2 * num)),
-            "eta_matrix": jnp.ones((3, 4, 5, num, num)),
             "z_permittivity_matrix": jnp.ones((3, 4, 5, num, num)),
+            "inverse_z_permittivity_matrix": jnp.ones((3, 4, 5, num, num)),
+            "z_permeability_matrix": jnp.ones((3, 4, 5, num, num)),
+            "inverse_z_permeability_matrix": jnp.ones((3, 4, 5, num, num)),
             "omega_script_k_matrix": jnp.ones((3, 4, 5, 2 * num, 2 * num)),
         }
         kwargs[name] = invalid_shape

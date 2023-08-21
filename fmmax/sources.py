@@ -317,11 +317,12 @@ def polarization_terms(
         )
 
     # Add dimensions as needed to ensures shapes are compatible.
-    leading_ndim = max(jx.ndim - 3, layer_solve_result.eta_matrix.ndim - 2)
+    eta_matrix = layer_solve_result.inverse_z_permittivity_matrix
+    leading_ndim = max(jx.ndim - 3, eta_matrix.ndim - 2)
+    eta_matrix = utils.atleast_nd(eta_matrix, n=(leading_ndim + 2))
     jx = utils.atleast_nd(jx, n=(leading_ndim + 2))
     jy = utils.atleast_nd(jy, n=(leading_ndim + 2))
     jz = utils.atleast_nd(jz, n=(leading_ndim + 2))
-    eta_matrix = utils.atleast_nd(layer_solve_result.eta_matrix, n=(leading_ndim + 2))
 
     p_parallel = jnp.concatenate([jy, -jx], axis=-2)
 

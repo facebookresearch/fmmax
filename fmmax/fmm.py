@@ -32,7 +32,7 @@ class Formulation(enum.Enum):
 
 def fourier_matrices_patterned_isotropic_media(
     primitive_lattice_vectors: basis.LatticeVectors,
-    permittivity: jnp.ndarray,
+    arr: jnp.ndarray,
     expansion: basis.Expansion,
     formulation: Formulation,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
@@ -58,17 +58,17 @@ def fourier_matrices_patterned_isotropic_media(
             equation 15 of [2012 Liu], computed in the manner prescribed by
             `fmm_formulation`.
     """
-    if formulation is Formulation.FFT:
+    if formulation == Formulation.FFT:
         transverse_permittivity_matrix = _transverse_permittivity_fft(
             primitive_lattice_vectors=primitive_lattice_vectors,
-            permittivity=permittivity,
+            permittivity=arr,
             expansion=expansion,
             formulation=formulation,
         )
     else:
         transverse_permittivity_matrix = _transverse_permittivity_vector(
             primitive_lattice_vectors=primitive_lattice_vectors,
-            permittivity=permittivity,
+            permittivity=arr,
             expansion=expansion,
             formulation=formulation,
         )
@@ -78,18 +78,18 @@ def fourier_matrices_patterned_isotropic_media(
         expansion=expansion,
     )
 
-    eta_matrix = transform(1 / permittivity)
-    z_permittivity_matrix = transform(permittivity)
+    eta_matrix = transform(1 / arr)
+    z_permittivity_matrix = transform(arr)
     return eta_matrix, z_permittivity_matrix, transverse_permittivity_matrix
 
 
 def fourier_matrices_patterned_anisotropic_media(
     primitive_lattice_vectors: basis.LatticeVectors,
-    permittivity_xx: jnp.ndarray,
-    permittivity_xy: jnp.ndarray,
-    permittivity_yx: jnp.ndarray,
-    permittivity_yy: jnp.ndarray,
-    permittivity_zz: jnp.ndarray,
+    arr_xx: jnp.ndarray,
+    arr_xy: jnp.ndarray,
+    arr_yx: jnp.ndarray,
+    arr_yy: jnp.ndarray,
+    arr_zz: jnp.ndarray,
     expansion: basis.Expansion,
     formulation: Formulation,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
@@ -121,7 +121,7 @@ def fourier_matrices_patterned_anisotropic_media(
             `fmm_formulation`.
     """
     del primitive_lattice_vectors
-    if not (formulation is Formulation.FFT):
+    if formulation != Formulation.FFT:
         raise ValueError(f"Only `Formulation.FFT` is supported, but got {formulation}.")
 
     transform = functools.partial(
@@ -131,12 +131,12 @@ def fourier_matrices_patterned_anisotropic_media(
 
     transverse_permittivity_matrix = jnp.block(
         [
-            [transform(permittivity_xx), transform(permittivity_xy)],
-            [transform(permittivity_yx), transform(permittivity_yy)],
+            [transform(arr_xx), transform(arr_xy)],
+            [transform(arr_yx), transform(arr_yy)],
         ]
     )
-    eta_matrix = transform(1 / permittivity_zz)
-    z_permittivity_matrix = transform(permittivity_zz)
+    eta_matrix = transform(1 / arr_zz)
+    z_permittivity_matrix = transform(arr_zz)
     return eta_matrix, z_permittivity_matrix, transverse_permittivity_matrix
 
 
