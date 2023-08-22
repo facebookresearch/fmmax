@@ -18,17 +18,24 @@ def apply_uniaxial_pml(
     a_max: float = 4.0,
     p: float = 4.0,
     sigma_max: float = 1.0,
-) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+) -> Tuple[
+    Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray],
+]:
     """Generate the anisotropic permittivity tensor elements implementing a uniaxial pml.
 
     Args:
-        permittivity:
-        primitive_lattice_vectors:
+        permittivity: isotropic permittivity
+        primitive_lattice_vectors: needed to rotate the PML
         width_u: Number of elements in the permittivity array to be used for the
             perfectly matched layer, in the `u` direction.
         width_v: Number of elements for the perfectly matched layer, `v` direction.
+        a_max: PML parameter
+        p: PML parameter
+        sigma_max: PML parameter
 
     Returns:
+        The permittivity and permeability tensors.
     """
     # Remove the permittivity in regions within the PML, and replace these with whatever
     # values exist just outside the border of the PML region.
@@ -37,7 +44,7 @@ def apply_uniaxial_pml(
     )
 
     du, dv = _normalized_distance_into_pml(
-        permittivity.shape, widths=(width_u, width_v)
+        shape=permittivity.shape[-2:], widths=(width_u, width_v)  # type: ignore[arg-type]
     )
 
     su = (1 + a_max * du**p) * (1 + 1j * sigma_max * jnp.sin(jnp.pi / 2 * du) ** 2)
@@ -53,12 +60,27 @@ def apply_uniaxial_pml(
     permittivity_yx = jnp.zeros_like(permittivity)
     permittivity_yy = permittivity_vv
 
+    permeability_uu = sv * sz / su
+    permeability_vv = su * sz / sv
+    permeability_zz = su * sv / sz
+
+    permeability_xx = permeability_uu
+    permeability_xy = jnp.zeros_like(permittivity)
+    permeability_yx = jnp.zeros_like(permittivity)
+    permeability_yy = permeability_vv
+
     return (
         permittivity_xx,
         permittivity_xy,
         permittivity_yx,
         permittivity_yy,
         permittivity_zz,
+    ), (
+        permeability_xx,
+        permeability_xy,
+        permeability_yx,
+        permeability_yy,
+        permeability_zz,
     )
 
 
@@ -83,7 +105,7 @@ def _normalized_distance_into_pml(
     shape: Tuple[int, int],
     widths: Tuple[int, int],
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """"""
+    """Distance into PML."""
     i, j = jnp.meshgrid(
         jnp.arange(shape[-2]),
         jnp.arange(shape[-1]),

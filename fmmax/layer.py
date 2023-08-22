@@ -4,12 +4,18 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
 import dataclasses
+import functools
 from typing import Tuple
 
 import jax
 import jax.numpy as jnp
 
 from fmmax import basis, fmm, utils
+
+# xx, xy, yx, yy, and zz components of permittivity or permeability.
+_TensorComponents = Tuple[
+    jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray
+]
 
 
 @dataclasses.dataclass
@@ -156,22 +162,19 @@ def eigensolve_isotropic_media(
         The `LayerSolveResult`.
     """
     if permittivity.shape[-2:] == (1, 1):
-        return eigensolve_uniform_isotropic_media(
-            wavelength=wavelength,
-            in_plane_wavevector=in_plane_wavevector,
-            primitive_lattice_vectors=primitive_lattice_vectors,
-            permittivity=permittivity,
-            expansion=expansion,
-        )
+        _eigensolve_fn = _eigensolve_uniform_isotropic_media
     else:
-        return eigensolve_patterned_isotropic_media(
-            wavelength=wavelength,
-            in_plane_wavevector=in_plane_wavevector,
-            primitive_lattice_vectors=primitive_lattice_vectors,
-            permittivity=permittivity,
-            expansion=expansion,
-            formulation=formulation,
+        _eigensolve_fn = functools.partial(
+            _eigensolve_patterned_isotropic_media, formulation=formulation
         )
+
+    return _eigensolve_fn(
+        wavelength=wavelength,
+        in_plane_wavevector=in_plane_wavevector,
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        permittivity=permittivity,
+        expansion=expansion,
+    )
 
 
 def eigensolve_anisotropic_media(
@@ -277,48 +280,40 @@ def eigensolve_general_anisotropic_media(
         The `LayerSolveResult`.
     """
     if permittivity_xx.shape[-2:] == (1, 1):
-        return eigensolve_uniform_general_anisotropic_media(
-            wavelength=wavelength,
-            in_plane_wavevector=in_plane_wavevector,
-            primitive_lattice_vectors=primitive_lattice_vectors,
-            permittivity_xx=permittivity_xx,
-            permittivity_xy=permittivity_xy,
-            permittivity_yx=permittivity_yx,
-            permittivity_yy=permittivity_yy,
-            permittivity_zz=permittivity_zz,
-            permeability_xx=permeability_xx,
-            permeability_xy=permeability_xy,
-            permeability_yx=permeability_yx,
-            permeability_yy=permeability_yy,
-            permeability_zz=permeability_zz,
-            expansion=expansion,
-        )
+        _eigensolve_fn = _eigensolve_uniform_general_anisotropic_media
     else:
-        return eigensolve_patterned_general_anisotropic_media(
-            wavelength=wavelength,
-            in_plane_wavevector=in_plane_wavevector,
-            primitive_lattice_vectors=primitive_lattice_vectors,
-            permittivity_xx=permittivity_xx,
-            permittivity_xy=permittivity_xy,
-            permittivity_yx=permittivity_yx,
-            permittivity_yy=permittivity_yy,
-            permittivity_zz=permittivity_zz,
-            permeability_xx=permeability_xx,
-            permeability_xy=permeability_xy,
-            permeability_yx=permeability_yx,
-            permeability_yy=permeability_yy,
-            permeability_zz=permeability_zz,
-            expansion=expansion,
-            formulation=formulation,
+        _eigensolve_fn = functools.partial(
+            _eigensolve_patterned_general_anisotropic_media, formulation=formulation
         )
 
+    return _eigensolve_fn(
+        wavelength=wavelength,
+        in_plane_wavevector=in_plane_wavevector,
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        permittivities=(
+            permittivity_xx,
+            permittivity_xy,
+            permittivity_yx,
+            permittivity_yy,
+            permittivity_zz,
+        ),
+        permeabilities=(
+            permeability_xx,
+            permeability_xy,
+            permeability_yx,
+            permeability_yy,
+            permeability_zz,
+        ),
+        expansion=expansion,
+    )
+
 
 # -----------------------------------------------------------------------------
-# Patterned layer eigensolves.
+# Eigensolves for specific cases, e.g. uniform isotropic, anisotropic, etc.
 # -----------------------------------------------------------------------------
 
 
-def eigensolve_uniform_isotropic_media(
+def _eigensolve_uniform_isotropic_media(
     wavelength: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
@@ -328,7 +323,8 @@ def eigensolve_uniform_isotropic_media(
     r"""Returns the the results of a uniform isotropic layer eigensolve.
 
     The layer is uniform and isotropic, in the sense that the permittivity does not
-    vary spatially and has no orientation dependence.
+    vary spatially and has no orientation dependence. In this case, the eigenvalues
+    and eigenvectors can be calculated analytically.
 
     Args:
         wavelength: The free space wavelength of the excitation.
@@ -414,20 +410,76 @@ def eigensolve_uniform_isotropic_media(
     )
 
 
-def eigensolve_uniform_general_anisotropic_media(
+def _eigensolve_patterned_isotropic_media(
     wavelength: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
-    permittivity_xx: jnp.ndarray,
-    permittivity_xy: jnp.ndarray,
-    permittivity_yx: jnp.ndarray,
-    permittivity_yy: jnp.ndarray,
-    permittivity_zz: jnp.ndarray,
-    permeability_xx: jnp.ndarray,
-    permeability_xy: jnp.ndarray,
-    permeability_yx: jnp.ndarray,
-    permeability_yy: jnp.ndarray,
-    permeability_zz: jnp.ndarray,
+    permittivity: jnp.ndarray,
+    expansion: basis.Expansion,
+    formulation: fmm.Formulation,
+) -> LayerSolveResult:
+    r"""Returns the results of a patterned isotropic layer eigensolve.
+
+    The layer is patterned and isotropic, in the sense that the permittivity varies
+    spatially and has no orientation dependence.
+
+    Args:
+        wavelength: The free space wavelength of the excitation.
+        in_plane_wavevector: `(kx0, ky0)`.
+        primitive_lattice_vectors: The primitive vectors for the real-space lattice.
+        permittivity: The permittivity array.
+        expansion: The field expansion to be used.
+        formulation: Specifies the formulation to be used.
+
+    Returns:
+        The `LayerSolveResult`.
+    """
+    wavelength, in_plane_wavevector, permittivity = _validate_and_broadcast(
+        wavelength, in_plane_wavevector, permittivity
+    )
+    (
+        inverse_z_permittivity_matrix,
+        z_permittivity_matrix,
+        transverse_permittivity_matrix,
+    ) = fmm.fourier_matrices_patterned_isotropic_media(
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        permittivity=permittivity,
+        expansion=expansion,
+        formulation=formulation,
+    )
+
+    # Create permeability matrices for nonmagnetic materials.
+    ones = jnp.ones(z_permittivity_matrix.shape[:-1])
+    zeros = jnp.zeros_like(ones)
+    z_permeability_matrix = utils.diag(ones)
+    inverse_z_permeability_matrix = utils.diag(ones)
+    transverse_permeability_matrix = jnp.block(
+        [
+            [utils.diag(ones), utils.diag(zeros)],
+            [utils.diag(zeros), utils.diag(ones)],
+        ]
+    )
+
+    return _numerical_eigensolve(
+        wavelength=wavelength,
+        in_plane_wavevector=in_plane_wavevector,
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        z_permittivity_matrix=z_permittivity_matrix,
+        inverse_z_permittivity_matrix=inverse_z_permittivity_matrix,
+        transverse_permittivity_matrix=transverse_permittivity_matrix,
+        z_permeability_matrix=z_permeability_matrix,
+        inverse_z_permeability_matrix=inverse_z_permeability_matrix,
+        transverse_permeability_matrix=transverse_permeability_matrix,
+        expansion=expansion,
+    )
+
+
+def _eigensolve_uniform_general_anisotropic_media(
+    wavelength: jnp.ndarray,
+    in_plane_wavevector: jnp.ndarray,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    permittivities: _TensorComponents,
+    permeabilities: _TensorComponents,
     expansion: basis.Expansion,
 ) -> LayerSolveResult:
     """Returns the results of a uniform anisotropic layer eigensolve.
@@ -439,26 +491,20 @@ def eigensolve_uniform_general_anisotropic_media(
         wavelength: The free space wavelength of the excitation.
         in_plane_wavevector: `(kx0, ky0)`.
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
-        permittivity_xx: The xx-component of the permittivity tensor, with
-            shape `(..., nx, ny)`.
-        permittivity_xy: The xy-component of the permittivity tensor.
-        permittivity_yx: The yx-component of the permittivity tensor.
-        permittivity_yy: The yy-component of the permittivity tensor.
-        permittivity_zz: The zz-component of the permittivity tensor.
-        permeability_xx: The xx-component of the permeability tensor.
-        permeability_xy: The xy-component of the permeability tensor.
-        permeability_yx: The yx-component of the permeability tensor.
-        permeability_yy: The yy-component of the permeability tensor.
-        permittivity_zz: The zz-component of the permeability tensor.
+        permittivities: The elements of the permittivity tensor: `(eps_xx, eps_xy,
+            eps_yx, eps_yy, eps_zz)`, each having shape `(..., nx, ny)`.
+        permeabilities: The elements of the permeability tensor: `(mu_xx, mu_xy,
+            mu_yx, mu_yy, mu_zz)`, each having shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
 
     Returns:
         The `LayerSolveResult`.
     """
-    if permittivity_xx.shape[-2:] != (1, 1):
+    if not all([p.shape[-2:] == (1, 1) for p in permittivities + permeabilities]):
         raise ValueError(
-            f"Trailing axes of `permittivity_xx` must have shape (1, 1) but got a shape "
-            f"of {permittivity_xx.shape}."
+            f"Trailing axes of arrays in `permittivities` and `permeabilities` must have shape "
+            f"(1, 1) but got a shapes {[p.shape for p in permittivities]} and "
+            f"{[p.shape for p in permeabilities]}."
         )
     (
         wavelength,
@@ -476,16 +522,8 @@ def eigensolve_uniform_general_anisotropic_media(
     ) = _validate_and_broadcast(
         wavelength,
         in_plane_wavevector,
-        permittivity_xx,
-        permittivity_xy,
-        permittivity_yx,
-        permittivity_yy,
-        permittivity_zz,
-        permeability_xx,
-        permeability_xy,
-        permeability_yx,
-        permeability_yy,
-        permeability_zz,
+        *permittivities,
+        *permeabilities,
     )
 
     batch_shape = jnp.broadcast_shapes(
@@ -521,7 +559,7 @@ def eigensolve_uniform_general_anisotropic_media(
         ]
     )
 
-    return _eigensolve_patterned_media(
+    return _numerical_eigensolve(
         wavelength=wavelength,
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
@@ -535,89 +573,12 @@ def eigensolve_uniform_general_anisotropic_media(
     )
 
 
-# -----------------------------------------------------------------------------
-# Patterned layer eigensolves.
-# -----------------------------------------------------------------------------
-
-
-def eigensolve_patterned_isotropic_media(
+def _eigensolve_patterned_general_anisotropic_media(
     wavelength: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
-    permittivity: jnp.ndarray,
-    expansion: basis.Expansion,
-    formulation: fmm.Formulation,
-) -> LayerSolveResult:
-    r"""Returns the results of a patterned isotropic layer eigensolve.
-
-    The layer is patterned and isotropic, in the sense that the permittivity varies
-    spatially and has no orientation dependence.
-
-    Args:
-        wavelength: The free space wavelength of the excitation.
-        in_plane_wavevector: `(kx0, ky0)`.
-        primitive_lattice_vectors: The primitive vectors for the real-space lattice.
-        permittivity: The permittivity array.
-        expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used.
-
-    Returns:
-        The `LayerSolveResult`.
-    """
-    wavelength, in_plane_wavevector, permittivity = _validate_and_broadcast(
-        wavelength, in_plane_wavevector, permittivity
-    )
-    (
-        inverse_z_permittivity_matrix,
-        z_permittivity_matrix,
-        transverse_permittivity_matrix,
-    ) = fmm.fourier_matrices_patterned_isotropic_media(
-        primitive_lattice_vectors=primitive_lattice_vectors,
-        arr=permittivity,
-        expansion=expansion,
-        formulation=formulation,
-    )
-
-    # Create permeability matrices for nonmagnetic materials.
-    ones = jnp.ones(z_permittivity_matrix.shape[:-1])
-    zeros = jnp.zeros_like(ones)
-    z_permeability_matrix = utils.diag(ones)
-    inverse_z_permeability_matrix = utils.diag(ones)
-    transverse_permeability_matrix = jnp.block(
-        [
-            [utils.diag(ones), utils.diag(zeros)],
-            [utils.diag(zeros), utils.diag(ones)],
-        ]
-    )
-
-    return _eigensolve_patterned_media(
-        wavelength=wavelength,
-        in_plane_wavevector=in_plane_wavevector,
-        primitive_lattice_vectors=primitive_lattice_vectors,
-        z_permittivity_matrix=z_permittivity_matrix,
-        inverse_z_permittivity_matrix=inverse_z_permittivity_matrix,
-        transverse_permittivity_matrix=transverse_permittivity_matrix,
-        z_permeability_matrix=z_permeability_matrix,
-        inverse_z_permeability_matrix=inverse_z_permeability_matrix,
-        transverse_permeability_matrix=transverse_permeability_matrix,
-        expansion=expansion,
-    )
-
-
-def eigensolve_patterned_general_anisotropic_media(
-    wavelength: jnp.ndarray,
-    in_plane_wavevector: jnp.ndarray,
-    primitive_lattice_vectors: basis.LatticeVectors,
-    permittivity_xx: jnp.ndarray,
-    permittivity_xy: jnp.ndarray,
-    permittivity_yx: jnp.ndarray,
-    permittivity_yy: jnp.ndarray,
-    permittivity_zz: jnp.ndarray,
-    permeability_xx: jnp.ndarray,
-    permeability_xy: jnp.ndarray,
-    permeability_yx: jnp.ndarray,
-    permeability_yy: jnp.ndarray,
-    permeability_zz: jnp.ndarray,
+    permittivities: _TensorComponents,
+    permeabilities: _TensorComponents,
     expansion: basis.Expansion,
     formulation: fmm.Formulation,
 ) -> LayerSolveResult:
@@ -630,17 +591,10 @@ def eigensolve_patterned_general_anisotropic_media(
         wavelength: The free space wavelength of the excitation.
         in_plane_wavevector: `(kx0, ky0)`.
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
-        permittivity_xx: The xx-component of the permittivity tensor, with
-            shape `(..., nx, ny)`.
-        permittivity_xy: The xy-component of the permittivity tensor.
-        permittivity_yx: The yx-component of the permittivity tensor.
-        permittivity_yy: The yy-component of the permittivity tensor.
-        permittivity_zz: The zz-component of the permittivity tensor.
-        permeability_xx: The xx-component of the permeability tensor.
-        permeability_xy: The xy-component of the permeability tensor.
-        permeability_yx: The yx-component of the permeability tensor.
-        permeability_yy: The yy-component of the permeability tensor.
-        permittivity_zz: The zz-component of the permeability tensor.
+        permittivities: The elements of the permittivity tensor: `(eps_xx, eps_xy,
+            eps_yx, eps_yy, eps_zz)`, each having shape `(..., nx, ny)`.
+        permeabilities: The elements of the permeability tensor: `(mu_xx, mu_xy,
+            mu_yx, mu_yy, mu_zz)`, each having shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
         formulation: Specifies the formulation to be used.
 
@@ -663,46 +617,37 @@ def eigensolve_patterned_general_anisotropic_media(
     ) = _validate_and_broadcast(
         wavelength,
         in_plane_wavevector,
-        permittivity_xx,
-        permittivity_xy,
-        permittivity_yx,
-        permittivity_yy,
-        permittivity_zz,
-        permeability_xx,
-        permeability_xy,
-        permeability_yx,
-        permeability_yy,
-        permeability_zz,
+        *permittivities,
+        *permeabilities,
     )
     (
         inverse_z_permittivity_matrix,
         z_permittivity_matrix,
         transverse_permittivity_matrix,
-    ) = fmm.fourier_matrices_patterned_anisotropic_media(
-        primitive_lattice_vectors=primitive_lattice_vectors,
-        arr_xx=permittivity_xx,
-        arr_xy=permittivity_xy,
-        arr_yx=permittivity_yx,
-        arr_yy=permittivity_yy,
-        arr_zz=permittivity_zz,
-        expansion=expansion,
-        formulation=formulation,
-    )
-    (
         inverse_z_permeability_matrix,
         z_permeability_matrix,
         transverse_permeability_matrix,
     ) = fmm.fourier_matrices_patterned_anisotropic_media(
         primitive_lattice_vectors=primitive_lattice_vectors,
-        arr_xx=permeability_xx,
-        arr_xy=permeability_xy,
-        arr_yx=permeability_yx,
-        arr_yy=permeability_yy,
-        arr_zz=permeability_zz,
+        permittivities=(
+            permittivity_xx,
+            permittivity_xy,
+            permittivity_yx,
+            permittivity_yy,
+            permittivity_zz,
+        ),
+        permeabilities=(
+            permeability_xx,
+            permeability_xy,
+            permeability_yx,
+            permeability_yy,
+            permeability_zz,
+        ),
         expansion=expansion,
         formulation=formulation,
+        vector_field_source=permittivity_xx,
     )
-    return _eigensolve_patterned_media(
+    return _numerical_eigensolve(
         wavelength=wavelength,
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
@@ -717,11 +662,11 @@ def eigensolve_patterned_general_anisotropic_media(
 
 
 # -----------------------------------------------------------------------------
-# Helper function for patterned layer eigensolve.
+# Helper function used by all eigensolves done numerically.
 # -----------------------------------------------------------------------------
 
 
-def _eigensolve_patterned_media(
+def _numerical_eigensolve(
     wavelength: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
@@ -733,21 +678,25 @@ def _eigensolve_patterned_media(
     transverse_permeability_matrix: jnp.ndarray,
     expansion: basis.Expansion,
 ) -> LayerSolveResult:
-    r"""Returns the results of a patterned isotropic layer eigensolve.
+    r"""Returns the results of a patterned layer eigensolve.
 
-    The layer is patterned and isotropic, in the sense that the permittivity varies
-    spatially and has no orientation dependence.
+    The layer may be anisotropic and magnetic, as determined by the provided transverse
+    permittivity and permeability matrices.
 
     Args:
         wavelength: The free space wavelength of the excitation.
         in_plane_wavevector: `(kx0, ky0)`.
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
-        eta_matrix: The fourier-transformed inverse of zz-component of permittivity.
+        inverse_z_permittivity_matrix: The fourier-transformed inverse of zz-component
+            of permittivity.
         z_permittivity_matrix: The fourier-transformed zz-component of permittivity.
         transverse_permittivity_matrix: The fourier-transformed transverse permittivity
             matrix from equation 15 of [2012 Liu].
-        z_permeability_matrix:
-        transverse_permeability_matrix:
+        inverse_z_permeability_matrix: The fourier-transformed inverse of zz-component
+            of permeability.
+        z_permeability_matrix: The fourier-transformed zz-component of permeability.
+        transverse_permeability_matrix: The fourier-transformed transverse permeability
+            matrix.
         expansion: The field expansion to be used.
 
     Returns:
@@ -760,21 +709,23 @@ def _eigensolve_patterned_media(
         expansion=expansion,
     )
 
-    # The matrix from equation 11 of [2012 Liu].
     angular_frequency = utils.angular_frequency_for_wavelength(wavelength)
 
-    # The k-matrix from equation 23 of [2012 Liu].
+    # The k matrix from equation 23 of [2012 Liu], modified for magnetic materials.
     k_matrix = _k_matrix_patterned(z_permeability_matrix, transverse_wavevectors)
+
+    # The script-k matrix from equation 19 of [2012 Liu].
     script_k_matrix = _script_k_matrix_patterned(
         z_permittivity_matrix, transverse_wavevectors
     )
 
-    # The matrix from equation 26 of [2012 Liu].
+    # The matrix from equation 26 of [2012 Liu], modified for magnetic materials.
     angular_frequency_squared = angular_frequency[..., jnp.newaxis, jnp.newaxis] ** 2
     omega_script_k_matrix = (
         angular_frequency_squared * transverse_permeability_matrix - script_k_matrix
     )
 
+    # The matrix from equation 28 of [2012 Liu], modified for magnetic materials.
     matrix = (
         transverse_permittivity_matrix @ omega_script_k_matrix
         - k_matrix @ transverse_permeability_matrix
@@ -857,23 +808,6 @@ def _select_eigenvalues_sign(eigenvalues: jnp.ndarray) -> jnp.ndarray:
     return jnp.where(jnp.imag(eigenvalues) < 0, -eigenvalues, eigenvalues)
 
 
-def _script_k_matrix_patterned(
-    z_permittivity_matrix: jnp.ndarray,
-    transverse_wavevectors: jnp.ndarray,
-) -> jnp.ndarray:
-    """Returns the patterned-layer script-k matrix from eq. 19 of [2012 Liu]."""
-    kx = transverse_wavevectors[..., 0]
-    ky = transverse_wavevectors[..., 1]
-    z_inv_kx = jnp.linalg.solve(z_permittivity_matrix, utils.diag(kx))
-    z_inv_ky = jnp.linalg.solve(z_permittivity_matrix, utils.diag(ky))
-    return jnp.block(
-        [
-            [ky[..., :, jnp.newaxis] * z_inv_ky, -ky[..., :, jnp.newaxis] * z_inv_kx],
-            [-kx[..., :, jnp.newaxis] * z_inv_ky, kx[..., :, jnp.newaxis] * z_inv_kx],
-        ]
-    )
-
-
 def _script_k_matrix_uniform(
     permittivity: jnp.ndarray,
     transverse_wavevectors: jnp.ndarray,
@@ -895,6 +829,23 @@ def _script_k_matrix_uniform(
     )
 
 
+def _script_k_matrix_patterned(
+    z_permittivity_matrix: jnp.ndarray,
+    transverse_wavevectors: jnp.ndarray,
+) -> jnp.ndarray:
+    """Returns the patterned-layer script-k matrix from eq. 19 of [2012 Liu]."""
+    kx = transverse_wavevectors[..., 0]
+    ky = transverse_wavevectors[..., 1]
+    z_inv_kx = jnp.linalg.solve(z_permittivity_matrix, utils.diag(kx))
+    z_inv_ky = jnp.linalg.solve(z_permittivity_matrix, utils.diag(ky))
+    return jnp.block(
+        [
+            [ky[..., :, jnp.newaxis] * z_inv_ky, -ky[..., :, jnp.newaxis] * z_inv_kx],
+            [-kx[..., :, jnp.newaxis] * z_inv_ky, kx[..., :, jnp.newaxis] * z_inv_kx],
+        ]
+    )
+
+
 def _k_matrix_patterned(
     z_permeability_matrix: jnp.ndarray,
     transverse_wavevectors: jnp.ndarray,
@@ -908,27 +859,6 @@ def _k_matrix_patterned(
         [
             [kx[..., :, jnp.newaxis] * z_inv_kx, kx[..., :, jnp.newaxis] * z_inv_ky],
             [ky[..., :, jnp.newaxis] * z_inv_kx, ky[..., :, jnp.newaxis] * z_inv_ky],
-        ]
-    )
-
-
-def _k_matrix_uniform(
-    permeability: jnp.ndarray,
-    transverse_wavevectors: jnp.ndarray,
-) -> jnp.ndarray:
-    """Returns the k matrix for magnetic materials.."""
-    kx = transverse_wavevectors[..., 0]
-    ky = transverse_wavevectors[..., 1]
-    return jnp.block(
-        [
-            [
-                utils.diag(kx / permeability[..., jnp.newaxis] * kx),
-                utils.diag(kx / permeability[..., jnp.newaxis] * ky),
-            ],
-            [
-                utils.diag(ky / permeability[..., jnp.newaxis] * kx),
-                utils.diag(ky / permeability[..., jnp.newaxis] * ky),
-            ],
         ]
     )
 

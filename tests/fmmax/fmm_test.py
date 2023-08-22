@@ -161,29 +161,48 @@ class AnistropicLayerTest(unittest.TestCase):
     def test_compare_when_layer_is_isotropic(self):
         permittivity = 1 + jax.random.uniform(jax.random.PRNGKey(0), (50, 50))
         (
-            eta_expected,
-            z_expected,
-            transverse_expected,
+            inverse_z_permittivity_matrix_expected,
+            z_permittivity_matrix_expected,
+            transverse_permittivity_matrix_expected,
         ) = fmm.fourier_matrices_patterned_isotropic_media(
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
-            arr=permittivity,
+            permittivity=permittivity,
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
         )
         (
-            eta_result,
-            z_result,
-            transverse_result,
+            inverse_z_permittivity_matrix,
+            z_permittivity_matrix,
+            transverse_permittivity_matrix,
+            _,
+            _,
+            _,
         ) = fmm.fourier_matrices_patterned_anisotropic_media(
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
-            arr_xx=permittivity,
-            arr_xy=jnp.zeros_like(permittivity),
-            arr_yx=jnp.zeros_like(permittivity),
-            arr_yy=permittivity,
-            arr_zz=permittivity,
+            permittivities=(
+                permittivity,
+                jnp.zeros_like(permittivity),
+                jnp.zeros_like(permittivity),
+                permittivity,
+                permittivity,
+            ),
+            permeabilities=(
+                jnp.ones_like(permittivity),
+                jnp.zeros_like(permittivity),
+                jnp.zeros_like(permittivity),
+                jnp.ones_like(permittivity),
+                jnp.ones_like(permittivity),
+            ),
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
+            vector_field_source=permittivity,
         )
-        onp.testing.assert_array_equal(eta_result, eta_expected)
-        onp.testing.assert_array_equal(z_result, z_expected)
-        onp.testing.assert_array_equal(transverse_result, transverse_expected)
+        onp.testing.assert_array_equal(
+            inverse_z_permittivity_matrix, inverse_z_permittivity_matrix_expected
+        )
+        onp.testing.assert_array_equal(
+            z_permittivity_matrix, z_permittivity_matrix_expected
+        )
+        onp.testing.assert_array_equal(
+            transverse_permittivity_matrix, transverse_permittivity_matrix_expected
+        )

@@ -59,7 +59,7 @@ class GrcwaComparisonTest(unittest.TestCase):
         # Compares the eigenvalues and eigenvectors for a uniform layer to those
         # obtained by grcwa.
         permittivity = jnp.asarray([[3.14]])
-        solve_result = layer.eigensolve_uniform_isotropic_media(
+        solve_result = layer._eigensolve_uniform_isotropic_media(
             wavelength=WAVELENGTH,
             in_plane_wavevector=IN_PLANE_WAVEVECTOR,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -96,7 +96,7 @@ class GrcwaComparisonTest(unittest.TestCase):
         # Compares the eigenvalues and eigenvectors for a patterned layer to those
         # obtained by grcwa.
         permittivity = 1.0 + jax.random.uniform(jax.random.PRNGKey(0), shape=(64, 64))
-        solve_result = layer.eigensolve_patterned_isotropic_media(
+        solve_result = layer._eigensolve_patterned_isotropic_media(
             wavelength=WAVELENGTH,
             in_plane_wavevector=IN_PLANE_WAVEVECTOR,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -155,7 +155,7 @@ class LayerTest(unittest.TestCase):
     )
     def test_uniform_matches_patterned(self, formulation):
         permittivity = jnp.asarray([[3.14]])
-        uniform_result = layer.eigensolve_uniform_isotropic_media(
+        uniform_result = layer._eigensolve_uniform_isotropic_media(
             wavelength=WAVELENGTH,
             in_plane_wavevector=IN_PLANE_WAVEVECTOR,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -165,7 +165,7 @@ class LayerTest(unittest.TestCase):
         uniform_eigenvalues, uniform_eigenvectors = _sort_eigs(
             uniform_result.eigenvalues, uniform_result.eigenvectors
         )
-        patterned_result = layer.eigensolve_patterned_isotropic_media(
+        patterned_result = layer._eigensolve_patterned_isotropic_media(
             wavelength=WAVELENGTH,
             in_plane_wavevector=IN_PLANE_WAVEVECTOR,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -195,7 +195,7 @@ class LayerTest(unittest.TestCase):
         wavelength = jnp.asarray([[[0.2]], [[0.3]], [[0.4]]])
         in_plane_wavevector = jnp.asarray([[[0.0, 0.0]], [[0.05, 0.08]]])
         permittivity = jnp.asarray([[[3.14]], [[6.28]]])
-        result = layer.eigensolve_uniform_isotropic_media(
+        result = layer._eigensolve_uniform_isotropic_media(
             wavelength=wavelength,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -205,7 +205,7 @@ class LayerTest(unittest.TestCase):
         for i, w in enumerate(wavelength[:, 0, 0]):
             for j, ipwv in enumerate(in_plane_wavevector[:, 0, :]):
                 for k, p in enumerate(permittivity[:, :, :]):
-                    single_result = layer.eigensolve_uniform_isotropic_media(
+                    single_result = layer._eigensolve_uniform_isotropic_media(
                         wavelength=w,
                         in_plane_wavevector=ipwv,
                         primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -247,7 +247,7 @@ class LayerTest(unittest.TestCase):
                 1.0 + jax.random.uniform(jax.random.PRNGKey(1), shape=(64, 60)),
             ]
         )
-        result = layer.eigensolve_patterned_isotropic_media(
+        result = layer._eigensolve_patterned_isotropic_media(
             wavelength=wavelength,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -258,7 +258,7 @@ class LayerTest(unittest.TestCase):
         for i, w in enumerate(wavelength[:, 0, 0]):
             for j, ipwv in enumerate(in_plane_wavevector[:, 0, :]):
                 for k, p in enumerate(permittivity[:, :, :]):
-                    single_result = layer.eigensolve_patterned_isotropic_media(
+                    single_result = layer._eigensolve_patterned_isotropic_media(
                         wavelength=w,
                         in_plane_wavevector=ipwv,
                         primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -289,7 +289,7 @@ class LayerTest(unittest.TestCase):
         min_shape = fmm._min_array_shape_for_expansion(EXPANSION)
         permittivity = jnp.ones(tuple([d - 1 for d in min_shape]))
         with self.assertRaisesRegex(ValueError, "`shape` is insufficient for"):
-            layer.eigensolve_patterned_isotropic_media(
+            layer._eigensolve_patterned_isotropic_media(
                 wavelength=WAVELENGTH,
                 in_plane_wavevector=IN_PLANE_WAVEVECTOR,
                 primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -315,7 +315,7 @@ class JitTest(unittest.TestCase):
                 1.0 + jax.random.uniform(jax.random.PRNGKey(1), shape=(64, 60)),
             ]
         )
-        result = layer.eigensolve_patterned_isotropic_media(
+        result = layer._eigensolve_patterned_isotropic_media(
             wavelength=wavelength,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -325,7 +325,7 @@ class JitTest(unittest.TestCase):
         )
         jit_fn = jax.jit(
             functools.partial(
-                layer.eigensolve_patterned_isotropic_media,
+                layer._eigensolve_patterned_isotropic_media,
                 expansion=EXPANSION,
             )
         )
@@ -351,7 +351,7 @@ class AnistropicLayerTest(unittest.TestCase):
                 1.0 + jax.random.uniform(jax.random.PRNGKey(1), shape=(64, 60)),
             ]
         )
-        expected = layer.eigensolve_patterned_isotropic_media(
+        expected = layer._eigensolve_patterned_isotropic_media(
             wavelength=wavelength,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
@@ -359,20 +359,24 @@ class AnistropicLayerTest(unittest.TestCase):
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
         )
-        result = layer.eigensolve_patterned_general_anisotropic_media(
+        result = layer._eigensolve_patterned_general_anisotropic_media(
             wavelength=wavelength,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
-            permittivity_xx=permittivity,
-            permittivity_xy=jnp.zeros_like(permittivity),
-            permittivity_yx=jnp.zeros_like(permittivity),
-            permittivity_yy=permittivity,
-            permittivity_zz=permittivity,
-            permeability_xx=jnp.ones_like(permittivity),
-            permeability_xy=jnp.zeros_like(permittivity),
-            permeability_yx=jnp.zeros_like(permittivity),
-            permeability_yy=jnp.ones_like(permittivity),
-            permeability_zz=jnp.ones_like(permittivity),
+            permittivities=(
+                permittivity,
+                jnp.zeros_like(permittivity),
+                jnp.zeros_like(permittivity),
+                permittivity,
+                permittivity,
+            ),
+            permeabilities=(
+                jnp.ones_like(permittivity),
+                jnp.zeros_like(permittivity),
+                jnp.zeros_like(permittivity),
+                jnp.ones_like(permittivity),
+                jnp.ones_like(permittivity),
+            ),
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
         )
@@ -389,39 +393,47 @@ class AnistropicLayerTest(unittest.TestCase):
         permeability_yx = jnp.asarray([[0.4]])
         permeability_yy = jnp.asarray([[1.5]])
         permeability_zz = jnp.asarray([[1.3]])
-        uniform_result = layer.eigensolve_uniform_general_anisotropic_media(
+        uniform_result = layer._eigensolve_uniform_general_anisotropic_media(
             wavelength=WAVELENGTH,
             in_plane_wavevector=IN_PLANE_WAVEVECTOR,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
-            permittivity_xx=permittivity_xx,
-            permittivity_xy=permittivity_xy,
-            permittivity_yx=permittivity_yx,
-            permittivity_yy=permittivity_yy,
-            permittivity_zz=permittivity_zz,
-            permeability_xx=permeability_xx,
-            permeability_xy=permeability_xy,
-            permeability_yx=permeability_yx,
-            permeability_yy=permeability_yy,
-            permeability_zz=permeability_zz,
+            permittivities=(
+                permittivity_xx,
+                permittivity_xy,
+                permittivity_yx,
+                permittivity_yy,
+                permittivity_zz,
+            ),
+            permeabilities=(
+                permeability_xx,
+                permeability_xy,
+                permeability_yx,
+                permeability_yy,
+                permeability_zz,
+            ),
             expansion=EXPANSION,
         )
         uniform_eigenvalues, uniform_eigenvectors = _sort_eigs(
             uniform_result.eigenvalues, uniform_result.eigenvectors
         )
-        patterned_result = layer.eigensolve_patterned_general_anisotropic_media(
+        patterned_result = layer._eigensolve_patterned_general_anisotropic_media(
             wavelength=WAVELENGTH,
             in_plane_wavevector=IN_PLANE_WAVEVECTOR,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
-            permittivity_xx=jnp.broadcast_to(permittivity_xx, (64, 64)),
-            permittivity_xy=jnp.broadcast_to(permittivity_xy, (64, 64)),
-            permittivity_yx=jnp.broadcast_to(permittivity_yx, (64, 64)),
-            permittivity_yy=jnp.broadcast_to(permittivity_yy, (64, 64)),
-            permittivity_zz=jnp.broadcast_to(permittivity_zz, (64, 64)),
-            permeability_xx=jnp.broadcast_to(permeability_xx, (64, 64)),
-            permeability_xy=jnp.broadcast_to(permeability_xy, (64, 64)),
-            permeability_yx=jnp.broadcast_to(permeability_yx, (64, 64)),
-            permeability_yy=jnp.broadcast_to(permeability_yy, (64, 64)),
-            permeability_zz=jnp.broadcast_to(permeability_zz, (64, 64)),
+            permittivities=(
+                jnp.broadcast_to(permittivity_xx, (64, 64)),
+                jnp.broadcast_to(permittivity_xy, (64, 64)),
+                jnp.broadcast_to(permittivity_yx, (64, 64)),
+                jnp.broadcast_to(permittivity_yy, (64, 64)),
+                jnp.broadcast_to(permittivity_zz, (64, 64)),
+            ),
+            permeabilities=(
+                jnp.broadcast_to(permeability_xx, (64, 64)),
+                jnp.broadcast_to(permeability_xy, (64, 64)),
+                jnp.broadcast_to(permeability_yx, (64, 64)),
+                jnp.broadcast_to(permeability_yy, (64, 64)),
+                jnp.broadcast_to(permeability_zz, (64, 64)),
+            ),
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
         )
