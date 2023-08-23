@@ -279,7 +279,6 @@ def fourier_matrices_patterned_anisotropic_media(
         permeability_yy=permeability_yy,
         expansion=expansion,
     )
-
     return (
         inverse_z_permittivity_matrix,
         z_permittivity_matrix,
@@ -301,8 +300,8 @@ def _transverse_permittivity_fft_anisotropic(
     _transform = functools.partial(fourier_convolution_matrix, expansion=expansion)
     return jnp.block(
         [
-            [_transform(permittivity_yy), _transform(permittivity_yx)],
-            [_transform(permittivity_xy), _transform(permittivity_xx)],
+            [_transform(permittivity_yy), _transform(-permittivity_yx)],
+            [_transform(-permittivity_xy), _transform(permittivity_xx)],
         ]
     )
 
@@ -376,10 +375,10 @@ def _transverse_permittivity_vector_anisotropic(
         [
             [
                 permittivity_yy[..., jnp.newaxis, jnp.newaxis],
-                permittivity_yx[..., jnp.newaxis, jnp.newaxis],
+                -permittivity_yx[..., jnp.newaxis, jnp.newaxis],
             ],
             [
-                permittivity_xy[..., jnp.newaxis, jnp.newaxis],
+                -permittivity_xy[..., jnp.newaxis, jnp.newaxis],
                 permittivity_xx[..., jnp.newaxis, jnp.newaxis],
             ],
         ]
@@ -540,7 +539,7 @@ def _rotation_matrices(
     )
 
     # Blockwise Fourier transform of the inverse rotation matrix.
-    denom = t00 * t11 - t10 * t01
+    denom = jnp.abs(t00 * t11 - t10 * t01)
     denom_safe = jnp.where(jnp.isclose(denom, 0), 1.0, denom)
     fourier_inverse_rotation_matrix = jnp.block(
         [
@@ -548,7 +547,6 @@ def _rotation_matrices(
             [_transform(-t10 / denom_safe), _transform(t00 / denom_safe)],
         ]
     )
-
     return rotation_matrix, fourier_rotation_matrix, fourier_inverse_rotation_matrix
 
 

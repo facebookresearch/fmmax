@@ -538,13 +538,12 @@ def _eigensolve_uniform_general_anisotropic_media(
     permittivity_zz = jnp.broadcast_to(jnp.squeeze(permittivity_zz, axis=-1), shape)
     z_permittivity_matrix = utils.diag(permittivity_zz)
     inverse_z_permittivity_matrix = utils.diag(1 / permittivity_zz)
-    # Note that the matrix element ordering differs from [2012 Liu] equation 37, but
-    # is consistent with the definition in equation 15. We believe equation 37 to be
-    # in error.
+    # Note that the matrix element ordering and signs differ from [2012 Liu] equation 37,
+    # but are consistent with the definition in equation 15. Equation 37 is likely in error.
     transverse_permittivity_matrix = jnp.block(
         [
-            [utils.diag(permittivity_yy), utils.diag(permittivity_yx)],
-            [utils.diag(permittivity_xy), utils.diag(permittivity_xx)],
+            [utils.diag(permittivity_yy), utils.diag(-permittivity_yx)],
+            [utils.diag(-permittivity_xy), utils.diag(permittivity_xx)],
         ]
     )
 
