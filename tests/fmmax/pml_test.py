@@ -6,6 +6,7 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 import unittest
 
 import jax.numpy as jnp
+import numpy as onp
 from jax import tree_util
 
 from fmmax import basis, fields, fmm, layer, pml, scattering, sources
@@ -144,3 +145,70 @@ class PMLParamsTest(unittest.TestCase):
         leaves, treedef = tree_util.tree_flatten(params)
         restored_params = tree_util.tree_unflatten(treedef, leaves)
         self.assertEqual(params, restored_params)
+
+
+class CropAndPadTest(unittest.TestCase):
+    def test_crop_and_pad_matches_expected(self):
+        arr = jnp.asarray(
+            [
+                [0, 1, 2, 3, 4, 5],
+                [6, 7, 8, 9, 10, 11],
+                [12, 13, 14, 15, 16, 16],
+                [17, 18, 19, 20, 21, 22],
+                [23, 24, 25, 26, 27, 28],
+                [29, 30, 31, 32, 33, 34],
+            ]
+        )
+        expected = jnp.asarray(
+            [
+                [8, 8, 8, 9, 9, 9],
+                [8, 8, 8, 9, 9, 9],
+                [14, 14, 14, 15, 15, 15],
+                [19, 19, 19, 20, 20, 20],
+                [25, 25, 25, 26, 26, 26],
+                [25, 25, 25, 26, 26, 26],
+            ]
+        )
+        onp.testing.assert_array_equal(
+            pml._crop_and_edge_pad_pml_region(
+                permittivity=arr,
+                widths=(1, 2),
+            ),
+            expected,
+        )
+
+
+class DistanceTest(unittest.TestCase):
+    shape = (7, 8)
+    widths = (3, 2)
+    expected_dx = (
+        jnp.asarray(
+            [
+                [3, 3, 3, 3, 3, 3, 3, 3],
+                [2, 2, 2, 2, 2, 2, 2, 2],
+                [1, 1, 1, 1, 1, 1, 1, 1],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [1, 1, 1, 1, 1, 1, 1, 1],
+                [2, 2, 2, 2, 2, 2, 2, 2],
+                [3, 3, 3, 3, 3, 3, 3, 3],
+            ]
+        )
+        / 3
+    )
+    expected_dy = (
+        jnp.asarray(
+            [
+                [2, 1, 0, 0, 0, 0, 1, 2],
+                [2, 1, 0, 0, 0, 0, 1, 2],
+                [2, 1, 0, 0, 0, 0, 1, 2],
+                [2, 1, 0, 0, 0, 0, 1, 2],
+                [2, 1, 0, 0, 0, 0, 1, 2],
+                [2, 1, 0, 0, 0, 0, 1, 2],
+                [2, 1, 0, 0, 0, 0, 1, 2],
+            ]
+        )
+        / 2
+    )
+    dx, dy = pml._normalized_distance_into_pml(shape, widths)
+    onp.testing.assert_array_equal(dx, expected_dx)
+    onp.testing.assert_array_equal(dy, expected_dy)

@@ -46,16 +46,14 @@ def apply_uniaxial_pml(
 
     Args:
         permittivity: isotropic permittivity
-        pml_params: The parameters defining the perfectly matched layer dimensions and
-            absorption characteristics.
+        pml_params: The parameters defining the perfectly matched layer dimensions
+            and absorption characteristics.
 
     Returns:
         The permittivity and permeability tensor elements,
         `((permittivity_xx, permittivity_xy, permittivity_yx, permittivity_yy, permittivity_zz),
           (permeability_xx, permeability_xy, permeability_yx, permeability_yy, permeability_zz))`.
     """
-    # Remove the permittivity in regions within the PML, and replace these with whatever
-    # values exist just outside the border of the PML region.
     permittivity = _crop_and_edge_pad_pml_region(
         permittivity, widths=(pml_params.num_x, pml_params.num_y)
     )
