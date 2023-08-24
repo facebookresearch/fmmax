@@ -9,7 +9,7 @@ from typing import Sequence, Tuple
 
 import jax.numpy as jnp
 
-from fmmax import basis, fields, layer, scattering, sources
+from fmmax import basis, fields, fmm, scattering, sources
 
 
 def simulate_uled(
@@ -31,7 +31,7 @@ def simulate_uled(
     dipole_fwhm: float = 20.0,
     approximate_num_terms: int = 1200,
     truncation: basis.Truncation = basis.Truncation.CIRCULAR,
-    formulation: layer.Formulation = layer.Formulation.POL,
+    formulation: fmm.Formulation = fmm.Formulation.POL,
     brillouin_grid_shape: Tuple[int, int] = (1, 1),
 ) -> Tuple[
     jnp.ndarray,
@@ -142,7 +142,7 @@ def simulate_uled(
     assert in_plane_wavevector.ndim == 3
 
     eigensolve = functools.partial(
-        layer.eigensolve_isotropic_media,
+        fmm.eigensolve_isotropic_media,
         wavelength=jnp.asarray(wavelength),
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,

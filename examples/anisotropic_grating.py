@@ -7,7 +7,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from fmmax import basis, fields, layer, scattering, utils
+from fmmax import basis, fields, fmm, scattering, utils
 
 WAVELENGTH_NM: jnp.ndarray = jnp.array([450.0, 550.0, 620.0])
 POLAR_ANGLE: jnp.ndarray = jnp.array([0.0])
@@ -106,29 +106,29 @@ def simulate_grating(
     # ordering of tensor elements in the `permittivities_grating` and `permittivities_substrate`
     # must must match those in the arguments of `eigensolve_patterned_anisotropic_media`.
     layer_solve_results = [
-        layer.eigensolve_isotropic_media(
+        fmm.eigensolve_isotropic_media(
             wavelength=wavelength_nm,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity_ambient_,
             expansion=expansion,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         ),
-        layer.eigensolve_anisotropic_media(
+        fmm.eigensolve_anisotropic_media(
             wavelength_nm,
             in_plane_wavevector,
             primitive_lattice_vectors,
             *permittivities_grating,  # type: ignore[arg-type]
             expansion=expansion,  # type: ignore[misc]
-            formulation=layer.Formulation.FFT,  # type: ignore[misc]
+            formulation=fmm.Formulation.FFT,  # type: ignore[misc]
         ),
-        layer.eigensolve_anisotropic_media(
+        fmm.eigensolve_anisotropic_media(
             wavelength_nm,
             in_plane_wavevector,
             primitive_lattice_vectors,
             *permittivities_substrate,  # type: ignore[arg-type]
             expansion=expansion,  # type: ignore[misc]
-            formulation=layer.Formulation.FFT,  # type: ignore[misc]
+            formulation=fmm.Formulation.FFT,  # type: ignore[misc]
         ),
     ]
 

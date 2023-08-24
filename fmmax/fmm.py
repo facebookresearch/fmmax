@@ -1335,7 +1335,6 @@ def _rotation_matrices(
     return rotation_matrix, fourier_rotation_matrix, fourier_inverse_rotation_matrix
 
 
-
 # -----------------------------------------------------------------------------
 # Helper functions for validation and matrix assembly.
 # -----------------------------------------------------------------------------

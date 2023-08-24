@@ -11,7 +11,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, farfield, fields, layer, scattering, sources, utils
+from fmmax import basis, farfield, fields, fmm, scattering, sources, utils
 
 
 class FarfieldProfileTest(unittest.TestCase):
@@ -39,13 +39,13 @@ class FarfieldProfileTest(unittest.TestCase):
         jy = jnp.concatenate([zeros, dipole, zeros], axis=-1)
         jz = jnp.concatenate([zeros, zeros, dipole], axis=-1)
 
-        layer_solve_result = layer.eigensolve_isotropic_media(
+        layer_solve_result = fmm.eigensolve_isotropic_media(
             permittivity=jnp.asarray([[1.0]]),
             wavelength=jnp.asarray(wavelength),
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
         s_matrix_before_source = scattering.stack_s_matrix([layer_solve_result], [1.0])
         s_matrix_after_source = s_matrix_before_source
@@ -341,13 +341,13 @@ class IntegratedFluxTest(unittest.TestCase):
         jy = jnp.concatenate([zeros, dipole, zeros], axis=-1)
         jz = jnp.concatenate([zeros, zeros, dipole], axis=-1)
 
-        layer_solve_result = layer.eigensolve_isotropic_media(
+        layer_solve_result = fmm.eigensolve_isotropic_media(
             permittivity=jnp.asarray([[1.0]]),
             wavelength=jnp.asarray(wavelength),
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
         s_matrix_before_source = scattering.stack_s_matrix([layer_solve_result], [1.0])
         s_matrix_after_source = s_matrix_before_source

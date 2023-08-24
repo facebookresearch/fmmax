@@ -9,7 +9,7 @@ from typing import Tuple
 import jax.numpy as jnp
 import matplotlib.pyplot as plt  # type: ignore[import]
 
-from fmmax import basis, fields, layer, pml, scattering, sources
+from fmmax import basis, fields, fmm, pml, scattering, sources
 
 
 def simulate_metal_dipole(
@@ -84,12 +84,12 @@ def simulate_metal_dipole(
     )
 
     eigensolve = functools.partial(
-        layer.eigensolve_general_anisotropic_media,
+        fmm.eigensolve_general_anisotropic_media,
         wavelength=jnp.asarray(wavelength),
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
         expansion=expansion,
-        formulation=layer.Formulation.FFT,
+        formulation=fmm.Formulation.FFT,
         vector_field_source=None,  # Automatically choose the vector field source.
     )
     solve_result_ambient = eigensolve(

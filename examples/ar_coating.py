@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as onp
 import scipy.optimize as spo  # type: ignore[import]
 
-from fmmax import basis, layer, scattering
+from fmmax import basis, fmm, scattering
 
 
 def compute_reflection(
@@ -79,13 +79,13 @@ def compute_reflection(
     permittivities = [p[..., jnp.newaxis, jnp.newaxis] for p in permittivities]
 
     layer_solve_results = [
-        layer.eigensolve_isotropic_media(
+        fmm.eigensolve_isotropic_media(
             wavelength=wavelength,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
         for p in permittivities
     ]

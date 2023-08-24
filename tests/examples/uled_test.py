@@ -9,10 +9,10 @@ import jax.numpy as jnp
 import numpy as onp
 
 from examples import uled
-from fmmax import basis, layer
+from fmmax import basis, fmm
 
 SIM_CONFIG_KWARGS = {
-    "formulation": layer.Formulation.JONES_DIRECT,
+    "formulation": fmm.Formulation.JONES_DIRECT,
     "truncation": basis.Truncation.PARALLELOGRAMIC,
     "approximate_num_terms": 100,
 }

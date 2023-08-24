@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fft, fields, layer, scattering, sources
+from fmmax import basis, fft, fields, fmm, scattering, sources
 
 WAVELENGTH = jnp.array(0.314)
 PRIMITIVE_LATTICE_VECTORS = basis.LatticeVectors(u=basis.X, v=basis.Y)
@@ -20,22 +20,22 @@ EXPANSION = basis.generate_expansion(
     truncation=basis.Truncation.CIRCULAR,
 )
 
-LAYER_SOLVE_RESULT = layer.eigensolve_isotropic_media(
+LAYER_SOLVE_RESULT = fmm.eigensolve_isotropic_media(
     wavelength=WAVELENGTH,
     in_plane_wavevector=jnp.zeros((2,)),
     primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
     permittivity=jnp.ones((50, 50)) * 2,
     expansion=EXPANSION,
-    formulation=layer.Formulation.FFT,
+    formulation=fmm.Formulation.FFT,
 )
 
-BATCH_LAYER_SOLVE_RESULT = layer.eigensolve_isotropic_media(
+BATCH_LAYER_SOLVE_RESULT = fmm.eigensolve_isotropic_media(
     wavelength=WAVELENGTH,
     in_plane_wavevector=jnp.zeros((2,)),
     primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
     permittivity=jnp.ones((1, 1, 2, 50, 50)) * 2,
     expansion=EXPANSION,
-    formulation=layer.Formulation.FFT,
+    formulation=fmm.Formulation.FFT,
 )
 
 
@@ -49,13 +49,13 @@ class FieldSourcesTest(unittest.TestCase):
             brillouin_grid_shape=brillouin_grid_shape,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
         )
-        layer_solve_result = layer.eigensolve_isotropic_media(
+        layer_solve_result = fmm.eigensolve_isotropic_media(
             permittivity=jnp.asarray([[1.0]]),
             wavelength=WAVELENGTH,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             expansion=EXPANSION,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
         fwd_amplitude = jax.random.normal(
             jax.random.PRNGKey(0), brillouin_grid_shape + (2 * EXPANSION.num_terms, 3)
@@ -98,13 +98,13 @@ class FieldSourcesTest(unittest.TestCase):
             brillouin_grid_shape=brillouin_grid_shape,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
         )
-        layer_solve_result = layer.eigensolve_isotropic_media(
+        layer_solve_result = fmm.eigensolve_isotropic_media(
             permittivity=jnp.asarray([[1.0]]),
             wavelength=WAVELENGTH,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             expansion=EXPANSION,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
         with self.assertRaisesRegex(
             ValueError, "All fields must be rank 3 with matching shape"
@@ -124,13 +124,13 @@ class FieldSourcesTest(unittest.TestCase):
             brillouin_grid_shape=brillouin_grid_shape,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
         )
-        layer_solve_result = layer.eigensolve_isotropic_media(
+        layer_solve_result = fmm.eigensolve_isotropic_media(
             permittivity=jnp.asarray([[1.0]]),
             wavelength=WAVELENGTH,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             expansion=EXPANSION,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
         with self.assertRaisesRegex(
             ValueError, "Field shapes must be evenly divisible by the Brillouin"
@@ -227,14 +227,14 @@ class InternalSourcesTest(unittest.TestCase):
         jy = jnp.concatenate([zeros, dipole], axis=-1)
         jz = jnp.concatenate([zeros, zeros], axis=-1)
 
-        # Perform the eigendecomposition of a vacuum layer.
-        layer_solve_result = layer.eigensolve_isotropic_media(
+        # Perform the eigendecomposition of a vacuum fmm.
+        layer_solve_result = fmm.eigensolve_isotropic_media(
             permittivity=jnp.asarray([[1.0]]),
             wavelength=WAVELENGTH,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             expansion=EXPANSION,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
         s_matrices_before_source = (
             s_matrices_after_source
@@ -375,7 +375,7 @@ class AmplitudesFromInternalSourcesTest(unittest.TestCase):
             primitive_lattice_vectors = basis.LatticeVectors(
                 u=basis.X * pitch, v=basis.Y * pitch
             )
-            layer_solve_result = layer.eigensolve_isotropic_media(
+            layer_solve_result = fmm.eigensolve_isotropic_media(
                 wavelength=wavelength,
                 in_plane_wavevector=jnp.zeros((2,)),
                 primitive_lattice_vectors=primitive_lattice_vectors,
@@ -385,7 +385,7 @@ class AmplitudesFromInternalSourcesTest(unittest.TestCase):
                     approximate_num_terms=500,
                     truncation=basis.Truncation.CIRCULAR,
                 ),
-                formulation=layer.Formulation.FFT,
+                formulation=fmm.Formulation.FFT,
             )
 
             s_matrix = scattering.stack_s_matrix(

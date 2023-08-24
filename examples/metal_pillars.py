@@ -7,7 +7,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from fmmax import basis, fields, layer, scattering, utils
+from fmmax import basis, fields, fmm, scattering, utils
 
 SMatricesInterior = Tuple[
     Tuple[scattering.ScatteringMatrix, scattering.ScatteringMatrix], ...
@@ -96,13 +96,13 @@ def simulate_pillars(
     resolution_nm: float = 1.0,
     approximate_num_terms: int = 200,
     truncation: basis.Truncation = basis.Truncation.CIRCULAR,
-    formulation: layer.Formulation = layer.Formulation.FFT,
+    formulation: fmm.Formulation = fmm.Formulation.FFT,
 ) -> Tuple[
     int,
     jnp.ndarray,
     jnp.ndarray,
     Tuple[
-        Tuple[layer.LayerSolveResult, ...],
+        Tuple[fmm.LayerSolveResult, ...],
         Tuple[jnp.ndarray, ...],
         SMatricesInterior,
     ],
@@ -169,7 +169,7 @@ def simulate_pillars(
         truncation=truncation,
     )
     layer_solve_results = [
-        layer.eigensolve_isotropic_media(
+        fmm.eigensolve_isotropic_media(
             wavelength=jnp.asarray(wavelength_nm),
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
@@ -200,7 +200,7 @@ def simulate_pillars(
 
 
 def compute_fields(
-    layer_solve_results: Tuple[layer.LayerSolveResult, ...],
+    layer_solve_results: Tuple[fmm.LayerSolveResult, ...],
     thicknesses: Tuple[jnp.ndarray, ...],
     s_matrices_interior: SMatricesInterior,
     resolution_nm: float,

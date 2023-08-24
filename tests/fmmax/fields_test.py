@@ -11,7 +11,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fields, layer, scattering
+from fmmax import basis, fields, fmm, scattering
 
 
 def example_solve(permittivity_batch_shape, wavelength_batch_shape):
@@ -34,13 +34,13 @@ def example_solve(permittivity_batch_shape, wavelength_batch_shape):
         truncation=basis.Truncation.CIRCULAR,
     )
     layer_solve_results = [
-        layer.eigensolve_isotropic_media(
+        fmm.eigensolve_isotropic_media(
             wavelength=jnp.full(wavelength_batch_shape, 100.0),
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
         for p in permittivities
     ]
@@ -163,13 +163,13 @@ class FieldsOnCoordinatesTest(unittest.TestCase):
         permittivity = 1 + jax.random.uniform(
             jax.random.PRNGKey(0), batch_shape + (20, 20)
         )
-        layer_solve_result = layer.eigensolve_isotropic_media(
+        layer_solve_result = fmm.eigensolve_isotropic_media(
             wavelength=jnp.ones(()),
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity,
             expansion=expansion,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
 
         ex, ey, ez, hx, hy, hz = jax.random.normal(
@@ -222,13 +222,13 @@ class FieldsOnCoordinatesTest(unittest.TestCase):
         permittivity = 1 + jax.random.uniform(
             jax.random.PRNGKey(0), batch_shape + (20, 20)
         )
-        layer_solve_result = layer.eigensolve_isotropic_media(
+        layer_solve_result = fmm.eigensolve_isotropic_media(
             wavelength=jnp.ones(()),
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity,
             expansion=expansion,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
 
         fwd_amplitude_start, bwd_amplitude_end = jax.random.normal(

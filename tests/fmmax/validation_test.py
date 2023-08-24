@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fields, layer, scattering
+from fmmax import basis, fields, fmm, scattering
 
 # Enable 64-bit precision for higher accuracy.
 jax.config.update("jax_enable_x64", True)
@@ -23,10 +23,10 @@ def _solve_s_matrix(
     expansion,
     permittivities,
     thicknesses,
-    formulation=layer.Formulation.FFT,
+    formulation=fmm.Formulation.FFT,
 ):
     layer_solve_results = [
-        layer.eigensolve_isotropic_media(
+        fmm.eigensolve_isotropic_media(
             wavelength=wavelength,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
@@ -242,7 +242,7 @@ class RotatedGratingTest(unittest.TestCase):
                 expansion=expansion,
                 permittivities=permittivities,
                 thicknesses=thicknesses,
-                formulation=layer.Formulation.JONES_DIRECT,
+                formulation=fmm.Formulation.JONES_DIRECT,
             )
             rte = s_matrix.s21[0, 0]
             rtm = s_matrix.s21[expansion.num_terms, expansion.num_terms]

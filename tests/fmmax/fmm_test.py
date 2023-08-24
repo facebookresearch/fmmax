@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, layer
+from fmmax import basis, fmm
 
 # Enable 64-bit precision for higher-accuracy.
 jax.config.update("jax_enable_x64", True)
@@ -29,10 +29,10 @@ EXPANSION = basis.generate_expansion(
 class TransversePermittivityTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
-            (layer.Formulation.JONES_DIRECT,),
-            (layer.Formulation.JONES,),
-            (layer.Formulation.NORMAL,),
-            (layer.Formulation.POL,),
+            (fmm.Formulation.JONES_DIRECT,),
+            (fmm.Formulation.JONES,),
+            (fmm.Formulation.NORMAL,),
+            (fmm.Formulation.POL,),
         ]
     )
     def test_single_matches_batch_vector(self, fmm_formulation):
@@ -44,11 +44,11 @@ class TransversePermittivityTest(unittest.TestCase):
         circle = (jnp.sqrt(x**2 + y**2) <= 0.2).astype(float)
         scale = jnp.arange(1, 5)[:, jnp.newaxis, jnp.newaxis]
         permittivity = 1 + circle * scale
-        result_batch = layer._transverse_permittivity_vector(
+        result_batch = fmm._transverse_permittivity_vector(
             PRIMITIVE_LATTICE_VECTORS, permittivity, EXPANSION, fmm_formulation
         )
         result_single = [
-            layer._transverse_permittivity_vector(
+            fmm._transverse_permittivity_vector(
                 primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
                 permittivity=p,
                 expansion=EXPANSION,
@@ -66,11 +66,11 @@ class AnistropicLayerTest(unittest.TestCase):
             inverse_z_permittivity_matrix_expected,
             z_permittivity_matrix_expected,
             transverse_permittivity_matrix_expected,
-        ) = layer.fourier_matrices_patterned_isotropic_media(
+        ) = fmm.fourier_matrices_patterned_isotropic_media(
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=permittivity,
             expansion=EXPANSION,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
         (
             inverse_z_permittivity_matrix,
@@ -79,7 +79,7 @@ class AnistropicLayerTest(unittest.TestCase):
             _,
             _,
             _,
-        ) = layer.fourier_matrices_patterned_anisotropic_media(
+        ) = fmm.fourier_matrices_patterned_anisotropic_media(
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivities=(
                 permittivity,
@@ -96,7 +96,7 @@ class AnistropicLayerTest(unittest.TestCase):
                 jnp.ones_like(permittivity),
             ),
             expansion=EXPANSION,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
             vector_field_source=permittivity,
         )
         onp.testing.assert_array_equal(

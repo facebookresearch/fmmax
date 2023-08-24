@@ -9,7 +9,7 @@ from typing import Sequence, Tuple
 import jax
 import jax.numpy as jnp
 
-from fmmax import layer, utils
+from fmmax import fmm, utils
 
 
 @dataclasses.dataclass
@@ -59,15 +59,15 @@ class ScatteringMatrix:
     s21: jnp.ndarray
     s22: jnp.ndarray
 
-    start_layer_solve_result: layer.LayerSolveResult
+    start_layer_solve_result: fmm.LayerSolveResult
     start_layer_thickness: jnp.ndarray
 
-    end_layer_solve_result: layer.LayerSolveResult
+    end_layer_solve_result: fmm.LayerSolveResult
     end_layer_thickness: jnp.ndarray
 
 
 def stack_s_matrix(
-    layer_solve_results: Sequence[layer.LayerSolveResult],
+    layer_solve_results: Sequence[fmm.LayerSolveResult],
     layer_thicknesses: Sequence[jnp.ndarray],
 ) -> ScatteringMatrix:
     """Computes the s-matrix for a stack of layers.
@@ -86,7 +86,7 @@ def stack_s_matrix(
 
 
 def stack_s_matrices_interior(
-    layer_solve_results: Sequence[layer.LayerSolveResult],
+    layer_solve_results: Sequence[fmm.LayerSolveResult],
     layer_thicknesses: Sequence[jnp.ndarray],
 ) -> Tuple[Tuple[ScatteringMatrix, ScatteringMatrix], ...]:
     """Computes scattering matrices before and after each layer in the stack.
@@ -129,7 +129,7 @@ def stack_s_matrices_interior(
 
 
 def _stack_s_matrices(
-    layer_solve_results: Sequence[layer.LayerSolveResult],
+    layer_solve_results: Sequence[fmm.LayerSolveResult],
     layer_thicknesses: Sequence[jnp.ndarray],
 ) -> Tuple[ScatteringMatrix, ...]:
     """Computes the s-matrices for a stack of layers.
@@ -178,7 +178,7 @@ def _stack_s_matrices(
 
 def append_layer(
     s_matrix: ScatteringMatrix,
-    next_layer_solve_result: layer.LayerSolveResult,
+    next_layer_solve_result: fmm.LayerSolveResult,
     next_layer_thickness: jnp.ndarray,
 ) -> ScatteringMatrix:
     """Returns new scattering matrix for the stack with an appended layer.
@@ -212,7 +212,7 @@ def append_layer(
 
 def prepend_layer(
     s_matrix: ScatteringMatrix,
-    next_layer_solve_result: layer.LayerSolveResult,
+    next_layer_solve_result: fmm.LayerSolveResult,
     next_layer_thickness: jnp.ndarray,
 ) -> ScatteringMatrix:
     """Returns new scattering matrix for the stack with a prepended layer.
@@ -250,9 +250,9 @@ def prepend_layer(
 
 def _extend_s_matrix(
     s_matrix_blocks: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray],
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
     layer_thickness: jnp.ndarray,
-    next_layer_solve_result: layer.LayerSolveResult,
+    next_layer_solve_result: fmm.LayerSolveResult,
     next_layer_thickness: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Extends the scattering matrix, adding a layer to the end.

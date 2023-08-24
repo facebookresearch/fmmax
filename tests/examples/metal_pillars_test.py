@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as onp
 
 from examples import metal_pillars
-from fmmax import layer
+from fmmax import fmm
 
 
 class MetalPillarsTest(unittest.TestCase):
@@ -20,7 +20,7 @@ class MetalPillarsTest(unittest.TestCase):
             wavelength_nm=jnp.array([450.0]),
             approximate_num_terms=100,
             ambient_thickness_nm=0.0,
-            formulation=layer.Formulation.NORMAL,
+            formulation=fmm.Formulation.NORMAL,
         )
         onp.testing.assert_allclose(rte, [0.098347 + 0.099891j], rtol=1e-3)
 
@@ -33,7 +33,7 @@ class MetalPillarsTest(unittest.TestCase):
         ) = metal_pillars.simulate_pillars(
             wavelength_nm=jnp.array([450.0, 550.0]),
             approximate_num_terms=100,
-            formulation=layer.Formulation.NORMAL,
+            formulation=fmm.Formulation.NORMAL,
         )
         efields, hfields = metal_pillars.compute_fields(
             layer_solve_results=layer_solve_results,

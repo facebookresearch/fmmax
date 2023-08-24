@@ -9,19 +9,19 @@ import numpy as onp
 import parameterized
 
 from examples import metal_grating
-from fmmax import basis, layer
+from fmmax import basis, fmm
 
 
 class MetalGratingTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
             (
-                layer.Formulation.FFT,
+                fmm.Formulation.FFT,
                 (-0.871915 + 0.237970j),
                 (0.832493 - 0.094269j),
             ),
             (
-                layer.Formulation.JONES_DIRECT,
+                fmm.Formulation.JONES_DIRECT,
                 (-0.871906 + 0.237973j),
                 (0.901329 + 0.167032j),
             ),

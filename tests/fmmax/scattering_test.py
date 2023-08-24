@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 import numpy as onp
 
-from fmmax import basis, layer, scattering
+from fmmax import basis, fmm, scattering
 
 # Enable 64-bit precision for higher accuracy.
 jax.config.update("jax_enable_x64", True)
@@ -48,7 +48,7 @@ def _dummy_solve_result(
 ):
     keys = jax.random.split(key, 7)
     dim = expansion.basis_coefficients.shape[0]
-    return layer.LayerSolveResult(
+    return fmm.LayerSolveResult(
         wavelength=wavelength,
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
@@ -78,13 +78,13 @@ def _stack_solve_result(
         jnp.array([[5.0 + 0.0j]]),
     ]
     return [
-        layer.eigensolve_isotropic_media(
+        fmm.eigensolve_isotropic_media(
             wavelength,
             in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            formulation=layer.Formulation.FFT,
+            formulation=fmm.Formulation.FFT,
         )
         for p in permittivities
     ]

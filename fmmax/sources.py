@@ -7,7 +7,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from fmmax import basis, fft, fields, layer, scattering, utils
+from fmmax import basis, fft, fields, fmm, scattering, utils
 
 
 def amplitudes_for_fields(
@@ -15,7 +15,7 @@ def amplitudes_for_fields(
     ey: jnp.ndarray,
     hx: jnp.ndarray,
     hy: jnp.ndarray,
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
     brillouin_grid_axes: Tuple[int, int],
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Computes the amplitudes for fields.
@@ -294,7 +294,7 @@ def polarization_terms(
     jx: jnp.ndarray,
     jy: jnp.ndarray,
     jz: jnp.ndarray,
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
 ) -> jnp.ndarray:
     """Computes the polarization terms for currents on the real-space grid.
 
