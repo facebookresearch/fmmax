@@ -9,19 +9,17 @@ from typing import Tuple
 import jax.numpy as jnp
 from jax import tree_util
 
-from fmmax import basis
-
 
 @dataclasses.dataclass
 class PMLParams:
     """Stores parameters that define perfectly matched layers.
 
     Attributes:
-        num_x: The number of gridpoints occupied by the PML, in the x-direction.
-        num_y: The number of gridpoints occupied by the PML, in the y-direction.
-        a_max:
-        p:
-        sigma_max:
+        num_x: The number of grid points occupied by the PML, in the x-direction.
+        num_y: The number of grid points occupied by the PML, in the y-direction.
+        a_max: The strength parameter for uniaxial PML.
+        p: The exponent parameter for uniaxial PML.
+        sigma_max: The conductivity parameter for uniaxial PML.
     """
 
     num_x: int
@@ -41,10 +39,10 @@ def apply_uniaxial_pml(
     """Generate the permittivity and permeability tensor elements for uniaxial pml.
 
     The PML assumes that the unit cell has primitive lattice vectors u and v
-    which are parallel to x and y, respectively.
+    which are parallel to x and y axes, respectively.
 
     This function is appropriate for isotropic nonmagnetic media, but the
-    permittiities and permeabilities generated are anisotropic.
+    permittivities and permeabilities generated are anisotropic.
 
     Args:
         permittivity: isotropic permittivity
@@ -63,7 +61,7 @@ def apply_uniaxial_pml(
     )
 
     dx, dy = _normalized_distance_into_pml(
-        shape=permittivity.shape[-2:],   # type: ignore[arg-type]
+        shape=permittivity.shape[-2:],  # type: ignore[arg-type]
         widths=(pml_params.num_x, pml_params.num_y),
     )
 
@@ -103,19 +101,24 @@ def apply_uniaxial_pml(
 
 
 def _crop_and_edge_pad_pml_region(
-    arr: jnp.ndarray,
+    permittivity: jnp.ndarray,
     widths: Tuple[int, int],
 ) -> jnp.ndarray:
-    """Crops the trailing dimensions of `arr` and applies edge padding."""
+    """Crops the trailing dimensions of `permittivity` and applies edge padding."""
     i_width, j_width = widths
-    if (i_width * 2, j_width * 2) >= arr.shape[-2:]:
+    if (i_width * 2, j_width * 2) >= permittivity.shape[-2:]:
         raise ValueError()
 
-    arr_cropped = arr[
-        ..., i_width : arr.shape[-2] - i_width, j_width : arr.shape[-1] - j_width
+    arr_cropped = permittivity[
+        ...,
+        i_width : permittivity.shape[-2] - i_width,
+        j_width : permittivity.shape[-1] - j_width,
     ]
 
-    pad_width = ((0, 0),) * (arr.ndim - 2) + ((i_width, i_width), (j_width, j_width))
+    pad_width = ((0, 0),) * (permittivity.ndim - 2) + (
+        (i_width, i_width),
+        (j_width, j_width),
+    )
     return jnp.pad(arr_cropped, pad_width, mode="edge")
 
 
@@ -123,7 +126,7 @@ def _normalized_distance_into_pml(
     shape: Tuple[int, int],
     widths: Tuple[int, int],
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Distance into PML."""
+    """Compute the distance into the PML layer, in terms of array elements."""
     i, j = jnp.meshgrid(
         jnp.arange(shape[-2]),
         jnp.arange(shape[-1]),
@@ -140,3 +143,15 @@ def _normalized_distance_into_pml(
     i_scale = jnp.where(widths[0] == 0, 1, 1 / jnp.where(widths[0] == 0, 1, widths[0]))
     j_scale = jnp.where(widths[1] == 0, 1, 1 / jnp.where(widths[1] == 0, 1, widths[1]))
     return i_distance * i_scale, j_distance * j_scale
+
+
+# -----------------------------------------------------------------------------
+# Register custom objects in this module with jax to enable `jit`.
+# -----------------------------------------------------------------------------
+
+
+tree_util.register_pytree_node(
+    PMLParams,
+    lambda p: ((), (p.num_x, p.num_y, p.a_max, p.p, p.sigma_max)),
+    lambda values, _: PMLParams(*values),
+)

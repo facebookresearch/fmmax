@@ -7,7 +7,7 @@ import functools
 from typing import Tuple
 
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type: ignore[import]
 
 from fmmax import basis, fields, fmm, layer, pml, scattering, sources
 
