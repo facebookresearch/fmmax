@@ -12,7 +12,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fmm, layer, utils
+from fmmax import basis, fft, fmm, layer, utils
 
 # Enable 64-bit precision for higher accuracy.
 jax.config.update("jax_enable_x64", True)
@@ -286,8 +286,7 @@ class LayerTest(unittest.TestCase):
                     )
 
     def test_shape_insufficient_validation(self):
-        min_shape = fmm._min_array_shape_for_expansion(EXPANSION)
-        permittivity = jnp.ones(tuple([d - 1 for d in min_shape]))
+        permittivity = jnp.ones((2, 2))
         with self.assertRaisesRegex(ValueError, "`shape` is insufficient for"):
             layer._eigensolve_patterned_isotropic_media(
                 wavelength=WAVELENGTH,

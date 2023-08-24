@@ -7,7 +7,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from fmmax import basis, fields, fmm, layer, scattering, utils
+from fmmax import basis, fft, fields, layer, scattering, utils
 
 
 def amplitudes_for_fields(
@@ -84,7 +84,7 @@ def amplitudes_for_fields(
                 )
             )
         )
-        field_fft = fmm.fft(
+        field_fft = fft.fft(
             field_split, expansion=layer_solve_result.expansion, axes=(-3, -2)
         )
         return jnp.sum(field_fft, axis=(0, 1))

@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fields, fmm, layer, scattering, sources
+from fmmax import basis, fft, fields, fmm, layer, scattering, sources
 
 WAVELENGTH = jnp.array(0.314)
 PRIMITIVE_LATTICE_VECTORS = basis.LatticeVectors(u=basis.X, v=basis.Y)
@@ -326,9 +326,9 @@ class AmplitudesFromInternalSourcesTest(unittest.TestCase):
             bwd_amplitude_after_end,
             fwd_amplitude_N_start,
         ) = sources.amplitudes_for_source(
-            jx=fmm.fft(jnp.ones((20, 20, 1)), expansion=EXPANSION, axes=(-3, -2)) * jx,
-            jy=fmm.fft(jnp.ones((20, 20, 1)), expansion=EXPANSION, axes=(-3, -2)) * jy,
-            jz=fmm.fft(jnp.zeros((20, 20, 1)), expansion=EXPANSION, axes=(-3, -2)),
+            jx=fft.fft(jnp.ones((20, 20, 1)), expansion=EXPANSION, axes=(-3, -2)) * jx,
+            jy=fft.fft(jnp.ones((20, 20, 1)), expansion=EXPANSION, axes=(-3, -2)) * jy,
+            jz=fft.fft(jnp.zeros((20, 20, 1)), expansion=EXPANSION, axes=(-3, -2)),
             s_matrix_before_source=s_matrix,
             s_matrix_after_source=s_matrix,
         )
@@ -395,7 +395,7 @@ class AmplitudesFromInternalSourcesTest(unittest.TestCase):
 
             mask = jnp.zeros((100, 100)).at[49:51, 49:51].set(1)
 
-            mask = fmm.fft(mask, expansion=layer_solve_result.expansion)
+            mask = fft.fft(mask, expansion=layer_solve_result.expansion)
             zeros = jnp.zeros_like(mask)
             jx = jnp.stack([mask, zeros, zeros], axis=-1)
             jy = jnp.stack([zeros, mask, zeros], axis=-1)
@@ -481,9 +481,9 @@ class AmplitudesFromInternalSourcesTest(unittest.TestCase):
     )
     def test_polarization_terms_with_dipole_batch(self, shape, expected_shape):
         pol = sources.polarization_terms(
-            jx=fmm.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
-            jy=fmm.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
-            jz=fmm.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
+            jx=fft.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
+            jy=fft.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
+            jz=fft.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
             layer_solve_result=LAYER_SOLVE_RESULT,
         )
         expected_shape = list(expected_shape)
@@ -499,9 +499,9 @@ class AmplitudesFromInternalSourcesTest(unittest.TestCase):
     )
     def test_polarization_terms_with_layer_batch(self, shape, expected_shape):
         pol = sources.polarization_terms(
-            jx=fmm.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
-            jy=fmm.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
-            jz=fmm.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
+            jx=fft.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
+            jy=fft.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
+            jz=fft.fft(jnp.ones(shape), expansion=EXPANSION, axes=(-3, -2)),
             layer_solve_result=BATCH_LAYER_SOLVE_RESULT,
         )
         expected_shape = list(expected_shape)
