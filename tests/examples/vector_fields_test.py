@@ -1,4 +1,4 @@
-"""Tests for `examples.vector`.
+"""Tests for `examples.vector_fields`.
 
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """

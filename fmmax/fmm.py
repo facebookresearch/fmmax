@@ -3,7 +3,6 @@
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
-import dataclasses
 import enum
 import functools
 from typing import Tuple
@@ -12,6 +11,11 @@ import jax
 import jax.numpy as jnp
 
 from fmmax import basis, utils, vector
+
+# xx, xy, yx, yy, and zz components of permittivity or permeability.
+_TensorComponents = Tuple[
+    jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray
+]
 
 
 @enum.unique
@@ -26,7 +30,7 @@ class Formulation(enum.Enum):
 
 
 # -----------------------------------------------------------------------------
-# Functions for computing the Fourier convolution matrices.
+# Functions for computing Fourier convolution matrices for isotropic media.
 # -----------------------------------------------------------------------------
 
 
@@ -36,34 +40,30 @@ def fourier_matrices_patterned_isotropic_media(
     expansion: basis.Expansion,
     formulation: Formulation,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    """Returns the Fourier convolution matrices for patterned isotropic media.
+    """Return Fourier convolution matrices for patterned nonmagnetic isotropic media.
 
     All matrices are forms of the Fourier convolution matrices defined in equation
-    8 of the S4 reference; as in the reference, we assume the z-axis is separable.
-    The matrix for the zz-component is returned directly, while the in-plane
-    components are blocked into a single matrix.
+    8 of [2012 Liu]. For vector formulations, the transverse permittivity matrix is
+    of the form E2 given in equation 51 of [2012 Liu].
 
     Args:
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
         permittivity: The permittivity array, with shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used.
+        formulation: Specifies the formulation to be used, e.g. a vector formulation
+            or the non-vector `FFT` formulation.
 
     Returns:
-        eta_matrix: The Fourier convolutio matrix for the inverse of the z-component
-            of the permittivity.
+        inverse_z_permittivity_matrix: The Fourier convolution matrix for the inverse
+            of the z-component of the permittivity.
         z_permittivity_matrix: The Fourier convolution matrix for the z-component
             of the permittivity.
-        transverse_permittivity_matrix: The transverse permittivity matrix from
-            equation 15 of [2012 Liu], computed in the manner prescribed by
-            `fmm_formulation`.
+        transverse_permittivity_matrix: The transverse permittivity matrix.
     """
     if formulation == Formulation.FFT:
         transverse_permittivity_matrix = _transverse_permittivity_fft(
-            primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity,
             expansion=expansion,
-            formulation=formulation,
         )
     else:
         transverse_permittivity_matrix = _transverse_permittivity_vector(
@@ -73,91 +73,33 @@ def fourier_matrices_patterned_isotropic_media(
             formulation=formulation,
         )
 
-    transform = functools.partial(
+    _transform = functools.partial(
         fourier_convolution_matrix,
         expansion=expansion,
     )
 
-    eta_matrix = transform(1 / permittivity)
-    z_permittivity_matrix = transform(permittivity)
-    return eta_matrix, z_permittivity_matrix, transverse_permittivity_matrix
-
-
-def fourier_matrices_patterned_anisotropic_media(
-    primitive_lattice_vectors: basis.LatticeVectors,
-    permittivity_xx: jnp.ndarray,
-    permittivity_xy: jnp.ndarray,
-    permittivity_yx: jnp.ndarray,
-    permittivity_yy: jnp.ndarray,
-    permittivity_zz: jnp.ndarray,
-    expansion: basis.Expansion,
-    formulation: Formulation,
-) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    """Returns the Fourier convolution matrices for patterned isotropic media.
-
-    All matrices are forms of the Fourier convolution matrices defined in equation
-    8 of the S4 reference; as in the reference, we assume the z-axis is separable.
-    The matrix for the zz-component is returned directly, while the in-plane
-    components are blocked into a single matrix.
-
-    Args:
-        primitive_lattice_vectors: The primitive vectors for the real-space lattice.
-        permittivity_xx: The xx-component of the permittivity tensor, with
-            shape `(..., nx, ny)`.
-        permittivity_xy: The xy-component of the permittivity tensor.
-        permittivity_yx: The yx-component of the permittivity tensor.
-        permittivity_yy: The yy-component of the permittivity tensor.
-        permittivity_zz: The zz-component of the permittivity tensor.
-        expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used.
-
-    Returns:
-        eta_matrix: The Fourier convolutio matrix for the inverse of the z-component
-            of the permittivity.
-        z_permittivity_matrix: The Fourier convolution matrix for the z-component
-            of the permittivity.
-        transverse_permittivity_matrix: The transverse permittivity matrix from
-            equation 15 of [2012 Liu], computed in the manner prescribed by
-            `fmm_formulation`.
-    """
-    del primitive_lattice_vectors
-    if formulation != Formulation.FFT:
-        raise ValueError(f"Only `Formulation.FFT` is supported, but got {formulation}.")
-
-    transform = functools.partial(
-        fourier_convolution_matrix,
-        expansion=expansion,
+    inverse_z_permittivity_matrix = _transform(1 / permittivity)
+    z_permittivity_matrix = _transform(permittivity)
+    return (
+        inverse_z_permittivity_matrix,
+        z_permittivity_matrix,
+        transverse_permittivity_matrix,
     )
-
-    transverse_permittivity_matrix = jnp.block(
-        [
-            [transform(permittivity_xx), transform(permittivity_xy)],
-            [transform(permittivity_yx), transform(permittivity_yy)],
-        ]
-    )
-    eta_matrix = transform(1 / permittivity_zz)
-    z_permittivity_matrix = transform(permittivity_zz)
-    return eta_matrix, z_permittivity_matrix, transverse_permittivity_matrix
 
 
 def _transverse_permittivity_fft(
-    primitive_lattice_vectors: basis.LatticeVectors,
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
-    formulation: Formulation,
 ) -> jnp.ndarray:
     """Computes the `eps` matrix from [2012 Liu] equation 15 using `fft` scheme.
 
     Args:
-        primitive_lattice_vectors: The primitive vectors for the real-space lattice.
         permittivity: The permittivity array, with shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used.
 
     Returns:
-        The `eps` matrix.
+        The transverse permittivity matrix.
     """
-    del primitive_lattice_vectors
     eps_hat = fourier_convolution_matrix(permittivity, expansion)
     zeros = jnp.zeros_like(eps_hat)
     return jnp.block([[eps_hat, zeros], [zeros, eps_hat]])
@@ -169,7 +111,9 @@ def _transverse_permittivity_vector(
     expansion: basis.Expansion,
     formulation: Formulation,
 ) -> jnp.ndarray:
-    """Computes transverse permittivity using one of the vector field methods.
+    """Computes transverse permittivity matrix using a vector field methods.
+
+    The transverse permittivity matrix is E2 given in equation 51 of [2012 Liu].
 
     Args:
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
@@ -233,6 +177,375 @@ def tangent_terms(
     Pxy = tx * jnp.conj(ty) / denom_safe
     Pxx = jnp.abs(ty) ** 2 / denom_safe
     return Pxx, Pxy, Pyx, Pyy
+
+
+# -----------------------------------------------------------------------------
+# Functions for computing Fourier convolution matrices for anisotropic media.
+# -----------------------------------------------------------------------------
+
+
+def fourier_matrices_patterned_anisotropic_media(
+    primitive_lattice_vectors: basis.LatticeVectors,
+    permittivities: _TensorComponents,
+    permeabilities: _TensorComponents,
+    expansion: basis.Expansion,
+    formulation: Formulation,
+    vector_field_source: jnp.ndarray,
+) -> Tuple[
+    jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray
+]:
+    """Return Fourier convolution matrices for patterned anisotropic media.
+
+    The transverse permittivity matrix E is defined as,
+
+        [-Dy, Dx]^T = E [-Ey, Ex]^T
+
+    while the transverse permeability matrix M is defined as,
+
+        [Bx, By]^T = M [Hx, Hy]^T
+
+    The Fourier factorization is done as for E1 given in equation 47 of [2012 Liu].
+
+    Args:
+        primitive_lattice_vectors: The primitive vectors for the real-space lattice.
+        permittivities: The elements of the permittivity tensor: `(eps_xx, eps_xy,
+            eps_yx, eps_yy, eps_zz)`, each having shape `(..., nx, ny)`.
+        permeabilities: The elements of the permeability tensor: `(mu_xx, mu_xy,
+            mu_yx, mu_yy, mu_zz)`, each having shape `(..., nx, ny)`.
+        expansion: The field expansion to be used.
+        formulation: Specifies the formulation to be used.
+        vector_field_source: Array used to calculate the vector field, with shape
+            matching the permittivities and permeabilities.
+
+    Returns:
+        inverse_z_permittivity_matrix: The Fourier convolution matrix for the inverse
+            of the z-component of the permittivity.
+        z_permittivity_matrix: The Fourier convolution matrix for the z-component
+            of the permittivity.
+        transverse_permittivity_matrix: The transverse permittivity matrix from
+            equation 15 of [2012 Liu], computed in the manner prescribed by
+            `fmm_formulation`.
+        inverse_z_permeability_matrix: The Fourier convolution matrix for the inverse
+            of the z-component of the permeability.
+        z_permeability_matrix: The Fourier convolution matrix for the z-component
+            of the permeability.
+        transverse_permeability_matrix: The transverse permittivity matrix.
+    """
+    _transform = functools.partial(fourier_convolution_matrix, expansion=expansion)
+
+    if formulation is Formulation.FFT:
+        _transverse_permittivity_fn = _transverse_permittivity_fft_anisotropic
+        _transverse_permeability_fn = _transverse_permeability_fft_anisotropic
+    else:
+        vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
+        tx, ty = vector_fn(vector_field_source, primitive_lattice_vectors)
+        _transverse_permittivity_fn = functools.partial(
+            _transverse_permittivity_vector_anisotropic, tx=tx, ty=ty
+        )
+        _transverse_permeability_fn = functools.partial(
+            _transverse_permeability_vector_anisotropic, tx=tx, ty=ty
+        )
+
+    (
+        permittivity_xx,
+        permittivity_xy,
+        permittivity_yx,
+        permittivity_yy,
+        permittivity_zz,
+    ) = permittivities
+    inverse_z_permittivity_matrix = _transform(1 / permittivity_zz)
+    z_permittivity_matrix = _transform(permittivity_zz)
+    transverse_permittivity_matrix = _transverse_permittivity_fn(
+        permittivity_xx=permittivity_xx,
+        permittivity_xy=permittivity_xy,
+        permittivity_yx=permittivity_yx,
+        permittivity_yy=permittivity_yy,
+        expansion=expansion,
+    )
+
+    (
+        permeability_xx,
+        permeability_xy,
+        permeability_yx,
+        permeability_yy,
+        permeability_zz,
+    ) = permeabilities
+    inverse_z_permeability_matrix = _transform(1 / permeability_zz)
+    z_permeability_matrix = _transform(permeability_zz)
+    transverse_permeability_matrix = _transverse_permeability_fn(
+        permeability_xx=permeability_xx,
+        permeability_xy=permeability_xy,
+        permeability_yx=permeability_yx,
+        permeability_yy=permeability_yy,
+        expansion=expansion,
+    )
+    return (
+        inverse_z_permittivity_matrix,
+        z_permittivity_matrix,
+        transverse_permittivity_matrix,
+        inverse_z_permeability_matrix,
+        z_permeability_matrix,
+        transverse_permeability_matrix,
+    )
+
+
+def _transverse_permittivity_fft_anisotropic(
+    permittivity_xx: jnp.ndarray,
+    permittivity_xy: jnp.ndarray,
+    permittivity_yx: jnp.ndarray,
+    permittivity_yy: jnp.ndarray,
+    expansion: basis.Expansion,
+) -> jnp.ndarray:
+    """Compute the transverse permittivity matrix for anisotropic media using the fft scheme."""
+    _transform = functools.partial(fourier_convolution_matrix, expansion=expansion)
+    return jnp.block(
+        [
+            [_transform(permittivity_yy), _transform(-permittivity_yx)],
+            [_transform(-permittivity_xy), _transform(permittivity_xx)],
+        ]
+    )
+
+
+def _transverse_permeability_fft_anisotropic(
+    permeability_xx: jnp.ndarray,
+    permeability_xy: jnp.ndarray,
+    permeability_yx: jnp.ndarray,
+    permeability_yy: jnp.ndarray,
+    expansion: basis.Expansion,
+) -> jnp.ndarray:
+    """Compute the transverse permeability matrix for anisotropic media using the fft scheme."""
+    _transform = functools.partial(fourier_convolution_matrix, expansion=expansion)
+    return jnp.block(
+        [
+            [_transform(permeability_xx), _transform(permeability_xy)],
+            [_transform(permeability_yx), _transform(permeability_yy)],
+        ]
+    )
+
+
+def _transverse_permittivity_vector_anisotropic(
+    permittivity_xx: jnp.ndarray,
+    permittivity_xy: jnp.ndarray,
+    permittivity_yx: jnp.ndarray,
+    permittivity_yy: jnp.ndarray,
+    tx: jnp.ndarray,
+    ty: jnp.ndarray,
+    expansion: basis.Expansion,
+) -> jnp.ndarray:
+    """Compute the transverse permittivity matrix with a vector scheme.
+
+    The transverse permittivity matrix E relates the electric and electric displacement
+    fields, such that
+
+        [-Dy, Dx]^T = E [-Ey, Ex]^T
+
+    Args:
+        permittivity_xx: The xx-component of the permittivity tensor, with
+            shape `(..., nx, ny)`.
+        permittivity_xy: The xy-component of the permittivity tensor.
+        permittivity_yx: The yx-component of the permittivity tensor.
+        permittivity_yy: The yy-component of the permittivity tensor.
+        tx: The x-component of the tangent vector field.
+        ty: The y-component of the tangent vector field.
+        expansion: The field expansion to be used.
+
+    Returns:
+        The transverse permittivity matrix.
+    """
+    _transform = functools.partial(fourier_convolution_matrix, expansion=expansion)
+
+    # Define the real-space and Fourier transformed rotation matrices. The rotation
+    # matrix is defined such that T [Et, En]^T = [-Ey, Ex].
+    (
+        rotation_matrix,
+        fourier_rotation_matrix,
+        fourier_inverse_rotation_matrix,
+    ) = _rotation_matrices(
+        t00=ty,
+        t01=tx.conj(),
+        t10=-tx,
+        t11=ty.conj(),
+        expansion=expansion,
+    )
+
+    # Obtain the permittivity tensor for rotated coordinates, i.e. coordinates where
+    # unit vectors are tangent and normal to the vector field defined by `(tx, ty)`.
+    permittivity_tensor = jnp.block(
+        [
+            [
+                permittivity_yy[..., jnp.newaxis, jnp.newaxis],
+                -permittivity_yx[..., jnp.newaxis, jnp.newaxis],
+            ],
+            [
+                -permittivity_xy[..., jnp.newaxis, jnp.newaxis],
+                permittivity_xx[..., jnp.newaxis, jnp.newaxis],
+            ],
+        ]
+    )
+    assert rotation_matrix.shape[-2:] == permittivity_tensor.shape[-2:] == (2, 2)
+    rotated_permittivity_tensor = jnp.linalg.solve(
+        rotation_matrix, permittivity_tensor @ rotation_matrix
+    )
+
+    # The Fourier permittivity matrix is the central matrix in equation 45 of [2012 Liu].
+    # The top left block relates the tangential E and D fields, while the bottom right
+    # block relates the normal E and D fields. Consequently, these use Laurent's rule and
+    # the inverse rule, respectively. Note that the non-diagonal blocks also use Laurent's
+    # rule, as these tensor elements may be zero, making the inverse rule problematic.
+    fourier_permittivity_matrix = jnp.block(
+        [
+            [
+                _transform(rotated_permittivity_tensor[..., 0, 0]),
+                _transform(rotated_permittivity_tensor[..., 0, 1]),
+            ],
+            [
+                _transform(rotated_permittivity_tensor[..., 1, 0]),
+                jnp.linalg.inv(_transform(1 / rotated_permittivity_tensor[..., 1, 1])),
+            ],
+        ]
+    )
+    return (
+        fourier_rotation_matrix
+        @ fourier_permittivity_matrix
+        @ fourier_inverse_rotation_matrix
+    )
+
+
+def _transverse_permeability_vector_anisotropic(
+    permeability_xx: jnp.ndarray,
+    permeability_xy: jnp.ndarray,
+    permeability_yx: jnp.ndarray,
+    permeability_yy: jnp.ndarray,
+    tx: jnp.ndarray,
+    ty: jnp.ndarray,
+    expansion: basis.Expansion,
+) -> jnp.ndarray:
+    """Compute the transverse permeability matrix with a vector scheme.
+
+    The transverse permeability matrix M relates the magnetic and magnetic flux
+    density fields, such that
+
+        [Bx, Bx]^T = M [Hx, Hy]^T
+
+    Important differences from the `_transverse_permittivity_vector_anisotropic`
+    function result from the different definitions of E and M matrices.
+
+    Args:
+        permeability_xx: The xx-component of the permeability tensor, with
+            shape `(..., nx, ny)`.
+        permeability_xy: The xy-component of the permeability tensor.
+        permeability_yx: The yx-component of the permeability tensor.
+        permeability_yy: The yy-component of the permeability tensor.
+        tx: The x-component of the tangent vector field.
+        ty: The y-component of the tangent vector field.
+        expansion: The field expansion to be used.
+
+    Returns:
+        The transverse permeability matrix.
+    """
+    _transform = functools.partial(fourier_convolution_matrix, expansion=expansion)
+
+    # Define the real-space and Fourier transformed rotation matrices. The rotation
+    # matrix is defined such that T [Ht, Hn]^T = [Hx, Hy], and differs from that
+    # used for the transverse permittiity calculation.
+    (
+        rotation_matrix,
+        fourier_rotation_matrix,
+        fourier_inverse_rotation_matrix,
+    ) = _rotation_matrices(
+        t00=tx,
+        t01=-ty.conj(),
+        t10=ty,
+        t11=tx.conj(),
+        expansion=expansion,
+    )
+
+    # Obtain the permeability tensor for rotated coordinates, i.e. coordinates where
+    # unit vectors are tangent and normal to the vector field defined by `(tx, ty)`.
+    permeability_tensor = jnp.block(
+        [
+            [
+                permeability_xx[..., jnp.newaxis, jnp.newaxis],
+                permeability_xy[..., jnp.newaxis, jnp.newaxis],
+            ],
+            [
+                permeability_yx[..., jnp.newaxis, jnp.newaxis],
+                permeability_yy[..., jnp.newaxis, jnp.newaxis],
+            ],
+        ]
+    )
+    assert rotation_matrix.shape[-2:] == permeability_tensor.shape[-2:] == (2, 2)
+    rotated_permeability_tensor = jnp.linalg.solve(
+        rotation_matrix, permeability_tensor @ rotation_matrix
+    )
+
+    # The Fourier permeability matrix is analogous to the central matrix in equation 45
+    # of [2012 Liu], in that its top-left block relates the tangential magnetic and
+    # magnetic flux density fields, and the bottom-right block relates the normal
+    # fields. Consequently, these use Laurent's rule and the inverse rule, respectively.
+    # Note that the non-diagonal blocks also use Laurent's rule, as these tensor elements
+    # may be zero, making the inverse rule problematic.
+    fourier_permeability_matrix = jnp.block(
+        [
+            [
+                _transform(rotated_permeability_tensor[..., 0, 0]),  # tt
+                _transform(rotated_permeability_tensor[..., 0, 1]),  # tn
+            ],
+            [
+                _transform(rotated_permeability_tensor[..., 1, 0]),  # nt
+                jnp.linalg.inv(
+                    _transform(1 / rotated_permeability_tensor[..., 1, 1])
+                ),  # nn
+            ],
+        ]
+    )
+    return (
+        fourier_rotation_matrix
+        @ fourier_permeability_matrix
+        @ fourier_inverse_rotation_matrix
+    )
+
+
+def _rotation_matrices(
+    t00: jnp.ndarray,
+    t01: jnp.ndarray,
+    t10: jnp.ndarray,
+    t11: jnp.ndarray,
+    expansion: basis.Expansion,
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    """Generate real-space and Fourier transformed rotation matrices."""
+    rotation_matrix = jnp.block(
+        [
+            [
+                t00[..., jnp.newaxis, jnp.newaxis],
+                t01[..., jnp.newaxis, jnp.newaxis],
+            ],
+            [
+                t10[..., jnp.newaxis, jnp.newaxis],
+                t11[..., jnp.newaxis, jnp.newaxis],
+            ],
+        ]
+    )
+
+    # Blockwise Fourier transform of the rotation matrix.
+    _transform = functools.partial(fourier_convolution_matrix, expansion=expansion)
+    fourier_rotation_matrix = jnp.block(
+        [
+            [_transform(t00), _transform(t01)],
+            [_transform(t10), _transform(t11)],
+        ]
+    )
+
+    # Blockwise Fourier transform of the inverse rotation matrix.
+    denom = jnp.abs(t00 * t11 - t10 * t01)
+    denom_safe = jnp.where(jnp.isclose(denom, 0), 1.0, denom)
+    fourier_inverse_rotation_matrix = jnp.block(
+        [
+            [_transform(t11 / denom_safe), _transform(-t01 / denom_safe)],
+            [_transform(-t10 / denom_safe), _transform(t00 / denom_safe)],
+        ]
+    )
+    return rotation_matrix, fourier_rotation_matrix, fourier_inverse_rotation_matrix
 
 
 # -----------------------------------------------------------------------------
