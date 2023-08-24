@@ -9,7 +9,7 @@ import jax
 import jax.example_libraries.optimizers as jopt
 import jax.numpy as jnp
 
-from fmmax import basis, fields, fmm, layer, scattering, utils
+from fmmax import basis, fields, layer, scattering, utils
 
 Aux = Dict[str, Any]
 Initializer = Callable[[jax.random.PRNGKeyArray, Tuple[int, int]], jnp.ndarray]
@@ -64,7 +64,7 @@ class PolarizationSorterComponent:
         pitch: float = 2.0,
         approximate_num_terms: int = 200,
         truncation: basis.Truncation = basis.Truncation.CIRCULAR,
-        formulation: fmm.Formulation = fmm.Formulation.FFT,
+        formulation: layer.Formulation = layer.Formulation.FFT,
         density_grid_shape: Tuple[int, int] = (128, 128),
         field_grid_shape: Tuple[int, int] = (128, 128),
         field_z_offset: float = 0.0,
@@ -121,7 +121,7 @@ class PolarizationSorterComponent:
             approximate_num_terms=approximate_num_terms,
             truncation=truncation,
         )
-        self._formulation: fmm.Formulation = formulation
+        self._formulation: layer.Formulation = formulation
         self._density_grid_shape: Tuple[int, int] = density_grid_shape
         self._field_grid_shape: Tuple[int, int] = field_grid_shape
         self._field_z_offset: jnp.ndarray = jnp.asarray(field_z_offset)
@@ -148,7 +148,7 @@ class PolarizationSorterComponent:
         params: Params,
         wavelength: Optional[jnp.ndarray] = None,
         expansion: Optional[basis.Expansion] = None,
-        formulation: Optional[fmm.Formulation] = None,
+        formulation: Optional[layer.Formulation] = None,
         field_grid_shape: Optional[Tuple[int, int]] = None,
         field_z_offset: Optional[jnp.ndarray] = None,
     ) -> Tuple[jnp.ndarray, Aux]:
@@ -210,7 +210,7 @@ def _simulate_polarization_sorter(
     substrate_permittivity: jnp.ndarray,
     wavelength: jnp.ndarray,
     expansion: basis.Expansion,
-    formulation: fmm.Formulation,
+    formulation: layer.Formulation,
     field_grid_shape: Tuple[int, int],
     field_z_offset: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, Aux]:

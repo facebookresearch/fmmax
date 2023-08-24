@@ -6,7 +6,7 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 import jax.numpy as jnp
 import matplotlib.pyplot as plt  # type: ignore[import]
 
-from fmmax import basis, fmm, vector
+from fmmax import basis, layer, vector
 
 
 def plot_vector_fields(
@@ -25,7 +25,7 @@ def plot_vector_fields(
 
     fig = plt.figure(figsize=(7, 3))
 
-    schemes = [f for f in fmm.Formulation if f != fmm.Formulation.FFT]
+    schemes = [f for f in layer.Formulation if f != layer.Formulation.FFT]
 
     for i, formulation in enumerate(schemes):
         tx, ty = vector.VECTOR_FIELD_SCHEMES[formulation.value](

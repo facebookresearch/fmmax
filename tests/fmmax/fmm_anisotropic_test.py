@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fmm, layer, scattering, utils
+from fmmax import basis, layer, scattering, utils
 
 # Enable 64-bit precision for higher-accuracy.
 jax.config.update("jax_enable_x64", True)
@@ -113,11 +113,11 @@ class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
 
     @parameterized.parameterized.expand(
         [
-            (fmm.Formulation.FFT, 0.0),
-            (fmm.Formulation.FFT, jnp.pi / 4),
-            (fmm.Formulation.FFT, jnp.pi / 2),
-            (fmm.Formulation.JONES_DIRECT, 0.0),
-            (fmm.Formulation.JONES_DIRECT, jnp.pi / 2),
+            (layer.Formulation.FFT, 0.0),
+            (layer.Formulation.FFT, jnp.pi / 4),
+            (layer.Formulation.FFT, jnp.pi / 2),
+            (layer.Formulation.JONES_DIRECT, 0.0),
+            (layer.Formulation.JONES_DIRECT, jnp.pi / 2),
         ]
     )
     def test_reflection_with_anisotropic_eignensolve_matches_isotropic_tight_tolerance(
@@ -134,8 +134,8 @@ class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
 
     @parameterized.parameterized.expand(
         [
-            (fmm.Formulation.JONES_DIRECT, jnp.pi / 3),
-            (fmm.Formulation.JONES_DIRECT, 2 * jnp.pi / 3),
+            (layer.Formulation.JONES_DIRECT, jnp.pi / 3),
+            (layer.Formulation.JONES_DIRECT, 2 * jnp.pi / 3),
         ]
     )
     def test_reflection_with_anisotropic_eignensolve_matches_isotropic_loose_tolerance(
@@ -157,42 +157,42 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
         [
             # Cases with permittivity and permeability arrays with shape (1, 1)
             # exercise the uniform media eigensolve.
-            [1.0, 1.0, 0.0, (1, 1), fmm.Formulation.FFT],
-            [10.0, 1.0, 0.0, (1, 1), fmm.Formulation.FFT],
-            [1.0, 10.0, 0.0, (1, 1), fmm.Formulation.FFT],
-            [1.0, 1.0, jnp.pi / 4, (1, 1), fmm.Formulation.FFT],
-            [10.0, 1.0, jnp.pi / 4, (1, 1), fmm.Formulation.FFT],
-            [1.0, 10.0, jnp.pi / 4, (1, 1), fmm.Formulation.FFT],
-            [10.0, 10.0, jnp.pi / 4, (1, 1), fmm.Formulation.FFT],
-            [1.0, 1.0, jnp.pi / 3, (1, 1), fmm.Formulation.FFT],
-            [10.0, 1.0, jnp.pi / 3, (1, 1), fmm.Formulation.FFT],
-            [1.0, 10.0, jnp.pi / 3, (1, 1), fmm.Formulation.FFT],
-            [10.0, 10.0, jnp.pi / 3, (1, 1), fmm.Formulation.FFT],
+            [1.0, 1.0, 0.0, (1, 1), layer.Formulation.FFT],
+            [10.0, 1.0, 0.0, (1, 1), layer.Formulation.FFT],
+            [1.0, 10.0, 0.0, (1, 1), layer.Formulation.FFT],
+            [1.0, 1.0, jnp.pi / 4, (1, 1), layer.Formulation.FFT],
+            [10.0, 1.0, jnp.pi / 4, (1, 1), layer.Formulation.FFT],
+            [1.0, 10.0, jnp.pi / 4, (1, 1), layer.Formulation.FFT],
+            [10.0, 10.0, jnp.pi / 4, (1, 1), layer.Formulation.FFT],
+            [1.0, 1.0, jnp.pi / 3, (1, 1), layer.Formulation.FFT],
+            [10.0, 1.0, jnp.pi / 3, (1, 1), layer.Formulation.FFT],
+            [1.0, 10.0, jnp.pi / 3, (1, 1), layer.Formulation.FFT],
+            [10.0, 10.0, jnp.pi / 3, (1, 1), layer.Formulation.FFT],
             # Cases with permittivity and permeability arrays with shape larger
             # than (1, 1) exercise the patterned media eigensolve.
-            [1.0, 1.0, 0.0, (10, 10), fmm.Formulation.FFT],
-            [10.0, 1.0, 0.0, (10, 10), fmm.Formulation.FFT],
-            [1.0, 10.0, 0.0, (10, 10), fmm.Formulation.FFT],
-            [1.0, 1.0, jnp.pi / 4, (10, 10), fmm.Formulation.FFT],
-            [10.0, 1.0, jnp.pi / 4, (10, 10), fmm.Formulation.FFT],
-            [1.0, 10.0, jnp.pi / 4, (10, 10), fmm.Formulation.FFT],
-            [10.0, 10.0, jnp.pi / 4, (10, 10), fmm.Formulation.FFT],
-            [1.0, 1.0, jnp.pi / 3, (10, 10), fmm.Formulation.FFT],
-            [10.0, 1.0, jnp.pi / 3, (10, 10), fmm.Formulation.FFT],
-            [1.0, 10.0, jnp.pi / 3, (10, 10), fmm.Formulation.FFT],
-            [10.0, 10.0, jnp.pi / 3, (10, 10), fmm.Formulation.FFT],
+            [1.0, 1.0, 0.0, (10, 10), layer.Formulation.FFT],
+            [10.0, 1.0, 0.0, (10, 10), layer.Formulation.FFT],
+            [1.0, 10.0, 0.0, (10, 10), layer.Formulation.FFT],
+            [1.0, 1.0, jnp.pi / 4, (10, 10), layer.Formulation.FFT],
+            [10.0, 1.0, jnp.pi / 4, (10, 10), layer.Formulation.FFT],
+            [1.0, 10.0, jnp.pi / 4, (10, 10), layer.Formulation.FFT],
+            [10.0, 10.0, jnp.pi / 4, (10, 10), layer.Formulation.FFT],
+            [1.0, 1.0, jnp.pi / 3, (10, 10), layer.Formulation.FFT],
+            [10.0, 1.0, jnp.pi / 3, (10, 10), layer.Formulation.FFT],
+            [1.0, 10.0, jnp.pi / 3, (10, 10), layer.Formulation.FFT],
+            [10.0, 10.0, jnp.pi / 3, (10, 10), layer.Formulation.FFT],
             # Patterned media, vector formulation.
-            [1.0, 1.0, 0.0, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [10.0, 1.0, 0.0, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [1.0, 10.0, 0.0, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [1.0, 1.0, jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [10.0, 1.0, jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [1.0, 10.0, jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [10.0, 10.0, jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [1.0, 1.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [10.0, 1.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [1.0, 10.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [10.0, 10.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
+            [1.0, 1.0, 0.0, (10, 10), layer.Formulation.JONES_DIRECT],
+            [10.0, 1.0, 0.0, (10, 10), layer.Formulation.JONES_DIRECT],
+            [1.0, 10.0, 0.0, (10, 10), layer.Formulation.JONES_DIRECT],
+            [1.0, 1.0, jnp.pi / 4, (10, 10), layer.Formulation.JONES_DIRECT],
+            [10.0, 1.0, jnp.pi / 4, (10, 10), layer.Formulation.JONES_DIRECT],
+            [1.0, 10.0, jnp.pi / 4, (10, 10), layer.Formulation.JONES_DIRECT],
+            [10.0, 10.0, jnp.pi / 4, (10, 10), layer.Formulation.JONES_DIRECT],
+            [1.0, 1.0, jnp.pi / 3, (10, 10), layer.Formulation.JONES_DIRECT],
+            [10.0, 1.0, jnp.pi / 3, (10, 10), layer.Formulation.JONES_DIRECT],
+            [1.0, 10.0, jnp.pi / 3, (10, 10), layer.Formulation.JONES_DIRECT],
+            [10.0, 10.0, jnp.pi / 3, (10, 10), layer.Formulation.JONES_DIRECT],
         ]
     )
     def test_reflection_matches_expected(
@@ -275,23 +275,23 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
         [
             # Cases with permittivity and permeability arrays with shape (1, 1)
             # exercise the uniform media eigensolve.
-            [0.0, (1, 1), fmm.Formulation.FFT],
-            [jnp.pi / 5, (1, 1), fmm.Formulation.FFT],
-            [jnp.pi / 4, (1, 1), fmm.Formulation.FFT],
-            [jnp.pi / 3, (1, 1), fmm.Formulation.FFT],
-            [jnp.pi / 2, (1, 1), fmm.Formulation.FFT],
+            [0.0, (1, 1), layer.Formulation.FFT],
+            [jnp.pi / 5, (1, 1), layer.Formulation.FFT],
+            [jnp.pi / 4, (1, 1), layer.Formulation.FFT],
+            [jnp.pi / 3, (1, 1), layer.Formulation.FFT],
+            [jnp.pi / 2, (1, 1), layer.Formulation.FFT],
             # Cases with permittivity and permeability arrays with shape larger
             # than (1, 1) exercise the patterned media eigensolve.
-            [0.0, (10, 10), fmm.Formulation.FFT],
-            [jnp.pi / 5, (10, 10), fmm.Formulation.FFT],
-            [jnp.pi / 4, (10, 10), fmm.Formulation.FFT],
-            [jnp.pi / 3, (10, 10), fmm.Formulation.FFT],
-            [jnp.pi / 2, (10, 10), fmm.Formulation.FFT],
-            [0.0, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [jnp.pi / 5, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [jnp.pi / 2, (10, 10), fmm.Formulation.JONES_DIRECT],
+            [0.0, (10, 10), layer.Formulation.FFT],
+            [jnp.pi / 5, (10, 10), layer.Formulation.FFT],
+            [jnp.pi / 4, (10, 10), layer.Formulation.FFT],
+            [jnp.pi / 3, (10, 10), layer.Formulation.FFT],
+            [jnp.pi / 2, (10, 10), layer.Formulation.FFT],
+            [0.0, (10, 10), layer.Formulation.JONES_DIRECT],
+            [jnp.pi / 5, (10, 10), layer.Formulation.JONES_DIRECT],
+            [jnp.pi / 4, (10, 10), layer.Formulation.JONES_DIRECT],
+            [jnp.pi / 3, (10, 10), layer.Formulation.JONES_DIRECT],
+            [jnp.pi / 2, (10, 10), layer.Formulation.JONES_DIRECT],
         ]
     )
     def test_reflection_anisotropic_permittivity_matches_expected(
@@ -387,23 +387,23 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
         [
             # Cases with permittivity and permeability arrays with shape (1, 1)
             # exercise the uniform media eigensolve.
-            [0.0, (1, 1), fmm.Formulation.FFT],
-            [jnp.pi / 5, (1, 1), fmm.Formulation.FFT],
-            [jnp.pi / 4, (1, 1), fmm.Formulation.FFT],
-            [jnp.pi / 3, (1, 1), fmm.Formulation.FFT],
-            [jnp.pi / 2, (1, 1), fmm.Formulation.FFT],
+            [0.0, (1, 1), layer.Formulation.FFT],
+            [jnp.pi / 5, (1, 1), layer.Formulation.FFT],
+            [jnp.pi / 4, (1, 1), layer.Formulation.FFT],
+            [jnp.pi / 3, (1, 1), layer.Formulation.FFT],
+            [jnp.pi / 2, (1, 1), layer.Formulation.FFT],
             # Cases with permittivity and permeability arrays with shape larger
             # than (1, 1) exercise the patterned media eigensolve.
-            [0.0, (10, 10), fmm.Formulation.FFT],
-            [jnp.pi / 5, (10, 10), fmm.Formulation.FFT],
-            [jnp.pi / 4, (10, 10), fmm.Formulation.FFT],
-            [jnp.pi / 3, (10, 10), fmm.Formulation.FFT],
-            [jnp.pi / 2, (10, 10), fmm.Formulation.FFT],
-            [0.0, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [jnp.pi / 5, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
-            [jnp.pi / 2, (10, 10), fmm.Formulation.JONES_DIRECT],
+            [0.0, (10, 10), layer.Formulation.FFT],
+            [jnp.pi / 5, (10, 10), layer.Formulation.FFT],
+            [jnp.pi / 4, (10, 10), layer.Formulation.FFT],
+            [jnp.pi / 3, (10, 10), layer.Formulation.FFT],
+            [jnp.pi / 2, (10, 10), layer.Formulation.FFT],
+            [0.0, (10, 10), layer.Formulation.JONES_DIRECT],
+            [jnp.pi / 5, (10, 10), layer.Formulation.JONES_DIRECT],
+            [jnp.pi / 4, (10, 10), layer.Formulation.JONES_DIRECT],
+            [jnp.pi / 3, (10, 10), layer.Formulation.JONES_DIRECT],
+            [jnp.pi / 2, (10, 10), layer.Formulation.JONES_DIRECT],
         ]
     )
     def test_reflection_anisotropic_permeability_matches_expected(

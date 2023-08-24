@@ -11,7 +11,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fields, fmm, layer, scattering
+from fmmax import basis, fields, layer, scattering
 
 
 def example_solve(permittivity_batch_shape, wavelength_batch_shape):
@@ -40,7 +40,7 @@ def example_solve(permittivity_batch_shape, wavelength_batch_shape):
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         for p in permittivities
     ]
@@ -169,7 +169,7 @@ class FieldsOnCoordinatesTest(unittest.TestCase):
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity,
             expansion=expansion,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
 
         ex, ey, ez, hx, hy, hz = jax.random.normal(
@@ -228,7 +228,7 @@ class FieldsOnCoordinatesTest(unittest.TestCase):
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity,
             expansion=expansion,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
 
         fwd_amplitude_start, bwd_amplitude_end = jax.random.normal(

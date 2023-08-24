@@ -12,7 +12,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fft, fmm, layer, utils
+from fmmax import basis, layer, utils
 
 # Enable 64-bit precision for higher accuracy.
 jax.config.update("jax_enable_x64", True)
@@ -102,7 +102,7 @@ class GrcwaComparisonTest(unittest.TestCase):
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=permittivity,
             expansion=EXPANSION,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         eigenvalues, eigenvectors = _sort_eigs(
             solve_result.eigenvalues, solve_result.eigenvectors
@@ -146,11 +146,11 @@ class GrcwaComparisonTest(unittest.TestCase):
 class LayerTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
-            (fmm.Formulation.FFT,),
-            (fmm.Formulation.POL,),
-            (fmm.Formulation.NORMAL,),
-            (fmm.Formulation.JONES,),
-            (fmm.Formulation.JONES_DIRECT,),
+            (layer.Formulation.FFT,),
+            (layer.Formulation.POL,),
+            (layer.Formulation.NORMAL,),
+            (layer.Formulation.JONES,),
+            (layer.Formulation.JONES_DIRECT,),
         ]
     )
     def test_uniform_matches_patterned(self, formulation):
@@ -231,11 +231,11 @@ class LayerTest(unittest.TestCase):
 
     @parameterized.parameterized.expand(
         [
-            (fmm.Formulation.FFT,),
-            (fmm.Formulation.POL,),
-            (fmm.Formulation.NORMAL,),
-            (fmm.Formulation.JONES,),
-            (fmm.Formulation.JONES_DIRECT,),
+            (layer.Formulation.FFT,),
+            (layer.Formulation.POL,),
+            (layer.Formulation.NORMAL,),
+            (layer.Formulation.JONES,),
+            (layer.Formulation.JONES_DIRECT,),
         ]
     )
     def test_patterned_layer_batch_matches_single(self, formulation):
@@ -294,15 +294,15 @@ class LayerTest(unittest.TestCase):
                 primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
                 permittivity=permittivity,
                 expansion=EXPANSION,
-                formulation=fmm.Formulation.FFT,
+                formulation=layer.Formulation.FFT,
             )
 
 
 class JitTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
-            (fmm.Formulation.FFT,),
-            (fmm.Formulation.POL,),
+            (layer.Formulation.FFT,),
+            (layer.Formulation.POL,),
         ]
     )
     def test_can_jit(self, formulation):
@@ -356,7 +356,7 @@ class AnistropicLayerTest(unittest.TestCase):
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=permittivity,
             expansion=EXPANSION,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         result = layer._eigensolve_patterned_general_anisotropic_media(
             wavelength=wavelength,
@@ -377,7 +377,7 @@ class AnistropicLayerTest(unittest.TestCase):
                 jnp.ones_like(permittivity),
             ),
             expansion=EXPANSION,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
             vector_field_source=permittivity,
         )
         onp.testing.assert_allclose(result.eigenvalues**2, expected.eigenvalues**2)
@@ -435,7 +435,7 @@ class AnistropicLayerTest(unittest.TestCase):
                 jnp.broadcast_to(permeability_zz, (64, 64)),
             ),
             expansion=EXPANSION,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
             vector_field_source=(permittivity_xx + permittivity_yy) / 2,
         )
         patterned_eigenvalues, patterned_eigenvectors = _sort_eigs(

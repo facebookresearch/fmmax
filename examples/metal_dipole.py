@@ -9,7 +9,7 @@ from typing import Tuple
 import jax.numpy as jnp
 import matplotlib.pyplot as plt  # type: ignore[import]
 
-from fmmax import basis, fields, fmm, layer, pml, scattering, sources
+from fmmax import basis, fields, layer, pml, scattering, sources
 
 
 def simulate_metal_dipole(
@@ -89,7 +89,7 @@ def simulate_metal_dipole(
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
         expansion=expansion,
-        formulation=fmm.Formulation.FFT,
+        formulation=layer.Formulation.FFT,
         vector_field_source=None,  # Automatically choose the vector field source.
     )
     solve_result_ambient = eigensolve(

@@ -11,7 +11,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, farfield, fields, fmm, layer, scattering, sources, utils
+from fmmax import basis, farfield, fields, layer, scattering, sources, utils
 
 
 class FarfieldProfileTest(unittest.TestCase):
@@ -45,7 +45,7 @@ class FarfieldProfileTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         s_matrix_before_source = scattering.stack_s_matrix([layer_solve_result], [1.0])
         s_matrix_after_source = s_matrix_before_source
@@ -347,7 +347,7 @@ class IntegratedFluxTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
             expansion=expansion,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         s_matrix_before_source = scattering.stack_s_matrix([layer_solve_result], [1.0])
         s_matrix_after_source = s_matrix_before_source

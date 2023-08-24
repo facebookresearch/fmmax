@@ -7,7 +7,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from fmmax import basis, fields, fmm, layer, scattering, utils
+from fmmax import basis, fields, layer, scattering, utils
 
 WAVELENGTH_NM: jnp.ndarray = jnp.array([450.0, 550.0, 620.0])
 POLAR_ANGLE: jnp.ndarray = jnp.array([0.0])
@@ -112,7 +112,7 @@ def simulate_grating(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=permittivity_ambient_,
             expansion=expansion,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         ),
         layer.eigensolve_anisotropic_media(
             wavelength_nm,
@@ -120,7 +120,7 @@ def simulate_grating(
             primitive_lattice_vectors,
             *permittivities_grating,  # type: ignore[arg-type]
             expansion=expansion,  # type: ignore[misc]
-            formulation=fmm.Formulation.FFT,  # type: ignore[misc]
+            formulation=layer.Formulation.FFT,  # type: ignore[misc]
         ),
         layer.eigensolve_anisotropic_media(
             wavelength_nm,
@@ -128,7 +128,7 @@ def simulate_grating(
             primitive_lattice_vectors,
             *permittivities_substrate,  # type: ignore[arg-type]
             expansion=expansion,  # type: ignore[misc]
-            formulation=fmm.Formulation.FFT,  # type: ignore[misc]
+            formulation=layer.Formulation.FFT,  # type: ignore[misc]
         ),
     ]
 

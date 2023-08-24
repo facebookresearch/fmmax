@@ -11,7 +11,7 @@ import jax
 import jax.numpy as jnp
 import numpy as onp
 
-from fmmax import basis, fmm, layer, scattering, sources
+from fmmax import basis, layer, scattering
 
 # Enable 64-bit precision for higher accuracy.
 jax.config.update("jax_enable_x64", True)
@@ -84,7 +84,7 @@ def _stack_solve_result(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         for p in permittivities
     ]

@@ -7,7 +7,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from fmmax import basis, fields, fmm, layer, scattering, utils
+from fmmax import basis, fields, layer, scattering, utils
 
 SMatricesInterior = Tuple[
     Tuple[scattering.ScatteringMatrix, scattering.ScatteringMatrix], ...
@@ -96,7 +96,7 @@ def simulate_pillars(
     resolution_nm: float = 1.0,
     approximate_num_terms: int = 200,
     truncation: basis.Truncation = basis.Truncation.CIRCULAR,
-    formulation: fmm.Formulation = fmm.Formulation.FFT,
+    formulation: layer.Formulation = layer.Formulation.FFT,
 ) -> Tuple[
     int,
     jnp.ndarray,

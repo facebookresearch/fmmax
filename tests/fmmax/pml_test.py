@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as onp
 from jax import tree_util
 
-from fmmax import basis, fields, fmm, layer, pml, scattering, sources
+from fmmax import basis, fields, layer, pml, scattering, sources
 
 
 class FieldsInPMLDecayTest(unittest.TestCase):
@@ -45,7 +45,7 @@ class FieldsInPMLDecayTest(unittest.TestCase):
             permeability_yy=permeabilities_pml[3],
             permeability_zz=permeabilities_pml[4],
             expansion=expansion,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
             vector_field_source=None,  # Automatically choose the vector field source.
         )
 

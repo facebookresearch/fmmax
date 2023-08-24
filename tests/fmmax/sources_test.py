@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fft, fields, fmm, layer, scattering, sources
+from fmmax import basis, fft, fields, layer, scattering, sources
 
 WAVELENGTH = jnp.array(0.314)
 PRIMITIVE_LATTICE_VECTORS = basis.LatticeVectors(u=basis.X, v=basis.Y)
@@ -26,7 +26,7 @@ LAYER_SOLVE_RESULT = layer.eigensolve_isotropic_media(
     primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
     permittivity=jnp.ones((50, 50)) * 2,
     expansion=EXPANSION,
-    formulation=fmm.Formulation.FFT,
+    formulation=layer.Formulation.FFT,
 )
 
 BATCH_LAYER_SOLVE_RESULT = layer.eigensolve_isotropic_media(
@@ -35,7 +35,7 @@ BATCH_LAYER_SOLVE_RESULT = layer.eigensolve_isotropic_media(
     primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
     permittivity=jnp.ones((1, 1, 2, 50, 50)) * 2,
     expansion=EXPANSION,
-    formulation=fmm.Formulation.FFT,
+    formulation=layer.Formulation.FFT,
 )
 
 
@@ -55,7 +55,7 @@ class FieldSourcesTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             expansion=EXPANSION,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         fwd_amplitude = jax.random.normal(
             jax.random.PRNGKey(0), brillouin_grid_shape + (2 * EXPANSION.num_terms, 3)
@@ -104,7 +104,7 @@ class FieldSourcesTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             expansion=EXPANSION,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         with self.assertRaisesRegex(
             ValueError, "All fields must be rank 3 with matching shape"
@@ -130,7 +130,7 @@ class FieldSourcesTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             expansion=EXPANSION,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         with self.assertRaisesRegex(
             ValueError, "Field shapes must be evenly divisible by the Brillouin"
@@ -234,7 +234,7 @@ class InternalSourcesTest(unittest.TestCase):
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             expansion=EXPANSION,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         s_matrices_before_source = (
             s_matrices_after_source
@@ -385,7 +385,7 @@ class AmplitudesFromInternalSourcesTest(unittest.TestCase):
                     approximate_num_terms=500,
                     truncation=basis.Truncation.CIRCULAR,
                 ),
-                formulation=fmm.Formulation.FFT,
+                formulation=layer.Formulation.FFT,
             )
 
             s_matrix = scattering.stack_s_matrix(

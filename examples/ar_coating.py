@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as onp
 import scipy.optimize as spo  # type: ignore[import]
 
-from fmmax import basis, fmm, layer, scattering
+from fmmax import basis, layer, scattering
 
 
 def compute_reflection(
@@ -85,7 +85,7 @@ def compute_reflection(
             primitive_lattice_vectors=primitive_lattice_vectors,
             permittivity=p,
             expansion=expansion,
-            formulation=fmm.Formulation.FFT,
+            formulation=layer.Formulation.FFT,
         )
         for p in permittivities
     ]

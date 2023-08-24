@@ -8,7 +8,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from fmmax import basis, fmm, layer, scattering, utils
+from fmmax import basis, layer, scattering, utils
 
 NUM_TERMS_SWEEP = (9, 25, 49, 81, 121, 169, 225, 289, 361, 441, 529, 625, 729, 841)
 
@@ -25,7 +25,7 @@ def simulate_grating(
     resolution_nm: float = 1.0,
     approximate_num_terms: int = 20,
     truncation: basis.Truncation = basis.Truncation.CIRCULAR,
-    formulation: fmm.Formulation = fmm.Formulation.FFT,
+    formulation: layer.Formulation = layer.Formulation.FFT,
 ) -> Tuple[int, complex, complex]:
     """Computes the TE- and TM-polarized reflection from a 1D stripe grating.
 
@@ -105,14 +105,14 @@ def convergence_study(
         basis.Truncation.CIRCULAR,
         basis.Truncation.PARALLELOGRAMIC,
     ),
-    fmm_formulations: Tuple[fmm.Formulation, ...] = (
-        fmm.Formulation.FFT,
-        fmm.Formulation.JONES_DIRECT,
-        fmm.Formulation.JONES,
-        fmm.Formulation.NORMAL,
-        fmm.Formulation.POL,
+    fmm_formulations: Tuple[layer.Formulation, ...] = (
+        layer.Formulation.FFT,
+        layer.Formulation.JONES_DIRECT,
+        layer.Formulation.JONES,
+        layer.Formulation.NORMAL,
+        layer.Formulation.POL,
     ),
-) -> Tuple[Tuple[fmm.Formulation, basis.Truncation, int, complex, complex], ...]:
+) -> Tuple[Tuple[layer.Formulation, basis.Truncation, int, complex, complex], ...]:
     """Sweeps over number of terms and fmm formulations to study convergence."""
     results = []
     for formulation, truncation, n in itertools.product(
