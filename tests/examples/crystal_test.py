@@ -1,4 +1,4 @@
-"""Tests for `examples.ar_coating`.
+"""Tests for `examples.crystal`.
 
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """

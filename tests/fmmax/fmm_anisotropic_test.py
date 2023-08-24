@@ -294,7 +294,9 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
             [jnp.pi / 2, (10, 10), fmm.Formulation.JONES_DIRECT],
         ]
     )
-    def test_reflection_anisotropic_permittivity_matches_expected(self, rotation_angle, shape, formulation):
+    def test_reflection_anisotropic_permittivity_matches_expected(
+        self, rotation_angle, shape, formulation
+    ):
         n1 = 1.0 + 0.0j
         n2e = 2.2 + 0.0001j
         n2o = 1.8 + 0.0001j
@@ -404,7 +406,9 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
             [jnp.pi / 2, (10, 10), fmm.Formulation.JONES_DIRECT],
         ]
     )
-    def test_reflection_anisotropic_permeability_matches_expected(self, rotation_angle, shape, formulation):
+    def test_reflection_anisotropic_permeability_matches_expected(
+        self, rotation_angle, shape, formulation
+    ):
         n1 = 1.0 + 0.0j
         n2e = 2.2 + 0.0001j
         n2o = 1.8 + 0.0001j

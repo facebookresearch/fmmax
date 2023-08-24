@@ -379,6 +379,7 @@ class AnistropicLayerTest(unittest.TestCase):
             ),
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
+            vector_field_source=permittivity,
         )
         onp.testing.assert_allclose(result.eigenvalues**2, expected.eigenvalues**2)
 
@@ -436,6 +437,7 @@ class AnistropicLayerTest(unittest.TestCase):
             ),
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
+            vector_field_source=(permittivity_xx + permittivity_yy) / 2,
         )
         patterned_eigenvalues, patterned_eigenvectors = _sort_eigs(
             patterned_result.eigenvalues, patterned_result.eigenvectors

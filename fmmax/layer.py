@@ -5,7 +5,7 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import dataclasses
 import functools
-from typing import Tuple
+from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -18,123 +18,6 @@ _TensorComponents = Tuple[
 ]
 
 
-@dataclasses.dataclass
-class LayerSolveResult:
-    """Stores the result of a layer eigensolve.
-
-    This eigenvalue problem is specified in equation 28 of [2012 Liu].
-
-    Attributes:
-        wavelength: The wavelength for the solve.
-        in_plane_wavevector: The in-plane wavevector for the solve.
-        primitive_lattice_vectors: The primitive vectors for the real-space lattice.
-        expansion: The expansion used for the eigensolve.
-        eigenvalues: The layer eigenvalues.
-        eigenvectors: The layer eigenvectors.
-        z_permittivity_matrix: The fourier-transformed zz-component of permittivity.
-        inverse_z_permittivity_matrix: The fourier-transformed inverse of zz-component
-            of permittivity.
-        z_permeability_matrix: The fourier-transformed zz-component of permeability.
-        inverse_z_permeability_matrix: The fourier-transformed inverse of zz-component
-            of permeability.
-        omega_script_k_matrix: The omega-script-k matrix from equation 26 of
-            [2012 Liu], which is needed to generate the layer scattering matrix.
-    """
-
-    wavelength: jnp.ndarray
-    in_plane_wavevector: jnp.ndarray
-    primitive_lattice_vectors: basis.LatticeVectors
-    expansion: basis.Expansion
-    eigenvalues: jnp.ndarray
-    eigenvectors: jnp.ndarray
-    z_permittivity_matrix: jnp.ndarray
-    inverse_z_permittivity_matrix: jnp.ndarray
-    z_permeability_matrix: jnp.ndarray
-    inverse_z_permeability_matrix: jnp.ndarray
-    omega_script_k_matrix: jnp.ndarray
-
-    @property
-    def batch_shape(self) -> Tuple[int, ...]:
-        return self.eigenvectors.shape[:-2]
-
-    def __post_init__(self) -> None:
-        """Validates shapes of the `LayerSolveResult` attributes."""
-        if self.wavelength.ndim != len(
-            self.batch_shape
-        ) or not utils.batch_compatible_shapes(self.wavelength.shape, self.batch_shape):
-            raise ValueError(
-                f"`wavelength` must have compatible batch shape, but got shape {self.wavelength.shape} "
-                f"when `eigenvectors` shape is {self.eigenvectors.shape}."
-            )
-        if self.in_plane_wavevector.ndim != len(
-            self.batch_shape
-        ) + 1 or not utils.batch_compatible_shapes(
-            self.in_plane_wavevector.shape[:-1], self.batch_shape
-        ):
-            raise ValueError(
-                f"`in_plane_wavevector` must have compatible batch shape, but got shape "
-                f"{self.in_plane_wavevector.shape} when `eigenvectors` shape is {self.eigenvectors.shape}."
-            )
-        if self.expansion.num_terms * 2 != self.eigenvectors.shape[-1]:
-            raise ValueError(
-                f"`eigenvectors` must have shape compatible with `expansion.num_terms`, but got shape "
-                f"{self.eigenvectors.shape} when `num_terms` shape is {self.expansion.num_terms}."
-            )
-        if self.eigenvalues.shape != self.eigenvectors.shape[:-1]:
-            raise ValueError(
-                f"`eigenvalues` must have compatible shape, but got shape {self.eigenvalues.shape} "
-                f"when `eigenvectors` shape is {self.eigenvectors.shape}."
-            )
-
-        expected_matrix_shape = self.batch_shape + (self.expansion.num_terms,) * 2
-
-        if self.inverse_z_permittivity_matrix.ndim != len(
-            expected_matrix_shape
-        ) or not utils.batch_compatible_shapes(
-            self.inverse_z_permittivity_matrix.shape, expected_matrix_shape
-        ):
-            raise ValueError(
-                f"`inverse_z_permittivity_matrix` must have shape compatible with `eigenvectors`, "
-                f"but got shapes {self.inverse_z_permittivity_matrix.shape}  and {self.eigenvectors.shape}."
-            )
-
-        if self.z_permittivity_matrix.ndim != len(
-            expected_matrix_shape
-        ) or not utils.batch_compatible_shapes(
-            self.z_permittivity_matrix.shape, expected_matrix_shape
-        ):
-            raise ValueError(
-                f"`z_permittivity_matrix` must have shape compatible with `eigenvectors`, but got "
-                f"shapes {self.z_permittivity_matrix.shape}  and {self.eigenvectors.shape}."
-            )
-
-        if self.inverse_z_permeability_matrix.ndim != len(
-            expected_matrix_shape
-        ) or not utils.batch_compatible_shapes(
-            self.inverse_z_permeability_matrix.shape, expected_matrix_shape
-        ):
-            raise ValueError(
-                f"`inverse_z_permeability_matrix` must have shape compatible with `eigenvectors`, "
-                f"but got shapes {self.inverse_z_permeability_matrix.shape}  and {self.eigenvectors.shape}."
-            )
-
-        if self.z_permeability_matrix.ndim != len(
-            expected_matrix_shape
-        ) or not utils.batch_compatible_shapes(
-            self.z_permeability_matrix.shape, expected_matrix_shape
-        ):
-            raise ValueError(
-                f"`z_permeability_matrix` must have shape compatible with `eigenvectors`, but got "
-                f"shapes {self.z_permeability_matrix.shape}  and {self.eigenvectors.shape}."
-            )
-
-        if self.omega_script_k_matrix.shape != self.eigenvectors.shape:
-            raise ValueError(
-                f"`omega_script_k_matrix` must have shape matching `eigenvectors`, but got "
-                f"shapes {self.omega_script_k_matrix.shape}  and {self.eigenvectors.shape}."
-            )
-
-
 def eigensolve_isotropic_media(
     wavelength: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,
@@ -142,7 +25,7 @@ def eigensolve_isotropic_media(
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
     formulation: fmm.Formulation,
-) -> LayerSolveResult:
+) -> "LayerSolveResult":
     """Performs the eigensolve for a layer with isotropic permittivity.
 
     This function performs either a uniform-layer or patterned-layer eigensolve,
@@ -188,7 +71,7 @@ def eigensolve_anisotropic_media(
     permittivity_zz: jnp.ndarray,
     expansion: basis.Expansion,
     formulation: fmm.Formulation,
-) -> LayerSolveResult:
+) -> "LayerSolveResult":
     """Performs the eigensolve for a layer with anisotropic permittivity.
 
     This function performs either a uniform-layer or patterned-layer eigensolve,
@@ -228,6 +111,7 @@ def eigensolve_anisotropic_media(
         permeability_zz=jnp.ones_like(permittivity_xx),
         expansion=expansion,
         formulation=formulation,
+        vector_field_source=None,
     )
 
 
@@ -247,7 +131,8 @@ def eigensolve_general_anisotropic_media(
     permeability_zz: jnp.ndarray,
     expansion: basis.Expansion,
     formulation: fmm.Formulation,
-) -> LayerSolveResult:
+    vector_field_source: Optional[jnp.ndarray] = None,
+) -> "LayerSolveResult":
     """Performs the eigensolve for a general anistropic layer.
 
     Here, "general" refers to the fact that the layer material can be magnetic, i.e.
@@ -275,6 +160,10 @@ def eigensolve_general_anisotropic_media(
         permeability_zz: The zz-component of the permeability tensor.
         expansion: The field expansion to be used.
         formulation: Specifies the formulation to be used.
+        vector_field_source: Optional array used to calculate the vector field for
+            vector formulations of the FMM. If not specified, `(permittivity_xx +
+            permittivity_yy) / 2` is used. Ignored for the `FFT` formulation. Should
+            have shape matching the permittivities and permeabilities.
 
     Returns:
         The `LayerSolveResult`.
@@ -282,8 +171,12 @@ def eigensolve_general_anisotropic_media(
     if permittivity_xx.shape[-2:] == (1, 1):
         _eigensolve_fn = _eigensolve_uniform_general_anisotropic_media
     else:
+        if vector_field_source is None:
+            vector_field_source = (permittivity_xx + permittivity_yy) / 2
         _eigensolve_fn = functools.partial(
-            _eigensolve_patterned_general_anisotropic_media, formulation=formulation
+            _eigensolve_patterned_general_anisotropic_media,
+            formulation=formulation,
+            vector_field_source=vector_field_source,
         )
 
     return _eigensolve_fn(
@@ -306,6 +199,102 @@ def eigensolve_general_anisotropic_media(
         ),
         expansion=expansion,
     )
+
+
+@dataclasses.dataclass
+class LayerSolveResult:
+    """Stores the result of a layer eigensolve.
+
+    This eigenvalue problem is specified in equation 28 of [2012 Liu].
+
+    Attributes:
+        wavelength: The wavelength for the solve.
+        in_plane_wavevector: The in-plane wavevector for the solve.
+        primitive_lattice_vectors: The primitive vectors for the real-space lattice.
+        expansion: The expansion used for the eigensolve.
+        eigenvalues: The layer eigenvalues.
+        eigenvectors: The layer eigenvectors.
+        z_permittivity_matrix: The fourier-transformed zz-component of permittivity.
+        inverse_z_permittivity_matrix: The fourier-transformed inverse of zz-component
+            of permittivity.
+        z_permeability_matrix: The fourier-transformed zz-component of permeability.
+        inverse_z_permeability_matrix: The fourier-transformed inverse of zz-component
+            of permeability.
+        omega_script_k_matrix: The omega-script-k matrix from equation 26 of
+            [2012 Liu], which is needed to generate the layer scattering matrix.
+    """
+
+    wavelength: jnp.ndarray
+    in_plane_wavevector: jnp.ndarray
+    primitive_lattice_vectors: basis.LatticeVectors
+    expansion: basis.Expansion
+    eigenvalues: jnp.ndarray
+    eigenvectors: jnp.ndarray
+    z_permittivity_matrix: jnp.ndarray
+    inverse_z_permittivity_matrix: jnp.ndarray
+    z_permeability_matrix: jnp.ndarray
+    inverse_z_permeability_matrix: jnp.ndarray
+    omega_script_k_matrix: jnp.ndarray
+
+    @property
+    def batch_shape(self) -> Tuple[int, ...]:
+        return self.eigenvectors.shape[:-2]
+
+    def __post_init__(self) -> None:
+        """Validates shapes of the `LayerSolveResult` attributes."""
+
+        def _incompatible(arr: jnp.ndarray, reference_shape: Tuple[int, ...]) -> bool:
+            ndim_mismatch = arr.ndim != len(reference_shape)
+            batch_compatible = utils.batch_compatible_shapes(arr.shape, reference_shape)
+            return ndim_mismatch or not batch_compatible
+
+        if _incompatible(self.wavelength, self.batch_shape):
+            raise ValueError(
+                f"`wavelength` must have compatible batch shape, but got shape {self.wavelength.shape} "
+                f"when `eigenvectors` shape is {self.eigenvectors.shape}."
+            )
+        if _incompatible(self.in_plane_wavevector, self.batch_shape + (2,)):
+            raise ValueError(
+                f"`in_plane_wavevector` must have compatible batch shape, but got shape "
+                f"{self.in_plane_wavevector.shape} when `eigenvectors` shape is {self.eigenvectors.shape}."
+            )
+        if self.expansion.num_terms * 2 != self.eigenvectors.shape[-1]:
+            raise ValueError(
+                f"`eigenvectors` must have shape compatible with `expansion.num_terms`, but got shape "
+                f"{self.eigenvectors.shape} when `num_terms` shape is {self.expansion.num_terms}."
+            )
+        if self.eigenvalues.shape != self.eigenvectors.shape[:-1]:
+            raise ValueError(
+                f"`eigenvalues` must have compatible shape, but got shape {self.eigenvalues.shape} "
+                f"when `eigenvectors` shape is {self.eigenvectors.shape}."
+            )
+
+        expected_matrix_shape = self.batch_shape + (self.expansion.num_terms,) * 2
+        if _incompatible(self.inverse_z_permittivity_matrix, expected_matrix_shape):
+            raise ValueError(
+                f"`inverse_z_permittivity_matrix` must have shape compatible with `eigenvectors`, "
+                f"but got shapes {self.inverse_z_permittivity_matrix.shape}  and {self.eigenvectors.shape}."
+            )
+        if _incompatible(self.z_permittivity_matrix, expected_matrix_shape):
+            raise ValueError(
+                f"`z_permittivity_matrix` must have shape compatible with `eigenvectors`, but got "
+                f"shapes {self.z_permittivity_matrix.shape}  and {self.eigenvectors.shape}."
+            )
+        if _incompatible(self.inverse_z_permeability_matrix, expected_matrix_shape):
+            raise ValueError(
+                f"`inverse_z_permeability_matrix` must have shape compatible with `eigenvectors`, "
+                f"but got shapes {self.inverse_z_permeability_matrix.shape}  and {self.eigenvectors.shape}."
+            )
+        if _incompatible(self.z_permeability_matrix, expected_matrix_shape):
+            raise ValueError(
+                f"`z_permeability_matrix` must have shape compatible with `eigenvectors`, but got "
+                f"shapes {self.z_permeability_matrix.shape}  and {self.eigenvectors.shape}."
+            )
+        if self.omega_script_k_matrix.shape != self.eigenvectors.shape:
+            raise ValueError(
+                f"`omega_script_k_matrix` must have shape matching `eigenvectors`, but got "
+                f"shapes {self.omega_script_k_matrix.shape}  and {self.eigenvectors.shape}."
+            )
 
 
 # -----------------------------------------------------------------------------
@@ -585,6 +574,7 @@ def _eigensolve_patterned_general_anisotropic_media(
     permeabilities: _TensorComponents,
     expansion: basis.Expansion,
     formulation: fmm.Formulation,
+    vector_field_source: jnp.ndarray,
 ) -> LayerSolveResult:
     """Returns the results of a patterned anisotropic layer eigensolve.
 
@@ -601,6 +591,8 @@ def _eigensolve_patterned_general_anisotropic_media(
             mu_yx, mu_yy, mu_zz)`, each having shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
         formulation: Specifies the formulation to be used.
+        vector_field_source: Array used to calculate the vector field, with shape
+            matching the permittivities and permeabilities.
 
     Returns:
         The `LayerSolveResult`.
@@ -649,7 +641,7 @@ def _eigensolve_patterned_general_anisotropic_media(
         ),
         expansion=expansion,
         formulation=formulation,
-        vector_field_source=permittivity_xx,
+        vector_field_source=vector_field_source,
     )
     return _numerical_eigensolve(
         wavelength=wavelength,

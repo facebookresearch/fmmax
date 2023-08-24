@@ -3,71 +3,89 @@
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
+import dataclasses
 from typing import Tuple
 
 import jax.numpy as jnp
+from jax import tree_util
 
 from fmmax import basis
 
 
+@dataclasses.dataclass
+class PMLParams:
+    """Stores parameters that define perfectly matched layers.
+
+    Attributes:
+        num_x: The number of gridpoints occupied by the PML, in the x-direction.
+        num_y: The number of gridpoints occupied by the PML, in the y-direction.
+        a_max:
+        p:
+        sigma_max:
+    """
+
+    num_x: int
+    num_y: int
+    a_max: float = 4.0
+    p: float = 4.0
+    sigma_max: float = 1.0
+
+
 def apply_uniaxial_pml(
     permittivity: jnp.ndarray,
-    primitive_lattice_vectors: basis.LatticeVectors,
-    width_u: int,
-    width_v: int,
-    a_max: float = 4.0,
-    p: float = 4.0,
-    sigma_max: float = 1.0,
+    pml_params: PMLParams,
 ) -> Tuple[
     Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray],
     Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray],
 ]:
-    """Generate the anisotropic permittivity tensor elements implementing a uniaxial pml.
+    """Generate the permittivity and permeability tensor elements for uniaxial pml.
+
+    The PML assumes that the unit cell has primitive lattice vectors u and v
+    which are parallel to x and y, respectively.
+
+    This function is appropriate for isotropic nonmagnetic media, but the
+    permittiities and permeabilities generated are anisotropic.
 
     Args:
         permittivity: isotropic permittivity
-        primitive_lattice_vectors: needed to rotate the PML
-        width_u: Number of elements in the permittivity array to be used for the
-            perfectly matched layer, in the `u` direction.
-        width_v: Number of elements for the perfectly matched layer, `v` direction.
-        a_max: PML parameter
-        p: PML parameter
-        sigma_max: PML parameter
+        pml_params: The parameters defining the perfectly matched layer dimensions and
+            absorption characteristics.
 
     Returns:
-        The permittivity and permeability tensors.
+        The permittivity and permeability tensor elements,
+        `((permittivity_xx, permittivity_xy, permittivity_yx, permittivity_yy, permittivity_zz),
+          (permeability_xx, permeability_xy, permeability_yx, permeability_yy, permeability_zz))`.
     """
     # Remove the permittivity in regions within the PML, and replace these with whatever
     # values exist just outside the border of the PML region.
     permittivity = _crop_and_edge_pad_pml_region(
-        permittivity, widths=(width_u, width_v)
+        permittivity, widths=(pml_params.num_x, pml_params.num_y)
     )
 
-    du, dv = _normalized_distance_into_pml(
-        shape=permittivity.shape[-2:], widths=(width_u, width_v)  # type: ignore[arg-type]
+    dx, dy = _normalized_distance_into_pml(
+        shape=permittivity.shape[-2:],   # type: ignore[arg-type]
+        widths=(pml_params.num_x, pml_params.num_y),
     )
 
-    su = (1 + a_max * du**p) * (1 + 1j * sigma_max * jnp.sin(jnp.pi / 2 * du) ** 2)
-    sv = (1 + a_max * dv**p) * (1 + 1j * sigma_max * jnp.sin(jnp.pi / 2 * dv) ** 2)
+    sx = (1 + pml_params.a_max * dx**pml_params.p) * (
+        1 + 1j * pml_params.sigma_max * jnp.sin(jnp.pi / 2 * dx) ** 2
+    )
+    sy = (1 + pml_params.a_max * dy**pml_params.p) * (
+        1 + 1j * pml_params.sigma_max * jnp.sin(jnp.pi / 2 * dy) ** 2
+    )
     sz = 1
 
-    permittivity_uu = sv * sz / su * permittivity
-    permittivity_vv = su * sz / sv * permittivity
-    permittivity_zz = su * sv / sz * permittivity
-
-    permittivity_xx = permittivity_uu
+    permittivity_xx = sy * sz / sx * permittivity
+    permittivity_yy = sx * sz / sy * permittivity
+    permittivity_zz = sx * sy / sz * permittivity
     permittivity_xy = jnp.zeros_like(permittivity)
     permittivity_yx = jnp.zeros_like(permittivity)
-    permittivity_yy = permittivity_vv
 
-    permeability_uu = sv * sz / su
-    permeability_vv = su * sz / sv
-    permeability_zz = su * sv / sz
-
-    permeability_xx = permeability_uu
+    permeability_xx = sy * sz / sx
+    permeability_yy = sx * sz / sy
+    permeability_zz = sx * sy / sz
     permeability_xy = jnp.zeros_like(permittivity)
     permeability_yx = jnp.zeros_like(permittivity)
-    permeability_yy = permeability_vv
 
     return (
         permittivity_xx,

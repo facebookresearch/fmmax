@@ -345,7 +345,6 @@ def _transverse_permittivity_vector_anisotropic(
         permittivity_xy: The xy-component of the permittivity tensor.
         permittivity_yx: The yx-component of the permittivity tensor.
         permittivity_yy: The yy-component of the permittivity tensor.
-        permittivity_zz: The zz-component of the permittivity tensor.
         tx: The x-component of the tangent vector field.
         ty: The y-component of the tangent vector field.
         expansion: The field expansion to be used.
@@ -437,7 +436,6 @@ def _transverse_permeability_vector_anisotropic(
         permeability_xy: The xy-component of the permeability tensor.
         permeability_yx: The yx-component of the permeability tensor.
         permeability_yy: The yy-component of the permeability tensor.
-        permeability_zz: The zz-component of the permeability tensor.
         tx: The x-component of the tangent vector field.
         ty: The y-component of the tangent vector field.
         expansion: The field expansion to be used.
