@@ -10,7 +10,6 @@ import jax.numpy as jnp
 
 from fmmax import basis, fft, utils
 
-
 # -----------------------------------------------------------------------------
 # Functions to compute the k- and script-k matrices.
 # -----------------------------------------------------------------------------
