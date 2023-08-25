@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fmm, layer, scattering, utils
+from fmmax import basis, fmm, scattering, utils
 
 # Enable 64-bit precision for higher-accuracy.
 jax.config.update("jax_enable_x64", True)
@@ -56,18 +56,18 @@ class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
             "expansion": expansion,
             "formulation": formulation,
         }
-        solve_result_ambient = layer.eigensolve_isotropic_media(
+        solve_result_ambient = fmm.eigensolve_isotropic_media(
             permittivity=permittivity_ambient, **eigensolve_kwargs
         )
-        solve_result_passivation = layer.eigensolve_isotropic_media(
+        solve_result_passivation = fmm.eigensolve_isotropic_media(
             permittivity=permittivity_passivation, **eigensolve_kwargs
         )
-        solve_result_metal = layer.eigensolve_isotropic_media(
+        solve_result_metal = fmm.eigensolve_isotropic_media(
             permittivity=permittivity_metal, **eigensolve_kwargs
         )
 
         # Perform the isotropic grating eigensolve and compute the zeroth-order reflectivity.
-        solve_result_grating_isotropic = layer.eigensolve_isotropic_media(
+        solve_result_grating_isotropic = fmm.eigensolve_isotropic_media(
             permittivity=permittivity_grating, **eigensolve_kwargs
         )
         s_matrix_isotropic = scattering.stack_s_matrix(
@@ -84,7 +84,7 @@ class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
         r_tm_isotropic = s_matrix_isotropic.s21[n, n]
 
         # Perform the anisotropic grating eigensolve and compute the zeroth-order reflectivity.
-        solve_result_grating_anisotropic = layer.eigensolve_general_anisotropic_media(
+        solve_result_grating_anisotropic = fmm.eigensolve_general_anisotropic_media(
             permittivity_xx=permittivity_grating,
             permittivity_xy=jnp.zeros_like(permittivity_grating),
             permittivity_yx=jnp.zeros_like(permittivity_grating),
@@ -234,13 +234,13 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
         }
 
         permittivity_ambient = jnp.asarray([[z1]])
-        solve_result_ambient = layer.eigensolve_isotropic_media(
+        solve_result_ambient = fmm.eigensolve_isotropic_media(
             permittivity=permittivity_ambient, **eigensolve_kwargs
         )
 
         permittivity = jnp.full(shape, permittivity)
         permeability = jnp.full(shape, permeability)
-        solve_result_substrate = layer.eigensolve_general_anisotropic_media(
+        solve_result_substrate = fmm.eigensolve_general_anisotropic_media(
             permittivity_xx=permittivity,
             permittivity_xy=jnp.zeros_like(permittivity),
             permittivity_yx=jnp.zeros_like(permittivity),
@@ -320,7 +320,7 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
         }
 
         permittivity_ambient = jnp.asarray([[n1**2]])
-        solve_result_ambient = layer.eigensolve_isotropic_media(
+        solve_result_ambient = fmm.eigensolve_isotropic_media(
             permittivity=permittivity_ambient, **eigensolve_kwargs
         )
 
@@ -339,7 +339,7 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
         permittivity_tensor = (
             rotation_matrix @ permittivity_tensor_eo @ jnp.linalg.inv(rotation_matrix)
         )
-        solve_result_substrate = layer.eigensolve_general_anisotropic_media(
+        solve_result_substrate = fmm.eigensolve_general_anisotropic_media(
             permittivity_xx=jnp.full(shape, permittivity_tensor[0, 0]),
             permittivity_xy=jnp.full(shape, permittivity_tensor[0, 1]),
             permittivity_yx=jnp.full(shape, permittivity_tensor[1, 0]),
@@ -432,7 +432,7 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
         }
 
         permittivity_ambient = jnp.asarray([[n1**2]])
-        solve_result_ambient = layer.eigensolve_isotropic_media(
+        solve_result_ambient = fmm.eigensolve_isotropic_media(
             permittivity=permittivity_ambient, **eigensolve_kwargs
         )
 
@@ -451,7 +451,7 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
         permeability_tensor = (
             rotation_matrix @ permeability_tensor_eo @ jnp.linalg.inv(rotation_matrix)
         )
-        solve_result_substrate = layer.eigensolve_general_anisotropic_media(
+        solve_result_substrate = fmm.eigensolve_general_anisotropic_media(
             permittivity_xx=jnp.ones(shape),
             permittivity_xy=jnp.zeros(shape),
             permittivity_yx=jnp.zeros(shape),

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt  # type: ignore[import]
 import numpy as onp
 from skimage import measure  # type: ignore[import]
 
-from fmmax import basis, beams, fields, fmm, layer, scattering, sources
+from fmmax import basis, beams, fields, fmm, scattering, sources
 
 PERMITTIVITY_AMBIENT: complex = (1.0 + 0.0j) ** 2
 PERMITTIVITY_SLAB: complex = (1.5 + 0.0j) ** 2
@@ -100,7 +100,7 @@ def simulate_crystal_with_internal_source(
     assert in_plane_wavevector.ndim == 3
 
     eigensolve = functools.partial(
-        layer.eigensolve_isotropic_media,
+        fmm.eigensolve_isotropic_media,
         wavelength=jnp.asarray(wavelength),
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
@@ -298,7 +298,7 @@ def simulate_crystal_with_gaussian_beam(
     assert in_plane_wavevector.ndim == 3
 
     eigensolve = functools.partial(
-        layer.eigensolve_isotropic_media,
+        fmm.eigensolve_isotropic_media,
         wavelength=jnp.asarray(wavelength),
         in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,

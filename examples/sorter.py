@@ -9,7 +9,7 @@ import jax
 import jax.example_libraries.optimizers as jopt
 import jax.numpy as jnp
 
-from fmmax import basis, fields, fmm, layer, scattering, utils
+from fmmax import basis, fields, fmm, scattering, utils
 
 Aux = Dict[str, Any]
 Initializer = Callable[[jax.random.PRNGKeyArray, Tuple[int, int]], jnp.ndarray]
@@ -261,7 +261,7 @@ def _simulate_polarization_sorter(
 
     # Perform the eigensolve for each layer in the stack.
     layer_solve_results = [
-        layer.eigensolve_isotropic_media(
+        fmm.eigensolve_isotropic_media(
             wavelength=wavelength,
             in_plane_wavevector=jnp.zeros((2,)),
             primitive_lattice_vectors=params["primitive_lattice_vectors"],

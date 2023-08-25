@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, fields, fmm, layer, scattering
+from fmmax import basis, fields, fmm, scattering
 
 # Enable 64-bit precision for higher accuracy.
 jax.config.update("jax_enable_x64", True)
@@ -26,7 +26,7 @@ def _solve_s_matrix(
     formulation=fmm.Formulation.FFT,
 ):
     layer_solve_results = [
-        layer.eigensolve_isotropic_media(
+        fmm.eigensolve_isotropic_media(
             wavelength=wavelength,
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,

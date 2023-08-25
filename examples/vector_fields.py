@@ -6,7 +6,7 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 import jax.numpy as jnp
 import matplotlib.pyplot as plt  # type: ignore[import]
 
-from fmmax import basis, fmm, vector
+from fmmax import basis, vector
 
 
 def plot_vector_fields(
@@ -25,16 +25,14 @@ def plot_vector_fields(
 
     fig = plt.figure(figsize=(7, 3))
 
-    schemes = [f for f in fmm.Formulation if f != fmm.Formulation.FFT]
-
-    for i, formulation in enumerate(schemes):
-        tx, ty = vector.VECTOR_FIELD_SCHEMES[formulation.value](
+    for i, scheme_name in enumerate(vector.VECTOR_FIELD_SCHEMES):
+        tx, ty = vector.VECTOR_FIELD_SCHEMES[scheme_name](
             arr, primitive_lattice_vectors
         )
 
         ax = plt.subplot(1, 4, i + 1)
         _plot_vector_field(
-            ax, arr, tx, ty, scale=0.7, interval=interval, title=formulation.value
+            ax, arr, tx, ty, scale=0.7, interval=interval, title=scheme_name
         )
 
     plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0.05)

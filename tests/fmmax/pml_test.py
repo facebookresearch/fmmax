@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as onp
 from jax import tree_util
 
-from fmmax import basis, fields, fmm, layer, pml, scattering, sources
+from fmmax import basis, fields, fmm, pml, scattering, sources
 
 
 class FieldsInPMLDecayTest(unittest.TestCase):
@@ -30,7 +30,7 @@ class FieldsInPMLDecayTest(unittest.TestCase):
         permittivities_pml, permeabilities_pml = pml.apply_uniaxial_pml(
             permittivity=jnp.full(grid_shape, permittivity), pml_params=pml_params
         )
-        solve_result_ambient = layer.eigensolve_general_anisotropic_media(
+        solve_result_ambient = fmm.eigensolve_general_anisotropic_media(
             wavelength=jnp.asarray(0.63),
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,

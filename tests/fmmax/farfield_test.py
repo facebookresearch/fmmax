@@ -11,7 +11,7 @@ import jax.numpy as jnp
 import numpy as onp
 import parameterized
 
-from fmmax import basis, farfield, fields, fmm, layer, scattering, sources, utils
+from fmmax import basis, farfield, fields, fmm, scattering, sources, utils
 
 
 class FarfieldProfileTest(unittest.TestCase):
@@ -39,7 +39,7 @@ class FarfieldProfileTest(unittest.TestCase):
         jy = jnp.concatenate([zeros, dipole, zeros], axis=-1)
         jz = jnp.concatenate([zeros, zeros, dipole], axis=-1)
 
-        layer_solve_result = layer.eigensolve_isotropic_media(
+        layer_solve_result = fmm.eigensolve_isotropic_media(
             permittivity=jnp.asarray([[1.0]]),
             wavelength=jnp.asarray(wavelength),
             in_plane_wavevector=in_plane_wavevector,
@@ -341,7 +341,7 @@ class IntegratedFluxTest(unittest.TestCase):
         jy = jnp.concatenate([zeros, dipole, zeros], axis=-1)
         jz = jnp.concatenate([zeros, zeros, dipole], axis=-1)
 
-        layer_solve_result = layer.eigensolve_isotropic_media(
+        layer_solve_result = fmm.eigensolve_isotropic_media(
             permittivity=jnp.asarray([[1.0]]),
             wavelength=jnp.asarray(wavelength),
             in_plane_wavevector=in_plane_wavevector,

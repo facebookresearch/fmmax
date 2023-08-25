@@ -8,13 +8,13 @@ from typing import Callable, Sequence, Tuple
 
 import jax.numpy as jnp
 
-from fmmax import basis, fmm, layer, scattering, utils
+from fmmax import basis, fft, fmm, scattering, utils
 
 
 def propagate_amplitude(
     amplitude: jnp.ndarray,
     distance: jnp.ndarray,
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
 ) -> jnp.ndarray:
     """Propagates waves with the given `amplitude` by `distance`.
 
@@ -44,7 +44,7 @@ def colocate_amplitudes(
     forward_amplitude_start: jnp.ndarray,
     backward_amplitude_end: jnp.ndarray,
     z_offset: jnp.ndarray,
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
     layer_thickness: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute the forward- and backward-propagating wave amplitudes at `z_offset`.
@@ -101,7 +101,7 @@ def _validate_amplitudes_shape(
 def amplitude_poynting_flux(
     forward_amplitude: jnp.ndarray,
     backward_amplitude: jnp.ndarray,
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Returns total Poynting flux for forward and backward eigenmodes.
 
@@ -156,7 +156,7 @@ def amplitude_poynting_flux(
 def directional_poynting_flux(
     forward_amplitude: jnp.ndarray,
     backward_amplitude: jnp.ndarray,
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Returns total forward and backward Poynting flux.
 
@@ -235,7 +235,7 @@ def directional_poynting_flux(
 
 
 def eigenmode_poynting_flux(
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
 ) -> jnp.ndarray:
     """Returns the total Poynting flux for each eigenmode.
 
@@ -259,7 +259,7 @@ def eigenmode_poynting_flux(
     return flux
 
 
-def _poynting_flux_a_matrix(layer_solve_result: layer.LayerSolveResult) -> jnp.ndarray:
+def _poynting_flux_a_matrix(layer_solve_result: fmm.LayerSolveResult) -> jnp.ndarray:
     """Computes the `A` matrix from section 5.1 of [2012 Liu]."""
     q = layer_solve_result.eigenvalues
     phi = layer_solve_result.eigenvectors
@@ -273,7 +273,7 @@ def _poynting_flux_a_matrix(layer_solve_result: layer.LayerSolveResult) -> jnp.n
 def fields_from_wave_amplitudes(
     forward_amplitude: jnp.ndarray,
     backward_amplitude: jnp.ndarray,
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
 ) -> Tuple[
     Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
     Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
@@ -345,7 +345,7 @@ def fields_from_wave_amplitudes(
     return (ex, ey, ez), (hx, hy, hz)
 
 
-def field_conversion_matrix(layer_solve_result: layer.LayerSolveResult) -> jnp.ndarray:
+def field_conversion_matrix(layer_solve_result: fmm.LayerSolveResult) -> jnp.ndarray:
     """Returns the matrix which converts wave amplitudes to transverse fields."""
     # The matrix is from equation 35 of [2012 Liu].
     q = layer_solve_result.eigenvalues
@@ -372,7 +372,7 @@ FieldsXYSliceFn = Callable[
     [
         Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # Ex, Ey, Ez Fourier amplitudes
         Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # Hx, Hy, Hz Fourier amplitudes
-        layer.LayerSolveResult,
+        fmm.LayerSolveResult,
     ],
     Tuple[
         Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],  # Ex, Ey, Ez
@@ -385,7 +385,7 @@ FieldsXYSliceFn = Callable[
 def fields_on_grid(
     electric_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
     magnetic_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
     shape: Tuple[int, int],
     num_unit_cells: Tuple[int, int],
 ) -> Tuple[
@@ -434,7 +434,7 @@ def fields_on_grid(
     )
 
     def _field_on_grid(fourier_field):
-        field = fmm.ifft(fourier_field, layer_solve_result.expansion, shape, axis=-2)
+        field = fft.ifft(fourier_field, layer_solve_result.expansion, shape, axis=-2)
         return jnp.tile(field, num_unit_cells + (1,))
 
     ex, ey, ez = electric_field
@@ -456,7 +456,7 @@ def fields_on_grid(
 def fields_on_coordinates(
     electric_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
     magnetic_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
     x: jnp.ndarray,
     y: jnp.ndarray,
 ) -> Tuple[
@@ -669,7 +669,7 @@ def amplitudes_interior(
 
 def stack_fields_3d_auto_grid(
     amplitudes_interior: Sequence[Tuple[jnp.ndarray, jnp.ndarray]],
-    layer_solve_results: Sequence[layer.LayerSolveResult],
+    layer_solve_results: Sequence[fmm.LayerSolveResult],
     layer_thicknesses: Sequence[jnp.ndarray],
     grid_spacing: float,
     num_unit_cells: Tuple[int, int],
@@ -711,7 +711,7 @@ def stack_fields_3d_auto_grid(
 
 def stack_fields_3d(
     amplitudes_interior: Sequence[Tuple[jnp.ndarray, jnp.ndarray]],
-    layer_solve_results: Sequence[layer.LayerSolveResult],
+    layer_solve_results: Sequence[fmm.LayerSolveResult],
     layer_thicknesses: Sequence[jnp.ndarray],
     layer_znum: Sequence[int],
     grid_shape: Tuple[int, int],
@@ -746,7 +746,7 @@ def stack_fields_3d(
 
 def stack_fields_3d_on_coordinates(
     amplitudes_interior: Sequence[Tuple[jnp.ndarray, jnp.ndarray]],
-    layer_solve_results: Sequence[layer.LayerSolveResult],
+    layer_solve_results: Sequence[fmm.LayerSolveResult],
     layer_thicknesses: Sequence[jnp.ndarray],
     layer_znum: Sequence[int],
     x: jnp.ndarray,
@@ -782,7 +782,7 @@ def stack_fields_3d_on_coordinates(
 def layer_fields_3d(
     forward_amplitude_start: jnp.ndarray,
     backward_amplitude_end: jnp.ndarray,
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
     layer_thickness: jnp.ndarray,
     layer_znum: int,
     grid_shape: Tuple[int, int],
@@ -821,7 +821,7 @@ def layer_fields_3d(
 def layer_fields_3d_on_coordinates(
     forward_amplitude_start: jnp.ndarray,
     backward_amplitude_end: jnp.ndarray,
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
     layer_thickness: jnp.ndarray,
     layer_znum: int,
     x: jnp.ndarray,
@@ -859,7 +859,7 @@ def layer_fields_3d_on_coordinates(
 
 def _stack_fields_3d(
     amplitudes_interior: Sequence[Tuple[jnp.ndarray, jnp.ndarray]],
-    layer_solve_results: Sequence[layer.LayerSolveResult],
+    layer_solve_results: Sequence[fmm.LayerSolveResult],
     layer_thicknesses: Sequence[jnp.ndarray],
     layer_znum: Sequence[int],
     fields_xy_slice_fn: FieldsXYSliceFn,
@@ -917,7 +917,7 @@ def _stack_fields_3d(
 def _layer_fields_3d(
     forward_amplitude_start: jnp.ndarray,
     backward_amplitude_end: jnp.ndarray,
-    layer_solve_result: layer.LayerSolveResult,
+    layer_solve_result: fmm.LayerSolveResult,
     layer_thickness: jnp.ndarray,
     layer_znum: int,
     fields_xy_slice_fn: FieldsXYSliceFn,

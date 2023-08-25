@@ -8,7 +8,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from fmmax import basis, fmm, layer, scattering, utils
+from fmmax import basis, fmm, scattering, utils
 
 NUM_TERMS_SWEEP = (9, 25, 49, 81, 121, 169, 225, 289, 361, 441, 529, 625, 729, 841)
 
@@ -79,7 +79,7 @@ def simulate_grating(
         truncation=truncation,
     )
     layer_solve_results = [
-        layer.eigensolve_isotropic_media(
+        fmm.eigensolve_isotropic_media(
             wavelength=jnp.asarray(wavelength_nm),
             in_plane_wavevector=in_plane_wavevector,
             primitive_lattice_vectors=primitive_lattice_vectors,
