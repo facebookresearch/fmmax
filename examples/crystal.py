@@ -109,7 +109,7 @@ def simulate_crystal_with_internal_source(
     )
 
     mask = unit_cell_pattern(pitch, diameter, resolution)
-    permittivity_crystal = jnp.where(mask, permittivity_slab, permittivity_slab)
+    permittivity_crystal = jnp.where(mask, permittivity_ambient, permittivity_slab)
     solve_result_crystal = eigensolve(permittivity=permittivity_crystal)
     solve_result_ambient = eigensolve(
         permittivity=jnp.asarray(permittivity_ambient)[jnp.newaxis, jnp.newaxis]
@@ -307,7 +307,7 @@ def simulate_crystal_with_gaussian_beam(
     )
 
     mask = unit_cell_pattern(pitch, diameter, resolution)
-    permittivity_crystal = jnp.where(mask, permittivity_slab, permittivity_slab)
+    permittivity_crystal = jnp.where(mask, permittivity_ambient, permittivity_slab)
     solve_result_crystal = eigensolve(permittivity=permittivity_crystal)
     solve_result_ambient = eigensolve(
         permittivity=jnp.asarray(permittivity_ambient)[jnp.newaxis, jnp.newaxis]
