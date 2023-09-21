@@ -324,9 +324,7 @@ def simulate_crystal_with_gaussian_beam(
             return arr
 
     mask = unit_cell_pattern(pitch, diameter, resolution)
-    permittivity_crystal = _reshape_permittivity(
-        jnp.where(mask, permittivity_ambient, permittivity_slab)
-    )
+    permittivity_crystal = jnp.where(mask, permittivity_ambient, permittivity_slab)
     solve_result_crystal = eigensolve(permittivity=permittivity_crystal)
     solve_result_ambient = eigensolve(
         permittivity=_reshape_permittivity(
