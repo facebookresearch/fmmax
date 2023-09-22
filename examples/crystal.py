@@ -315,21 +315,11 @@ def simulate_crystal_with_gaussian_beam(
         formulation=fmm.Formulation.FFT,
     )
 
-    def _reshape_permittivity(arr: jnp.ndarray):
-        if wavelengths.size > 1:
-            return jnp.expand_dims(
-                arr, axis=(0, 1, 2)
-            )  # pad for wavelength and k-points
-        else:
-            return arr
-
     mask = unit_cell_pattern(pitch, diameter, resolution)
     permittivity_crystal = jnp.where(mask, permittivity_ambient, permittivity_slab)
     solve_result_crystal = eigensolve(permittivity=permittivity_crystal)
     solve_result_ambient = eigensolve(
-        permittivity=_reshape_permittivity(
-            jnp.asarray(permittivity_ambient)[jnp.newaxis, jnp.newaxis]
-        )
+        permittivity=jnp.asarray(permittivity_ambient)[jnp.newaxis, jnp.newaxis]
     )
 
     s_matrices_interior = scattering.stack_s_matrices_interior(
@@ -346,19 +336,11 @@ def simulate_crystal_with_gaussian_beam(
     # beam, and then solving for the eigenmodes.
     # TODO: replace paraxial Gaussian with a more rigorous expression.
 
-    def _paraxial_gaussian_field_fn(
-        x,
-        y,
-        z,
-    ):
+    def _paraxial_gaussian_field_fn(x, y, z):
         # Returns the fields of a z-propagating, x-polarized Gaussian beam.
         # See https://en.wikipedia.org/wiki/Gaussian_beam
 
         # Adjust array dimensions for proper batching
-        batch_axes = (WAVELENGTH_AXIS, WAVELENGTH_AXIS + 1, WAVELENGTH_AXIS + 2)
-        x = jnp.expand_dims(x, axis=batch_axes)
-        y = jnp.expand_dims(y, axis=batch_axes)
-        z = jnp.expand_dims(z, axis=batch_axes)
         wavelengths_padded = wavelengths[..., jnp.newaxis, jnp.newaxis]
 
         k = 2 * jnp.pi / wavelengths_padded
@@ -552,7 +534,7 @@ def plot_dipole_fields(
     ax = plt.subplot(111)
     im = plt.pcolormesh(xplot, zplot, field_plot, shading="nearest", cmap="bwr")
 
-    im.set_clim([-jnp.amax(field_plot), jnp.amax(field_plot)])
+    im.set_clim((-jnp.amax(field_plot), jnp.amax(field_plot)))
 
     contours = measure.find_contours(onp.array(section_xz))
     scale_factor = pitch / resolution
@@ -599,7 +581,7 @@ def plot_gaussian_fields(
     ax = plt.subplot(111)
     im = plt.pcolormesh(xplot, zplot, field_plot, shading="nearest", cmap="bwr")
 
-    im.set_clim([-jnp.amax(field_plot), jnp.amax(field_plot)])
+    im.set_clim((-jnp.amax(field_plot), jnp.amax(field_plot)))
 
     contours = measure.find_contours(onp.array(section_xz))
     scale_factor = pitch / resolution
@@ -615,22 +597,5 @@ def plot_gaussian_fields(
 
 
 if __name__ == "__main__":
-    # plot_dipole_fields()
-    # plot_gaussian_fields()
-
-    (
-        (ex, ey, ez),
-        (hx, hy, hz),
-        (x, y, z),
-        (section_xy, section_xz, section_yz),
-    ) = simulate_crystal_with_gaussian_beam(
-        brillouin_grid_shape=(2, 3),
-        resolution_fields=0.1,
-        wavelengths=WAVELENGTH,
-    )
-    print(ex.shape)
-    print(ey.shape)
-    print(ez.shape)
-    print(hx.shape)
-    print(hy.shape)
-    print(hz.shape)
+    plot_dipole_fields()
+    plot_gaussian_fields()
