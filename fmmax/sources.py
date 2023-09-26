@@ -40,9 +40,8 @@ def amplitudes_for_fields(
     """
 
     batch_shape = layer_solve_result.batch_shape
-    expected_fields_dims = (
-        len(batch_shape) + 2 + 1
-    )  # the leading batch dims, the x dim, the y dim, and source dim
+    # the leading batch dims, the x dim, the y dim, and source dim
+    expected_fields_dims = len(batch_shape) + 2 + 1
     if not (ex.shape == ey.shape == hx.shape == hy.shape) or (
         ex.ndim != expected_fields_dims
     ):
