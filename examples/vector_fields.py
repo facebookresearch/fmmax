@@ -58,7 +58,7 @@ def _plot_vector_field(
 ) -> None:
     """Plots an overlay of `arr` with the vector field."""
     im = ax.imshow(arr, cmap="gray")
-    im.set_clim([-5 * (jnp.amax(arr) - jnp.amin(arr)), jnp.amax(arr)])
+    im.set_clim((-5 * (jnp.amax(arr) - jnp.amin(arr)), jnp.amax(arr)))
 
     x, y = jnp.meshgrid(*[jnp.arange(d) for d in vx.shape], indexing="ij")
 

@@ -38,13 +38,18 @@ def amplitudes_for_fields(
     Returns:
         The forward and backward wave amplitudes.
     """
-    if not (ex.shape == ey.shape == hx.shape == hy.shape) or ex.ndim != 3:
+
+    batch_shape = layer_solve_result.batch_shape
+    # the leading batch dims, the x dim, the y dim, and source dim
+    expected_fields_dims = len(batch_shape) + 2 + 1
+    if not (ex.shape == ey.shape == hx.shape == hy.shape) or (
+        ex.ndim != expected_fields_dims
+    ):
         raise ValueError(
-            f"All fields must be rank 3 with matching shape, but got shapes of "
+            f"All fields must be rank {expected_fields_dims} with matching shape, but got shapes of "
             f"{ex.shape}, {ey.shape}, {hx.shape}, and {hy.shape}."
         )
 
-    batch_shape = layer_solve_result.batch_shape
     brillouin_grid_axes: Tuple[int, int] = utils.absolute_axes(brillouin_grid_axes, len(batch_shape))  # type: ignore[no-redef]
     brillouin_grid_shape = (
         batch_shape[brillouin_grid_axes[0]],
@@ -52,8 +57,8 @@ def amplitudes_for_fields(
     )
 
     if (
-        ex.shape[0] % brillouin_grid_shape[0] != 0
-        or ex.shape[1] % brillouin_grid_shape[1] != 0
+        ex.shape[-3] % brillouin_grid_shape[0] != 0
+        or ex.shape[-2] % brillouin_grid_shape[1] != 0
     ):
         raise ValueError(
             f"Field shapes must be evenly divisible by the Brillouin grid shape, but got "

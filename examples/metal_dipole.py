@@ -209,7 +209,7 @@ def plot_metal_dipole_fields(
     im = ax.pcolormesh(xplot, zplot, field_plot, shading="nearest", cmap="magma")
 
     clipval = jnp.percentile(field_plot, clip_percentile)
-    im.set_clim([0, clipval])
+    im.set_clim((0, clipval))
 
     ax.axis("equal")
     ax.axis("off")
