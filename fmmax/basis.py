@@ -298,9 +298,7 @@ def _basis_coefficients_circular(
     # of `u` and `v` scaled by `num_terms`.
     max_magnitude = onp.sqrt(
         approximate_num_terms
-        * onp.abs(
-            _cross_product(reciprocal_vectors.u, reciprocal_vectors.v)
-        )
+        * onp.abs(_cross_product(reciprocal_vectors.u, reciprocal_vectors.v))
         / onp.pi
     )
     mask = magnitude < max_magnitude
@@ -348,7 +346,7 @@ def _basis_coefficients_parallelogramic(
     # (Note that while the sides of the parallelogram have equal length, the number of
     # points along each direction will differ, as these are spaced by `ku_spacing` and
     # `kv_spacing`.)
-    
+
     def _solve_quadratic(ratio):
         a = 4 * ratio
         b = 2 * (ratio + 1)
