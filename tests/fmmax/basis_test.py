@@ -117,7 +117,7 @@ class ExpansionTest(unittest.TestCase):
         )
         expansion = basis.generate_expansion(
             primitive_lattice_vectors=primitive_lattice_vectors,
-            approximate_num_terms=20,
+            approximate_num_terms=25,
             truncation=basis.Truncation.PARALLELOGRAMIC,
         )
         onp.testing.assert_allclose(
@@ -225,3 +225,37 @@ class UnitCellCoordiantesTest(unittest.TestCase):
         onp.testing.assert_array_equal(
             y, jnp.broadcast_to(jnp.asarray(expected_y)[jnp.newaxis, :], y.shape)
         )
+
+
+class GenerateBasisTest(unittest.TestCase):
+    def test_parallelogramic_num_terms_is_monotonic(self):
+        approximate_num_terms = onp.arange(50, 250)
+        primitive_lattice_vectors = basis.LatticeVectors(
+            u=1.5 * basis.X,
+            v=0.75 * basis.Y,
+        )
+        num_terms = []
+        for n in approximate_num_terms:
+            coeffs = basis._basis_coefficients_parallelogramic(
+                primitive_lattice_vectors,
+                approximate_num_terms=n,
+            )
+            num_terms.append(coeffs.shape[0])
+        for n, n_next in zip(num_terms[:-1], num_terms[1:]):
+            self.assertGreaterEqual(n_next, n)
+
+    def test_circular_num_terms_is_monotonic(self):
+        approximate_num_terms = onp.arange(50, 250)
+        primitive_lattice_vectors = basis.LatticeVectors(
+            u=1.5 * basis.X,
+            v=0.75 * basis.Y,
+        )
+        num_terms = []
+        for n in approximate_num_terms:
+            coeffs = basis._basis_coefficients_circular(
+                primitive_lattice_vectors,
+                approximate_num_terms=n,
+            )
+            num_terms.append(coeffs.shape[0])
+        for n, n_next in zip(num_terms[:-1], num_terms[1:]):
+            self.assertGreaterEqual(n_next, n)
