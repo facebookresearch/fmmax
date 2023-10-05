@@ -41,10 +41,11 @@ def script_k_matrix_patterned(
     transverse_wavevectors: jnp.ndarray,
 ) -> jnp.ndarray:
     """Returns the patterned-layer script-k matrix from eq. 19 of [2012 Liu]."""
-    kx = transverse_wavevectors[..., 0].astype(z_permittivity_matrix.dtype)
-    ky = transverse_wavevectors[..., 1].astype(z_permittivity_matrix.dtype)
-    z_inv_kx = jnp.linalg.solve(z_permittivity_matrix, utils.diag(kx))
-    z_inv_ky = jnp.linalg.solve(z_permittivity_matrix, utils.diag(ky))
+    dtype = jnp.promote_types(z_permittivity_matrix, transverse_wavevectors)
+    kx = transverse_wavevectors[..., 0].astype(dtype)
+    ky = transverse_wavevectors[..., 1].astype(dtype)
+    z_inv_kx = jnp.linalg.solve(z_permittivity_matrix.astype(dtype), utils.diag(kx))
+    z_inv_ky = jnp.linalg.solve(z_permittivity_matrix.astype(dtype), utils.diag(ky))
     return jnp.block(
         [
             [ky[..., :, jnp.newaxis] * z_inv_ky, -ky[..., :, jnp.newaxis] * z_inv_kx],
@@ -58,10 +59,11 @@ def k_matrix_patterned(
     transverse_wavevectors: jnp.ndarray,
 ) -> jnp.ndarray:
     """Returns the k-matrix for patterned magnetic materials."""
-    kx = transverse_wavevectors[..., 0].astype(z_permeability_matrix.dtype)
-    ky = transverse_wavevectors[..., 1].astype(z_permeability_matrix.dtype)
-    z_inv_kx = jnp.linalg.solve(z_permeability_matrix, utils.diag(kx))
-    z_inv_ky = jnp.linalg.solve(z_permeability_matrix, utils.diag(ky))
+    dtype = jnp.promote_types(z_permeability_matrix, transverse_wavevectors)
+    kx = transverse_wavevectors[..., 0].astype(dtype)
+    ky = transverse_wavevectors[..., 1].astype(dtype)
+    z_inv_kx = jnp.linalg.solve(z_permeability_matrix.astype(dtype), utils.diag(kx))
+    z_inv_ky = jnp.linalg.solve(z_permeability_matrix.astype(dtype), utils.diag(ky))
     return jnp.block(
         [
             [kx[..., :, jnp.newaxis] * z_inv_kx, kx[..., :, jnp.newaxis] * z_inv_ky],
