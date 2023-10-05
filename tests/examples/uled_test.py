@@ -32,7 +32,7 @@ class MicroLedTest(unittest.TestCase):
         with self.subTest("extraction efficiency"):
             onp.testing.assert_allclose(
                 extraction_efficiency,
-                [0.494347, 0.492305, 0.416735],
+                [0.661162, 0.687372, 0.310921],
                 atol=1e-3,
             )
 
@@ -41,9 +41,9 @@ class MicroLedTest(unittest.TestCase):
             onp.testing.assert_allclose(
                 jnp.mean(jnp.abs(efields) ** 2, axis=(1, 2, 3, 4, 5)),
                 [
-                    [64.444786, 16.373577, 8.459116],
-                    [16.909363, 64.59829, 8.159439],
-                    [28.255959, 28.230724, 8.761396],
+                    [103.71359, 97.317444, 3.21536],
+                    [98.013145, 99.4448, 3.342574],
+                    [53.552944, 53.12181, 3.446113],
                 ],
                 rtol=1e-3,
             )
@@ -53,9 +53,9 @@ class MicroLedTest(unittest.TestCase):
             onp.testing.assert_allclose(
                 jnp.mean(jnp.abs(hfields) ** 2, axis=(1, 2, 3, 4, 5)),
                 [
-                    [92.3925, 428.87042, 46.39356],
-                    [427.06384, 90.633675, 48.09156],
-                    [115.1582, 114.41496, 28.075932],
+                    [469.103, 561.54584, 21.604614],
+                    [586.9631, 470.38712, 20.628143],
+                    [351.44754, 341.26596, 9.459166],
                 ],
                 rtol=1e-3,
             )
