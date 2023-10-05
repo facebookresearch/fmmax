@@ -204,11 +204,11 @@ def plot_metal_dipole_fields(
 
     xplot, zplot = jnp.meshgrid(x, z, indexing="ij")
 
-    plt.figure(figsize=(jnp.amax(xplot), jnp.amax(zplot)), dpi=80)
+    plt.figure(figsize=(float(jnp.amax(xplot)), float(jnp.amax(zplot))), dpi=80)
     ax = plt.subplot(111)
     im = ax.pcolormesh(xplot, zplot, field_plot, shading="nearest", cmap="magma")
 
-    clipval = jnp.percentile(field_plot, clip_percentile)
+    clipval = float(jnp.percentile(field_plot, clip_percentile))
     im.set_clim((0, clipval))
 
     ax.axis("equal")

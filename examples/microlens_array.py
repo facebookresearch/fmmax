@@ -255,7 +255,7 @@ def plot_microlens_array_fields(**kwargs) -> None:
 
     xplot, zplot = jnp.meshgrid(x, z, indexing="ij")
 
-    plt.figure(figsize=(jnp.amax(xplot), jnp.amax(zplot)), dpi=80)
+    plt.figure(figsize=(float(jnp.amax(xplot)), float(jnp.amax(zplot))), dpi=80)
     ax = plt.subplot(111)
     ax.pcolormesh(xplot, zplot, field_plot, shading="nearest", cmap="viridis")
 
