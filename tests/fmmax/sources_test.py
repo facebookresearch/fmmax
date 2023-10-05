@@ -58,10 +58,14 @@ class FieldSourcesTest(unittest.TestCase):
             formulation=fmm.Formulation.FFT,
         )
         fwd_amplitude = jax.random.normal(
-            jax.random.PRNGKey(0), brillouin_grid_shape + (2 * EXPANSION.num_terms, 3)
+            jax.random.PRNGKey(0),
+            brillouin_grid_shape + (2 * EXPANSION.num_terms, 3),
+            dtype=complex,
         )
         bwd_amplitude = jax.random.normal(
-            jax.random.PRNGKey(1), brillouin_grid_shape + (2 * EXPANSION.num_terms, 3)
+            jax.random.PRNGKey(1),
+            brillouin_grid_shape + (2 * EXPANSION.num_terms, 3),
+            dtype=complex,
         )
 
         efield, hfield = fields.fields_from_wave_amplitudes(
@@ -92,6 +96,62 @@ class FieldSourcesTest(unittest.TestCase):
         onp.testing.assert_allclose(fwd_amplitude_extracted, fwd_amplitude, rtol=5e-3)
         onp.testing.assert_allclose(bwd_amplitude_extracted, bwd_amplitude, rtol=5e-3)
 
+    def test_amplitudes_match_expected_wavelength_batch(self):
+        # With a size-2 wavelength batch, generate random amplitudes, compute the
+        # resulting fields, and extract the amplitudes resulting from those fields.
+        # Compare the extracted amplitudes to the original amplitudes.
+        brillouin_grid_shape = (5, 5)
+        in_plane_wavevector = basis.brillouin_zone_in_plane_wavevector(
+            brillouin_grid_shape=brillouin_grid_shape,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+        )
+        layer_solve_result = fmm.eigensolve_isotropic_media(
+            permittivity=jnp.asarray([[1.0]]),
+            wavelength=jnp.asarray([0.277, 0.314])[:, jnp.newaxis, jnp.newaxis],
+            in_plane_wavevector=in_plane_wavevector,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+            expansion=EXPANSION,
+            formulation=fmm.Formulation.FFT,
+        )
+        fwd_amplitude = jax.random.normal(
+            jax.random.PRNGKey(0),
+            (2,) + brillouin_grid_shape + (2 * EXPANSION.num_terms, 3),
+            dtype=complex,
+        )
+        bwd_amplitude = jax.random.normal(
+            jax.random.PRNGKey(1),
+            (2,) + brillouin_grid_shape + (2 * EXPANSION.num_terms, 3),
+            dtype=complex,
+        )
+
+        efield, hfield = fields.fields_from_wave_amplitudes(
+            fwd_amplitude, bwd_amplitude, layer_solve_result
+        )
+        (ex, ey, _), (hx, hy, _), _ = fields.fields_on_grid(
+            efield,
+            hfield,
+            layer_solve_result,
+            shape=(20, 20),
+            num_unit_cells=brillouin_grid_shape,
+        )
+        ex = jnp.mean(ex, axis=(1, 2), keepdims=True)
+        ey = jnp.mean(ey, axis=(1, 2), keepdims=True)
+        hx = jnp.mean(hx, axis=(1, 2), keepdims=True)
+        hy = jnp.mean(hy, axis=(1, 2), keepdims=True)
+        (
+            fwd_amplitude_extracted,
+            bwd_amplitude_extracted,
+        ) = sources.amplitudes_for_fields(
+            ex,
+            ey,
+            hx,
+            hy,
+            layer_solve_result,
+            brillouin_grid_axes=(1, 2),
+        )
+        onp.testing.assert_allclose(fwd_amplitude_extracted, fwd_amplitude, rtol=5e-3)
+        onp.testing.assert_allclose(bwd_amplitude_extracted, bwd_amplitude, rtol=5e-3)
+
     def test_field_shape_validation(self):
         brillouin_grid_shape = (5, 5)
         in_plane_wavevector = basis.brillouin_zone_in_plane_wavevector(
@@ -114,6 +174,32 @@ class FieldSourcesTest(unittest.TestCase):
                 ey=jnp.ones((20, 20, 1)),
                 hx=jnp.ones((20, 20, 1)),
                 hy=jnp.ones((20, 20)),
+                layer_solve_result=layer_solve_result,
+                brillouin_grid_axes=(0, 1),
+            )
+
+    def test_field_shape_validation_wavelength_batch(self):
+        brillouin_grid_shape = (5, 5)
+        in_plane_wavevector = basis.brillouin_zone_in_plane_wavevector(
+            brillouin_grid_shape=brillouin_grid_shape,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+        )
+        layer_solve_result = fmm.eigensolve_isotropic_media(
+            permittivity=jnp.asarray([[1.0]]),
+            wavelength=jnp.ones((2, 1, 1)),  # Batch of wavelengths
+            in_plane_wavevector=in_plane_wavevector,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+            expansion=EXPANSION,
+            formulation=fmm.Formulation.FFT,
+        )
+        with self.assertRaisesRegex(
+            ValueError, "Fields must be batch-compatible with `layer_solve_result`"
+        ):
+            sources.amplitudes_for_fields(
+                ex=jnp.ones((2, 2, 1, 20, 20, 1)),
+                ey=jnp.ones((2, 2, 1, 20, 20, 1)),
+                hx=jnp.ones((2, 2, 1, 20, 20, 1)),
+                hy=jnp.ones((2, 2, 1, 20, 20, 1)),
                 layer_solve_result=layer_solve_result,
                 brillouin_grid_axes=(0, 1),
             )
