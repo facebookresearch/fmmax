@@ -38,8 +38,8 @@ jobs:
 
       - name: Typecheck with mypy
         run: |
-          mypy fmmax
-          mypy examples
+          find fmmax -name "*.py" | xargs mypy
+          find examples -name "*.py" | xargs mypy
         
       - name: Run Python tests
         run: |
