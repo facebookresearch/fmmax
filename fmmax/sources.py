@@ -58,10 +58,10 @@ def amplitudes_for_fields(
             f"`layer_solve_result` batch shape {layer_solve_result.batch_shape}."
         )
 
-    brillouin_grid_axes = utils.absolute_axes(brillouin_grid_axes, ex.ndim)
+    absolute_brillouin_grid_axes = utils.absolute_axes(brillouin_grid_axes, ex.ndim)
     brillouin_grid_shape = (
-        layer_solve_result.batch_shape[brillouin_grid_axes[0]],
-        layer_solve_result.batch_shape[brillouin_grid_axes[1]],
+        layer_solve_result.batch_shape[absolute_brillouin_grid_axes[0]],
+        layer_solve_result.batch_shape[absolute_brillouin_grid_axes[1]],
     )
 
     if (
