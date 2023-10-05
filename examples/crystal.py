@@ -530,11 +530,11 @@ def plot_dipole_fields(
     xplot, zplot = jnp.meshgrid(x, z, indexing="ij")
     field_plot = ex[:, :, 0].real
 
-    plt.figure(figsize=(jnp.amax(xplot), jnp.amax(zplot)), dpi=80)
+    plt.figure(figsize=(float(jnp.amax(xplot)), float(jnp.amax(zplot))), dpi=80)
     ax = plt.subplot(111)
     im = plt.pcolormesh(xplot, zplot, field_plot, shading="nearest", cmap="bwr")
 
-    im.set_clim((-jnp.amax(field_plot), jnp.amax(field_plot)))
+    im.set_clim((-float(jnp.amax(field_plot)), float(jnp.amax(field_plot))))
 
     contours = measure.find_contours(onp.array(section_xz))
     scale_factor = pitch / resolution
@@ -577,11 +577,11 @@ def plot_gaussian_fields(
     xplot, zplot = jnp.meshgrid(x, z, indexing="ij")
     field_plot = ex[wavelength_idx, :, :, 0].real
 
-    plt.figure(figsize=(jnp.amax(xplot), jnp.amax(zplot)), dpi=80)
+    plt.figure(figsize=(float(jnp.amax(xplot)), float(jnp.amax(zplot))), dpi=80)
     ax = plt.subplot(111)
     im = plt.pcolormesh(xplot, zplot, field_plot, shading="nearest", cmap="bwr")
 
-    im.set_clim((-jnp.amax(field_plot), jnp.amax(field_plot)))
+    im.set_clim((-float(jnp.amax(field_plot)), float(jnp.amax(field_plot))))
 
     contours = measure.find_contours(onp.array(section_xz))
     scale_factor = pitch / resolution

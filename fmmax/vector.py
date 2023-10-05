@@ -127,8 +127,9 @@ def compute_gradient(arr: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     batch_dims = arr.ndim - 2
     padding = tuple([(0, 0)] * batch_dims + [(1, 1), (1, 1)])
     arr_padded = jnp.pad(arr, padding, mode="wrap")
-    gradient_x = jnp.gradient(arr_padded, axis=-2)[..., 1:-1, 1:-1]
-    gradient_y = jnp.gradient(arr_padded, axis=-1)[..., 1:-1, 1:-1]
+    gradient_x, gradient_y = jnp.gradient(arr_padded, axis=(-2, -1))
+    gradient_x = gradient_x[..., 1:-1, 1:-1]
+    gradient_y = gradient_y[..., 1:-1, 1:-1]
     return gradient_x, gradient_y
 
 

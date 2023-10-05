@@ -12,7 +12,7 @@ import jax.numpy as jnp
 from fmmax import basis, fields, fmm, scattering, utils
 
 Aux = Dict[str, Any]
-Initializer = Callable[[jax.random.PRNGKeyArray, Tuple[int, int]], jnp.ndarray]
+Initializer = Callable[[jax.Array, Tuple[int, int]], jnp.ndarray]
 Params = Dict[str, Any]
 
 _DEFAULT_WAVELENGTH: jnp.ndarray = jnp.asarray([0.55])
@@ -127,7 +127,7 @@ class PolarizationSorterComponent:
         self._field_z_offset: jnp.ndarray = jnp.asarray(field_z_offset)
         self._density_initializer: Initializer = density_initializer
 
-    def init(self, key: jax.random.PRNGKeyArray) -> Params:
+    def init(self, key: jax.Array) -> Params:
         """Returns initial parameters for the polarization sorter."""
         return {
             "primitive_lattice_vectors": self._primitive_lattice_vectors,
