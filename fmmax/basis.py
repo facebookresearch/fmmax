@@ -354,7 +354,7 @@ def _basis_coefficients_parallelogramic(
         b = 2 * (ratio + 1)
         c = 1 - approximate_num_terms
         nu = (-b + onp.sqrt(b**2 - 4 * a * c)) / (2 * a)
-        return onp.around(nu)
+        return int(onp.around(nu))
 
     nu = _solve_quadratic(ku_spacing / kv_spacing)
     nv = _solve_quadratic(kv_spacing / ku_spacing)
