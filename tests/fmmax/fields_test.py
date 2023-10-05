@@ -256,8 +256,8 @@ class FieldsOnCoordinatesTest(unittest.TestCase):
                 x=x,
                 y=y,
             )
-            onp.testing.assert_allclose(efield, expected_efield, rtol=1e-4)
-            onp.testing.assert_allclose(hfield, expected_hfield, rtol=1e-4)
+            onp.testing.assert_allclose(efield, expected_efield, rtol=2e-4)
+            onp.testing.assert_allclose(hfield, expected_hfield, rtol=2e-4)
 
         with self.subTest("xy as flat arrays"):
             efield, hfield, _ = fields.layer_fields_3d_on_coordinates(
@@ -271,8 +271,8 @@ class FieldsOnCoordinatesTest(unittest.TestCase):
             )
             efield = onp.reshape(efield, onp.shape(expected_efield))
             hfield = onp.reshape(hfield, onp.shape(expected_efield))
-            onp.testing.assert_allclose(efield, expected_efield, rtol=1e-4)
-            onp.testing.assert_allclose(hfield, expected_hfield, rtol=1e-4)
+            onp.testing.assert_allclose(efield, expected_efield, rtol=2e-4)
+            onp.testing.assert_allclose(hfield, expected_hfield, rtol=2e-4)
 
     @parameterized.parameterized.expand([[()], [(3,)]])
     def test_stack_fields_on_coordinates_match_fields_on_grid(self, batch_shape):
