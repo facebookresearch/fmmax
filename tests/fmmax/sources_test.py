@@ -107,7 +107,7 @@ class FieldSourcesTest(unittest.TestCase):
             formulation=fmm.Formulation.FFT,
         )
         with self.assertRaisesRegex(
-            ValueError, "All fields must be rank 3 with matching shape"
+            ValueError, "All fields must have rank of at least 3"
         ):
             sources.amplitudes_for_fields(
                 ex=jnp.ones((20, 20, 1)),

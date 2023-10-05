@@ -39,21 +39,29 @@ def amplitudes_for_fields(
         The forward and backward wave amplitudes.
     """
 
-    batch_shape = layer_solve_result.batch_shape
-    # the leading batch dims, the x dim, the y dim, and source dim
-    expected_fields_dims = len(batch_shape) + 2 + 1
-    if not (ex.shape == ey.shape == hx.shape == hy.shape) or (
-        ex.ndim != expected_fields_dims
-    ):
+    if not (ex.shape == ey.shape == hx.shape == hy.shape) or (ex.ndim < 3):
         raise ValueError(
-            f"All fields must be rank {expected_fields_dims} with matching shape, but got shapes of "
-            f"{ex.shape}, {ey.shape}, {hx.shape}, and {hy.shape}."
+            f"All fields must have rank of at least 3 with matching shape, but got "
+            f"shapes of {ex.shape}, {ey.shape}, {hx.shape}, and {hy.shape}."
         )
 
-    brillouin_grid_axes: Tuple[int, int] = utils.absolute_axes(brillouin_grid_axes, len(batch_shape))  # type: ignore[no-redef]
+    if not utils.batch_compatible_shapes(
+        layer_solve_result.batch_shape,
+        ex.shape[:-3],
+        ey.shape[:-3],
+        hx.shape[:-3],
+        hy.shape[:-3],
+    ):
+        raise ValueError(
+            f"Fields must be batch-compatible with `layer_solve_result`, but got "
+            f"shapes of {ex.shape}, {ey.shape}, {hx.shape}, and {hy.shape} with "
+            f"`layer_solve_result` batch shape {layer_solve_result.batch_shape}."
+        )
+
+    brillouin_grid_axes = utils.absolute_axes(brillouin_grid_axes, ex.ndim)
     brillouin_grid_shape = (
-        batch_shape[brillouin_grid_axes[0]],
-        batch_shape[brillouin_grid_axes[1]],
+        layer_solve_result.batch_shape[brillouin_grid_axes[0]],
+        layer_solve_result.batch_shape[brillouin_grid_axes[1]],
     )
 
     if (
