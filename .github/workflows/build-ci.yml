@@ -8,9 +8,6 @@ on:
   schedule:
     - cron: "0 13 * * 1"  # Every Monday at 9AM EST
 
-defaults:
-  run:
-    shell: bash -l {0}
 jobs:
   test:
     runs-on: ubuntu-latest
