@@ -271,7 +271,7 @@ def _basis_coefficients_circular(
     the set will generally be close to `approximate_num_terms`.
 
     Args:
-        primitive_lattice_vectors: The primitive vectors for the real-space lattice.
+        primitive_lattice_vectors: Primitive vectors for the reciprocal-space lattice.
         approximate_num_terms: The approximate number of terms in the expansion. To
             maintain a symmetric expansion, the total number of terms may differ from
             this value.
@@ -325,7 +325,7 @@ def _basis_coefficients_parallelogramic(
     `approximate_num_terms`.
 
     Args:
-        primitive_lattice_vectors: The primitive vectors for the real-space lattice.
+        primitive_lattice_vectors: Primitive vectors for the reciprocal-space lattice.
         approximate_num_terms: The approximate number of terms in the expansion. To
             maintain a full parallelogram expansion, the total number of terms may
             differ from this value.
@@ -335,21 +335,38 @@ def _basis_coefficients_parallelogramic(
         coefficient for the first and second vector in the basis.
     """
 
-    u_magnitude = onp.sqrt(onp.sum(onp.abs(primitive_lattice_vectors.u) ** 2))
-    v_magnitude = onp.sqrt(onp.sum(onp.abs(primitive_lattice_vectors.v) ** 2))
+    ku_spacing = onp.sqrt(onp.sum(onp.abs(primitive_lattice_vectors.u) ** 2))
+    kv_spacing = onp.sqrt(onp.sum(onp.abs(primitive_lattice_vectors.v) ** 2))
 
-    nu = onp.around(onp.sqrt(approximate_num_terms * v_magnitude / u_magnitude))
-    nv = onp.around(approximate_num_terms / nu)
+    # Solve for `(nu, nv)` such that we approximately satisfy
+    #     (2 * nu + 1) * (2 * nv + 1) = approximate_num_terms
+    # and
+    #     nu / nv = kv_spacing / ku_spacing
+    # Since `ku_spacing` and `kv_spacing` give the spacing of points in reciprocal
+    # space along the ku and kv directions, respectively, this second equation ensures
+    # that we are chosing points in a parallelogram with equal-length sides in k-space.
+    # (Note that while the sides of the parallelogram have equal length, the number of
+    # points along each direction will differ, as these are spaced by `ku_spacing` and
+    # `kv_spacing`.)
+
+    def _solve_quadratic(ratio):
+        a = 4 * ratio
+        b = 2 * (ratio + 1)
+        c = 1 - approximate_num_terms
+        nu = (-b + onp.sqrt(b**2 - 4 * a * c)) / (2 * a)
+        return int(onp.around(nu))
+
+    nu = _solve_quadratic(ku_spacing / kv_spacing)
+    nv = _solve_quadratic(kv_spacing / ku_spacing)
 
     G1, G2 = onp.meshgrid(
-        onp.arange(-int(nu / 2), int(nu / 2) + 1),
-        onp.arange(-int(nv / 2), int(nv / 2) + 1),
+        onp.arange(-nu, nu + 1),
+        onp.arange(-nv, nv + 1),
         indexing="ij",
     )
     G1 = G1.flatten()
     G2 = G2.flatten()
     G = onp.stack([G1, G2], axis=-1)
-
     # Generate the actual vectors and compute their magnitude.
     vectors = (
         G1[..., onp.newaxis] * primitive_lattice_vectors.u[..., onp.newaxis, :]
