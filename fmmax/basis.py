@@ -260,7 +260,7 @@ def transverse_wavevectors(
 
 
 def _basis_coefficients_circular(
-    reciprocal_vectors: LatticeVectors,
+    primitive_lattice_vectors: LatticeVectors,
     approximate_num_terms: int,
 ) -> onp.ndarray:
     """Computes the basis coefficients of lattice vectors lying within a circle.
@@ -271,7 +271,7 @@ def _basis_coefficients_circular(
     the set will generally be close to `approximate_num_terms`.
 
     Args:
-        reciprocal_vectors: The primitive vectors for the reciprocal-space lattice.
+        primitive_lattice_vectors: Primitive vectors for the reciprocal-space lattice.
         approximate_num_terms: The approximate number of terms in the expansion. To
             maintain a symmetric expansion, the total number of terms may differ from
             this value.
@@ -289,8 +289,8 @@ def _basis_coefficients_circular(
 
     # Generate the actual vectors and compute their magnitude.
     vectors = (
-        G1[..., onp.newaxis] * reciprocal_vectors.u[..., onp.newaxis, :]
-        + G2[..., onp.newaxis] * reciprocal_vectors.v[..., onp.newaxis, :]
+        G1[..., onp.newaxis] * primitive_lattice_vectors.u[..., onp.newaxis, :]
+        + G2[..., onp.newaxis] * primitive_lattice_vectors.v[..., onp.newaxis, :]
     )
     magnitude = onp.linalg.norm(vectors, axis=-1)
 
@@ -298,7 +298,9 @@ def _basis_coefficients_circular(
     # of `u` and `v` scaled by `num_terms`.
     max_magnitude = onp.sqrt(
         approximate_num_terms
-        * onp.abs(_cross_product(reciprocal_vectors.u, reciprocal_vectors.v))
+        * onp.abs(
+            _cross_product(primitive_lattice_vectors.u, primitive_lattice_vectors.v)
+        )
         / onp.pi
     )
     mask = magnitude < max_magnitude
@@ -313,7 +315,7 @@ def _basis_coefficients_circular(
 
 
 def _basis_coefficients_parallelogramic(
-    reciprocal_vectors: LatticeVectors,
+    primitive_lattice_vectors: LatticeVectors,
     approximate_num_terms: int,
 ) -> onp.ndarray:
     """Computes the basis coefficients of lattice vectors lying within a parallelogram.
@@ -323,7 +325,7 @@ def _basis_coefficients_parallelogramic(
     `approximate_num_terms`.
 
     Args:
-        reciprocal_vectors: The primitive vectors for the reciprocal-space lattice.
+        primitive_lattice_vectors: Primitive vectors for the reciprocal-space lattice.
         approximate_num_terms: The approximate number of terms in the expansion. To
             maintain a full parallelogram expansion, the total number of terms may
             differ from this value.
@@ -333,8 +335,8 @@ def _basis_coefficients_parallelogramic(
         coefficient for the first and second vector in the basis.
     """
 
-    ku_spacing = onp.sqrt(onp.sum(onp.abs(reciprocal_vectors.u) ** 2))
-    kv_spacing = onp.sqrt(onp.sum(onp.abs(reciprocal_vectors.v) ** 2))
+    ku_spacing = onp.sqrt(onp.sum(onp.abs(primitive_lattice_vectors.u) ** 2))
+    kv_spacing = onp.sqrt(onp.sum(onp.abs(primitive_lattice_vectors.v) ** 2))
 
     # Solve for `(nu, nv)` such that we approximately satisfy
     #     (2 * nu + 1) * (2 * nv + 1) = approximate_num_terms
@@ -367,8 +369,8 @@ def _basis_coefficients_parallelogramic(
     G = onp.stack([G1, G2], axis=-1)
     # Generate the actual vectors and compute their magnitude.
     vectors = (
-        G1[..., onp.newaxis] * reciprocal_vectors.u[..., onp.newaxis, :]
-        + G2[..., onp.newaxis] * reciprocal_vectors.v[..., onp.newaxis, :]
+        G1[..., onp.newaxis] * primitive_lattice_vectors.u[..., onp.newaxis, :]
+        + G2[..., onp.newaxis] * primitive_lattice_vectors.v[..., onp.newaxis, :]
     )
     magnitude = onp.linalg.norm(vectors, axis=-1)
 
