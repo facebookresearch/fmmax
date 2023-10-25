@@ -53,7 +53,7 @@ jobs:
             python -m pip install --upgrade pip
             pip install ".[tests,dev]"        
       - name: Test fmmax
-        run: pytest tests/fmmax
+        run: python -m pytest tests/fmmax
 
   test-examples:
     runs-on: ubuntu-latest
