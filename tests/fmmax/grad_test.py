@@ -4,17 +4,17 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
 import unittest
+from typing import Any, Dict, Tuple
 
 import jax
 import numpy as onp
 import parameterized
+from jax import grad, jacrev
+from jax import numpy as jnp
+from jax import value_and_grad
 
 from examples import sorter
 from fmmax import basis, fmm
-from typing import Dict, Any, Tuple
-
-from jax import grad, value_and_grad, jacrev
-from jax import numpy as jnp
 
 Params = Dict[str, Any]
 Aux = Dict[str, Any]
