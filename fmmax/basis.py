@@ -36,9 +36,9 @@ class LatticeVectors:
 
     def __post_init__(self) -> None:
         if isinstance(self.u, jnp.ndarray):
-            if self.u.shape != (2,) or self.v.shape != (2,):
+            if self.u.shape[-1] != 2 or self.v.shape[-1] != 2:
                 raise ValueError(
-                    f"`u` and `v` must have length 2, but got shapes "
+                    f"`u` and `v` must have a trailing length of 2, but got shapes "
                     f"{self.u.shape} and {self.v.shape}."
                 )
 
