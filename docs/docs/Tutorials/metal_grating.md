@@ -36,91 +36,69 @@ permittivities = [
 ```
 
 ```python
-planarization_thickness_nm: float = 20.0,
-grating_thickness_nm: float = 80.0,
+planarization_thickness_nm: float = 20.0
+grating_thickness_nm: float = 80.0 # The height of the grating.
+
 thicknesses = [0, planarization_thickness_nm, grating_thickness_nm, 0]
 ```
 
 ```python
-import itertools
-from typing import Tuple
+in_plane_wavevector = jnp.asarray([0.0, 0.0])
+```
 
-import jax.numpy as jnp
+```python
+primitive_lattice_vectors = basis.LatticeVectors(
+    u=jnp.asarray([pitch_nm, 0.0]), v=jnp.asarray([0.0, pitch_nm])
+)
+```
 
-from fmmax import basis, fmm, scattering, utils
+```python
+from fmmax import basis
 
+approximate_num_terms: int = 20
+truncation: basis.Truncation = basis.Truncation.CIRCULAR
 
-def simulate_grating(
-    ,
-    ,
-    ,
-    wavelength_nm: float = 500.0,
-    ,
-    ,
-    
-    
-    ,
-    approximate_num_terms: int = 20,
-    truncation: basis.Truncation = basis.Truncation.CIRCULAR,
-    formulation: fmm.Formulation = fmm.Formulation.FFT,
-) -> Tuple[int, complex, complex]:
-    """Computes the TE- and TM-polarized reflection from a 1D stripe grating.
+expansion = basis.generate_expansion(
+    primitive_lattice_vectors=primitive_lattice_vectors,
+    approximate_num_terms=approximate_num_terms,
+    truncation=truncation,
+)
+```
 
-    Args:
-        permittivity_ambient: 
-        permittivity_planarization: 
-        permittivity_substrate: ,
-            and the grating itself.
-        wavelength_nm: The excitation wavelength, in nanometers.
-        pitch_nm: 
-        grating_width_nm: 
-        grating_thickness_nm: The height of the grating.
-        planarization_thickness_nm: The thickness of the planarization layer above
-            the grating.
-        resolution_nm: 
-        approximate_num_terms: The approximate number of terms used in the plane
-            wave expansion of the fields.
-        truncation: Determines the truncation of the expansion.
-        formulation: Specifies the formulation to be used.
+```python
+from fmmax import fmm
 
-    Returns:
-        The number of terms in the expansion, and the reflection coefficients for TE-
-        and TM-polarization.
-    """
+formulation: fmm.Formulation = fmm.Formulation.FFT
+wavelength_nm: float = 500.0 # The excitation wavelength, in nanometers.
 
-
-
-    
-
-    in_plane_wavevector = jnp.asarray([0.0, 0.0])
-    primitive_lattice_vectors = basis.LatticeVectors(
-        u=jnp.asarray([pitch_nm, 0.0]), v=jnp.asarray([0.0, pitch_nm])
-    )
-    expansion = basis.generate_expansion(
+layer_solve_results = [
+    fmm.eigensolve_isotropic_media(
+        wavelength=jnp.asarray(wavelength_nm),
+        in_plane_wavevector=in_plane_wavevector,
         primitive_lattice_vectors=primitive_lattice_vectors,
-        approximate_num_terms=approximate_num_terms,
-        truncation=truncation,
+        permittivity=p,
+        expansion=expansion,
+        formulation=formulation,
     )
-    layer_solve_results = [
-        fmm.eigensolve_isotropic_media(
-            wavelength=jnp.asarray(wavelength_nm),
-            in_plane_wavevector=in_plane_wavevector,
-            primitive_lattice_vectors=primitive_lattice_vectors,
-            permittivity=p,
-            expansion=expansion,
-            formulation=formulation,
-        )
-        for p in permittivities
-    ]
-    s_matrix = scattering.stack_s_matrix(
-        layer_solve_results=layer_solve_results,
-        layer_thicknesses=[jnp.asarray(t) for t in thicknesses],
-    )
+    for p in permittivities
+]
+```
 
-    r_te = s_matrix.s21[0, 0]
-    r_tm = s_matrix.s21[expansion.num_terms, expansion.num_terms]
-    return expansion.num_terms, complex(r_te), complex(r_tm)
+```python
+from fmmax import scattering
 
+s_matrix = scattering.stack_s_matrix(
+    layer_solve_results=layer_solve_results,
+    layer_thicknesses=[jnp.asarray(t) for t in thicknesses],
+)
+```
+
+```python
+r_te = s_matrix.s21[0, 0]
+r_tm = s_matrix.s21[expansion.num_terms, expansion.num_terms]
+```
+
+```python
 
 def convergence_study(
     approximate_num_terms: Tuple[int, ...] = NUM_TERMS_SWEEP,
