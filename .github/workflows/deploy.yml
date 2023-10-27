@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - run: cd docs
       - uses: actions/setup-node@v3
         with:
           node-version: 18
@@ -31,9 +32,7 @@ jobs:
             python -m pip install --upgrade pip
             pip install docstring-parser
       - name: Build API
-        run: |
-            cd docs
-            python gen_API_from_docstrings.py
+        run: python gen_API_from_docstrings.py
       - name: Install dependencies
         run: npm ci
       - name: Build website
