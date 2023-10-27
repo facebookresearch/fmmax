@@ -16,8 +16,8 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: npm
-          cache-dependency-path: docs/package-lock.json
+          cache: "npm"
+          cache-dependency-path: "${ GITHUB_WORKSPACE }/docs/package-lock.json"
       - name: Setup python
         uses: actions/setup-python@v4
         with:
