@@ -164,15 +164,3 @@ cython_debug/
 
 # vs code
 .vscode/
-
-# Docusaurus
-node_modules
-.yarn
-package-lock.json
-.eslintcache
-yarn-error.log
-build
-coverage
-.docusaurus
-.cache-loader
-types
