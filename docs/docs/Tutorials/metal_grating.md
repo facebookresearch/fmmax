@@ -1,3 +1,7 @@
+---
+id: metal_grating
+---
+
 # Metal Grating
 
 The full script can be found [here](https://github.com/facebookresearch/fmmax/blob/main/examples/metal_grating.py).

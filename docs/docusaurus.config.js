@@ -53,7 +53,7 @@ const config = {
     ({
       image: 'img/docusaurus-social-card.jpg',
       navbar: {
-        title: 'FMMAX Docs',
+        title: 'FMMAX',
         items: [
           {
             type: 'docSidebar',
@@ -61,54 +61,17 @@ const config = {
             position: 'left',
             label: 'Docs',
           },
+          {
+            type: 'docSidebar',
+            sidebarId: 'APISidebar',
+            position: 'left',
+            label: 'API Reference',
+          },
         ],
       },
       footer: {
         style: 'dark',
         links: [
-          {
-            title: 'Learn',
-            items: [
-              {
-                label: 'Style Guide',
-                to: 'docs/',
-              },
-              {
-                label: 'Second Doc',
-                to: 'docs/doc2',
-              },
-            ],
-          },
-          {
-            title: 'Community',
-            items: [
-              {
-                label: 'Stack Overflow',
-                href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-              },
-              {
-                label: 'Twitter',
-                href: 'https://twitter.com/docusaurus',
-              },
-              {
-                label: 'Discord',
-                href: 'https://discordapp.com/invite/docusaurus',
-              },
-            ],
-          },
-          {
-            title: 'More',
-            items: [
-              {
-                label: 'Blog',
-                to: 'blog',
-              },
-              {
-                label: 'GitHub',
-                href: 'https://github.com/facebook/docusaurus',
-              },
-            ],
-          },
           {
             title: 'Legal',
             // Please do not remove the privacy and terms, it's a legal requirement.
