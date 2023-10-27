@@ -176,9 +176,7 @@ def docstring_to_markdown(docstring: str) -> str:
             # too... it's a bit hairy rn since ast is *supposed* to allow this
             # now (and typed_ast is deprecated) but there isn't a ton of
             # documentation yet...
-            markdown += (
-                f"- **{param.arg_name}**: {param.description}\n"
-            )
+            markdown += f"- **{param.arg_name}**: {param.description}\n"
 
     if doc.returns:
         markdown += "\n#### Returns:\n"
