@@ -1,3 +1,8 @@
+"""Generates the API markdown files from the in-repo docstrings.
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+"""
+
 import ast
 import glob
 import os
