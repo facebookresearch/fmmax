@@ -9,6 +9,9 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
+const math = require('remark-math');
+const katex = require('rehype-katex');
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'FMMAX Docs',
@@ -36,18 +39,27 @@ const config = {
       ({
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
+          remarkPlugins: [math],
+          rehypePlugins: [katex],
           routeBasePath: '/',
           editUrl:
             'https://github.com/facebookresearch/fmmax',
         },
         blog: false,
         theme: {
-          customCss: require.resolve('./src/css/custom.css'),
         },
       }),
     ],
   ],
-
+  stylesheets: [
+    {
+      href: 'https://cdn.jsdelivr.net/npm/katex@0.13.24/dist/katex.min.css',
+      type: 'text/css',
+      integrity:
+        'sha384-odtC+0UGzzFL/6PNoE8rX/SPcQDXBJ+uRepguP4QkPCm2LBxH3FA3y+fKSiJ+AmM',
+      crossorigin: 'anonymous',
+    },
+  ],
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
@@ -67,6 +79,11 @@ const config = {
             position: 'left',
             label: 'API Reference',
           },
+          {
+            href: 'https://github.com/facebookresearch/fmmax',  // set this
+            label: 'GitHub',
+            position: 'right',
+        },
         ],
       },
       footer: {
