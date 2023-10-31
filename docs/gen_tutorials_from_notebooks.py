@@ -25,7 +25,6 @@ def export_notebooks(notebook_dir: str, output_dir: str = None) -> None:
     for filename in os.listdir(notebook_dir):
         # Check if the file is an IPython notebook
         if filename.endswith(".ipynb"):
-            
             # Load the notebook
             with open(os.path.join(notebook_dir, filename)) as f:
                 notebook = nbformat.read(f, as_version=4)
