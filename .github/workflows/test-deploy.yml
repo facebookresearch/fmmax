@@ -27,13 +27,5 @@ jobs:
             python-version: "3.10"
             cache: "pip"
             cache-dependency-path: pyproject.toml
-      - name: Install python dependencies
-        run: |
-            python -m pip install --upgrade pip
-            pip install docstring-parser
-      - name: Build API
-        run: python gen_API_from_docstrings.py
-      - name: Install dependencies
-        run: npm ci
-      - name: Test build website
-        run: npm run build
+      - name: Deploy
+        run: make deploy

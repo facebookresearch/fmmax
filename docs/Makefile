@@ -1,7 +1,7 @@
 # Install npm and pip dependencies
 install:
 	@echo "Installing npm and pip dependencies..."
-	npm install
+	npm ci
 	pip install docstring_parser nbformat nbconvert
 
 # Check if required packages are installed
@@ -34,3 +34,7 @@ all: check-packages gen-api gen-tutorials start
 clean:
 	@echo "Removing all files described in .gitignore..."
 	git clean -Xdf
+
+deploy: install check-packages gen-api gen-tutorials
+	npm run build
+
