@@ -1,5 +1,9 @@
 # FMMAX: Fourier Modal Method with Jax
 
+<a href="https://postgresql.org"><img src="https://img.shields.io/badge/Docs-blue.svg"/></a>
+![Continuous integration](https://github.com/facebookresearch/fmmax/actions/workflows/build-ci.yml/badge.svg)
+![PyPI version](https://img.shields.io/pypi/v/fmmax)
+
 FMMAX is a an implementation of the Fourier modal method (FMM) in [JAX](https://github.com/google/jax). 
 
 The FMM -- also known as rigorous coupled wave analysis (RCWA) -- is a semianalytical method that solves Maxwell's equations in periodic stratified media, where in-plane directions are treated with a truncated Fourier basis and the normal direction is handled by a scattering matrix approach [1999 Whittaker, 2012 Liu, 2020 Jin]. This allows certain classes of structures to be modeled with relatively low computational cost.
