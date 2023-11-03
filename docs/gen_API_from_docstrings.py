@@ -38,7 +38,7 @@ def process_file(output_dir: str, filename: str, toc: Dict[str, Any]) -> None:
     submodule_name = os.path.splitext(os.path.basename(filename))[0]
     toc[submodule_name] = {}
     for node in module.body:
-        if isinstance(node, ast.ClassDef):
+        if isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
             process_class(output_dir, node, toc[submodule_name], submodule_name)
         elif isinstance(node, ast.FunctionDef) and not node.name.startswith("_"):
             process_function(
