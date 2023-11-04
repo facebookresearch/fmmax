@@ -1,6 +1,6 @@
 # FMMAX: Fourier Modal Method with Jax
 
-<a href="https://postgresql.org"><img src="https://img.shields.io/badge/Docs-blue.svg"/></a>
+<a href="https://facebookresearch.github.io/fmmax/"><img src="https://img.shields.io/badge/Docs-blue.svg"/></a>
 ![Continuous integration](https://github.com/facebookresearch/fmmax/actions/workflows/build-ci.yml/badge.svg)
 ![PyPI version](https://img.shields.io/pypi/v/fmmax)
 
