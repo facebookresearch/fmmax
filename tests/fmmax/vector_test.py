@@ -145,14 +145,22 @@ class SchemesTest(unittest.TestCase):
     def test_batch_matches_single_exact(self, scheme):
         key = jax.random.PRNGKey(0)
         arr = jax.random.uniform(key, shape=(5, 10, 10))
+        primitive_lattice_vectors = basis.LatticeVectors(u=basis.X, v=basis.Y)
+        expansion = basis.generate_expansion(
+            primitive_lattice_vectors=primitive_lattice_vectors,
+            approximate_num_terms=10,
+            truncation=basis.Truncation.CIRCULAR,
+        )
         tx, ty = vector.VECTOR_FIELD_SCHEMES[scheme](
             arr=arr,
-            primitive_lattice_vectors=basis.LatticeVectors(u=basis.X, v=basis.Y),
+            expansion=expansion,
+            primitive_lattice_vectors=primitive_lattice_vectors,
         )
         for i in range(5):
             expected_tx_i, expected_ty_i = vector.VECTOR_FIELD_SCHEMES[scheme](
                 arr=arr[i, :, :],
-                primitive_lattice_vectors=basis.LatticeVectors(u=basis.X, v=basis.Y),
+                expansion=expansion,
+                primitive_lattice_vectors=primitive_lattice_vectors,
             )
             onp.testing.assert_array_equal(tx[i, :, :], expected_tx_i)
             onp.testing.assert_array_equal(ty[i, :, :], expected_ty_i)
@@ -164,9 +172,16 @@ class SchemesTest(unittest.TestCase):
         # The tangent field calculation requires special logic to handle uniform arrays,
         #  otherwise `nan` will show up in the result.
         arr = jnp.ones((10, 10))
+        primitive_lattice_vectors = basis.LatticeVectors(u=basis.X, v=basis.Y)
+        expansion = basis.generate_expansion(
+            primitive_lattice_vectors=primitive_lattice_vectors,
+            approximate_num_terms=10,
+            truncation=basis.Truncation.CIRCULAR,
+        )
         tx, ty = vector.VECTOR_FIELD_SCHEMES[scheme](
             arr=arr,
-            primitive_lattice_vectors=basis.LatticeVectors(u=basis.X, v=basis.Y),
+            expansion=expansion,
+            primitive_lattice_vectors=primitive_lattice_vectors,
         )
         self.assertFalse(onp.any(onp.isnan(tx)))
         self.assertFalse(onp.any(onp.isnan(ty)))
@@ -175,9 +190,17 @@ class SchemesTest(unittest.TestCase):
         [(scheme,) for scheme in vector.VECTOR_FIELD_SCHEMES]
     )
     def test_gradient_no_nan(self, scheme):
+        primitive_lattice_vectors = basis.LatticeVectors(u=basis.X, v=basis.Y)
+        expansion = basis.generate_expansion(
+            primitive_lattice_vectors=primitive_lattice_vectors,
+            approximate_num_terms=10,
+            truncation=basis.Truncation.CIRCULAR,
+        )
+
         def _loss_fn(arr):
             tx, ty = vector.VECTOR_FIELD_SCHEMES[scheme](
                 arr=arr,
+                expansion=expansion,
                 primitive_lattice_vectors=basis.LatticeVectors(u=basis.X, v=basis.Y),
             )
             return jnp.sum(jnp.abs(tx) ** 2 + jnp.abs(ty) ** 2)

@@ -28,6 +28,10 @@ class Formulation(enum.Enum):
     JONES: str = vector.JONES
     NORMAL: str = vector.NORMAL
     POL: str = vector.POL
+    JONES_DIRECT_FOURIER: str = vector.JONES_DIRECT_FOURIER
+    JONES_FOURIER: str = vector.JONES_FOURIER
+    NORMAL_FOURIER: str = vector.NORMAL_FOURIER
+    POL_FOURIER: str = vector.POL_FOURIER
 
 
 def eigensolve_isotropic_media(
@@ -797,7 +801,7 @@ def fourier_matrices_patterned_isotropic_media(
         )
     else:
         vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
-        tx, ty = vector_fn(permittivity, primitive_lattice_vectors)
+        tx, ty = vector_fn(permittivity, expansion, primitive_lattice_vectors)
         _transverse_permittivity_fn = functools.partial(
             fmm_matrices.transverse_permittivity_vector,
             tx=tx,
@@ -876,7 +880,7 @@ def fourier_matrices_patterned_anisotropic_media(
         )
     else:
         vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
-        tx, ty = vector_fn(vector_field_source, primitive_lattice_vectors)
+        tx, ty = vector_fn(vector_field_source, expansion, primitive_lattice_vectors)
         _transverse_permittivity_fn = functools.partial(
             fmm_matrices.transverse_permittivity_vector_anisotropic,
             tx=tx,

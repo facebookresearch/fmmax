@@ -128,7 +128,7 @@ def _validate_shape_for_expansion(
     expansion: basis.Expansion,
 ) -> None:
     """Validates that the shape is sufficient for the provided expansion."""
-    min_shape = _min_array_shape_for_expansion(expansion)
+    min_shape = min_array_shape_for_expansion(expansion)
     if any([d < dmin for d, dmin in zip(shape[-2:], min_shape)]):
         raise ValueError(
             f"`shape` is insufficient for `expansion`, the minimum shape for the "
@@ -136,7 +136,7 @@ def _validate_shape_for_expansion(
         )
 
 
-def _min_array_shape_for_expansion(expansion: basis.Expansion) -> Tuple[int, int]:
+def min_array_shape_for_expansion(expansion: basis.Expansion) -> Tuple[int, int]:
     """Returns the minimum allowed shape for an array to be expanded."""
     return (
         int(2 * max(abs(expansion.basis_coefficients[:, 0])) + 1),
