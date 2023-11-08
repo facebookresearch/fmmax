@@ -8,7 +8,7 @@ import unittest
 import jax
 import jax.numpy as jnp
 import numpy as onp
-import parameterized
+from parameterized import parameterized
 
 from fmmax import basis, fields, fmm, scattering
 
@@ -60,7 +60,7 @@ def _solve_fresnel_reflection(n1, n2, theta_i):
 
 
 class ThinFilmComparisonTest(unittest.TestCase):
-    @parameterized.parameterized.expand([((1, 1),), ((64, 64),)])
+    @parameterized.expand([((1, 1),), ((64, 64),)])
     def test_normal_incidence_matches_fresnel(self, permittivity_shape):
         n1 = 1.2
         n2 = 3.8
@@ -185,7 +185,13 @@ class ThinFilmComparisonTest(unittest.TestCase):
 
 
 class RotatedGratingTest(unittest.TestCase):
-    def test_different_unit_cells_give_same_reflection(self):
+    @parameterized.expand(
+        [
+            [fmm.Formulation.JONES_DIRECT],
+            [fmm.Formulation.JONES_DIRECT_FOURIER],
+        ]
+    )
+    def test_different_unit_cells_give_same_reflection(self, formulation):
         # Tests that different, nominally equivalent unit cell selections
         # actually yield equal reflectivity for a complex, wavy grating
         # structure.
@@ -242,7 +248,7 @@ class RotatedGratingTest(unittest.TestCase):
                 expansion=expansion,
                 permittivities=permittivities,
                 thicknesses=thicknesses,
-                formulation=fmm.Formulation.JONES_DIRECT,
+                formulation=formulation,
             )
             rte = s_matrix.s21[0, 0]
             rtm = s_matrix.s21[expansion.num_terms, expansion.num_terms]

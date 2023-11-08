@@ -1,7 +1,4 @@
-"""Functions related to tangent vector field generation.
-
-Copyright (c) Meta Platforms, Inc. and affiliates.
-"""
+"""Functions related to tangent vector field generation."""
 
 import functools
 from typing import List, Tuple
@@ -110,6 +107,8 @@ def compute_tangent_field(
         use_jones_direct: Specifies whether the complex Jones field is to be sought.
         fourier_loss_weight: Determines the weight of the loss term penalizing
             Fourier terms corresponding to high frequencies.
+        steps: The number of Newton iterations to carry out. Generally, the default
+            single iteration is sufficient to obtain converged fields.
 
     Returns:
         The normal field, `(tx, ty)`.
