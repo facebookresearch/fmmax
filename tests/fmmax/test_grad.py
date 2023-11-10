@@ -58,7 +58,7 @@ def simulate_slab(
 class JaxGradTest(unittest.TestCase):
     def test_jacrev_of_all_quantities(self):
         # Checks that jacrev with respect to all simulation parameters can be computed.
-        in_plane_wavevector = jnp.asarray([0.0, 0.0])
+        in_plane_wavevector = jnp.asarray([0.0, 0.1])
         primitive_lattice_vectors = basis.LatticeVectors(u=basis.X, v=basis.Y)
         expansion = basis.generate_expansion(
             primitive_lattice_vectors=primitive_lattice_vectors,
