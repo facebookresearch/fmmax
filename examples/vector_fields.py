@@ -22,15 +22,20 @@ def plot_vector_fields(
         indexing="ij",
     )
     arr = (x**2 + y**2 < 0.4**2).astype(float)
+    expansion = basis.generate_expansion(
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        approximate_num_terms=200,
+        truncation=basis.Truncation.CIRCULAR,
+    )
 
-    fig = plt.figure(figsize=(7, 3))
+    fig = plt.figure(figsize=(7, 4.5))
 
     for i, scheme_name in enumerate(vector.VECTOR_FIELD_SCHEMES):
         tx, ty = vector.VECTOR_FIELD_SCHEMES[scheme_name](
-            arr, primitive_lattice_vectors
+            arr, expansion, primitive_lattice_vectors
         )
 
-        ax = plt.subplot(1, 4, i + 1)
+        ax = plt.subplot(2, 4, i + 1)
         _plot_vector_field(
             ax, arr, tx, ty, scale=0.7, interval=interval, title=scheme_name
         )

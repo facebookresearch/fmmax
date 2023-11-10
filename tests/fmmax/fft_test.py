@@ -105,7 +105,7 @@ class ShapeValidationTest(unittest.TestCase):
     )
     def test_min_shape(self, basis_coefficients, expected_min_shape):
         expansion = basis.Expansion(basis_coefficients=basis_coefficients)
-        min_shape = fft._min_array_shape_for_expansion(expansion)
+        min_shape = fft.min_array_shape_for_expansion(expansion)
         self.assertSequenceEqual(min_shape, expected_min_shape)
 
     def test_fourier_convolution_matrix(self):

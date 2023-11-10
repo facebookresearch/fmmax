@@ -46,7 +46,7 @@ class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
         primitive_lattice_vectors = basis.LatticeVectors(u=basis.X, v=basis.Y)
         expansion = basis.generate_expansion(
             primitive_lattice_vectors=primitive_lattice_vectors,
-            approximate_num_terms=200,
+            approximate_num_terms=220,
             truncation=basis.Truncation.CIRCULAR,
         )
         eigensolve_kwargs = {
@@ -118,6 +118,8 @@ class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
             (fmm.Formulation.FFT, jnp.pi / 2),
             (fmm.Formulation.JONES_DIRECT, 0.0),
             (fmm.Formulation.JONES_DIRECT, jnp.pi / 2),
+            (fmm.Formulation.JONES_DIRECT_FOURIER, 0.0),
+            (fmm.Formulation.JONES_DIRECT_FOURIER, jnp.pi / 2),
         ]
     )
     def test_reflection_with_anisotropic_eignensolve_matches_isotropic_tight_tolerance(
@@ -136,6 +138,8 @@ class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
         [
             (fmm.Formulation.JONES_DIRECT, jnp.pi / 3),
             (fmm.Formulation.JONES_DIRECT, 2 * jnp.pi / 3),
+            (fmm.Formulation.JONES_DIRECT_FOURIER, jnp.pi / 3),
+            (fmm.Formulation.JONES_DIRECT_FOURIER, 2 * jnp.pi / 3),
         ]
     )
     def test_reflection_with_anisotropic_eignensolve_matches_isotropic_loose_tolerance(
@@ -193,6 +197,18 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
             [10.0, 1.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
             [1.0, 10.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
             [10.0, 10.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
+            # Patterned media, vector formulation.
+            [1.0, 1.0, 0.0, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [10.0, 1.0, 0.0, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [1.0, 10.0, 0.0, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [1.0, 1.0, jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [10.0, 1.0, jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [1.0, 10.0, jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [10.0, 10.0, jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [1.0, 1.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [10.0, 1.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [1.0, 10.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [10.0, 10.0, jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
         ]
     )
     def test_reflection_matches_expected(
@@ -292,6 +308,11 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
             [jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT],
             [jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
             [jnp.pi / 2, (10, 10), fmm.Formulation.JONES_DIRECT],
+            [0.0, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [jnp.pi / 5, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [jnp.pi / 2, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
         ]
     )
     def test_reflection_anisotropic_permittivity_matches_expected(
@@ -404,6 +425,11 @@ class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
             [jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT],
             [jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT],
             [jnp.pi / 2, (10, 10), fmm.Formulation.JONES_DIRECT],
+            [0.0, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [jnp.pi / 5, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [jnp.pi / 4, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [jnp.pi / 3, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
+            [jnp.pi / 2, (10, 10), fmm.Formulation.JONES_DIRECT_FOURIER],
         ]
     )
     def test_reflection_anisotropic_permeability_matches_expected(

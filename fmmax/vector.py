@@ -11,13 +11,14 @@ import jax.example_libraries.optimizers as jopt
 import jax.numpy as jnp
 import numpy as onp
 
-from fmmax import basis, utils
+from fmmax import basis, utils, vector_fourier
 
 PyTree = Any
 
 
 def normalized_vector_field(
     arr: jnp.ndarray,
+    expansion: basis.Expansion,
     primitive_lattice_vectors: basis.LatticeVectors,
     vector_fn: Callable,
     normalize_fn: Callable,
@@ -36,6 +37,7 @@ def normalized_vector_field(
 
     Args:
         arr: The array for which the tangent vector field is sought.
+        expansion: The Fourier expansion for which the field is to be optimized.
         primitive_lattice_vectors: Define the unit cell coordinates.
         vector_fn: Function used to generate the vector field.
         normalize_fn: Function used to normalize the vector field.
@@ -48,6 +50,7 @@ def normalized_vector_field(
     Returns:
         The normalized vector field.
     """
+    del expansion
 
     shape = arr.shape
     resize_factor = resize_max_dim / max(shape[-2:])
@@ -458,7 +461,8 @@ def _remove_mean_phase(
 
 
 VectorFn = Callable[
-    [jnp.ndarray, basis.LatticeVectors], Tuple[jnp.ndarray, jnp.ndarray]
+    [jnp.ndarray, basis.Expansion, basis.LatticeVectors],
+    Tuple[jnp.ndarray, jnp.ndarray],
 ]
 
 JONES_DIRECT: str = "jones_direct"
@@ -473,6 +477,15 @@ STEPS_DIM_MULTIPLE = 10.0
 SMOOTHING_KERNEL = utils.gaussian_kernel(shape=(9, 9), fwhm=3.0)
 RESIZE_MAX_DIM = 140
 RESIZE_METHOD = jax.image.ResizeMethod.CUBIC
+
+
+JONES_DIRECT_FOURIER: str = "jones_direct_fourier"
+JONES_FOURIER: str = "jones_fourier"
+NORMAL_FOURIER: str = "normal_fourier"
+POL_FOURIER: str = "pol_fourier"
+
+FOURIER_LOSS_WEIGHT: float = 0.01
+FOURIER_LOSS_WEIGHT_JONES_DIRECT: float = 0.0001
 
 
 VECTOR_FIELD_SCHEMES: Dict[str, VectorFn] = {
@@ -537,5 +550,21 @@ VECTOR_FIELD_SCHEMES: Dict[str, VectorFn] = {
         normalize_fn=normalize_pol,
         resize_max_dim=RESIZE_MAX_DIM,
         resize_method=RESIZE_METHOD,
+    ),
+    JONES_DIRECT_FOURIER: functools.partial(
+        vector_fourier.compute_field_jones_direct,
+        fourier_loss_weight=FOURIER_LOSS_WEIGHT_JONES_DIRECT,
+    ),
+    JONES_FOURIER: functools.partial(
+        vector_fourier.compute_field_jones,
+        fourier_loss_weight=FOURIER_LOSS_WEIGHT,
+    ),
+    NORMAL_FOURIER: functools.partial(
+        vector_fourier.compute_field_normal,
+        fourier_loss_weight=FOURIER_LOSS_WEIGHT,
+    ),
+    POL_FOURIER: functools.partial(
+        vector_fourier.compute_field_pol,
+        fourier_loss_weight=FOURIER_LOSS_WEIGHT,
     ),
 }

@@ -145,13 +145,7 @@ class GrcwaEigensolveComparisonTest(unittest.TestCase):
 
 class LayerEigensolveTest(unittest.TestCase):
     @parameterized.parameterized.expand(
-        [
-            (fmm.Formulation.FFT,),
-            (fmm.Formulation.POL,),
-            (fmm.Formulation.NORMAL,),
-            (fmm.Formulation.JONES,),
-            (fmm.Formulation.JONES_DIRECT,),
-        ]
+        [(formulation,) for formulation in fmm.Formulation]
     )
     def test_uniform_matches_patterned(self, formulation):
         permittivity = jnp.asarray([[3.14]])
@@ -230,13 +224,7 @@ class LayerEigensolveTest(unittest.TestCase):
                     )
 
     @parameterized.parameterized.expand(
-        [
-            (fmm.Formulation.FFT,),
-            (fmm.Formulation.POL,),
-            (fmm.Formulation.NORMAL,),
-            (fmm.Formulation.JONES,),
-            (fmm.Formulation.JONES_DIRECT,),
-        ]
+        [(formulation,) for formulation in fmm.Formulation]
     )
     def test_patterned_layer_batch_matches_single(self, formulation):
         wavelength = jnp.asarray([[[0.2]], [[0.3]], [[0.4]]])
