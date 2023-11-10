@@ -23,18 +23,18 @@ jobs:
       - name: Setup environment
         run: |
             python -m pip install --upgrade pip
-            pip install ".[tests,dev]"
+            pip install ".[dev]"
       - name: Lint Python files
         run: |
             find . -name "*.py" | xargs black --check
             find . -name "*.py" | xargs isort --profile black --check-only
       - name: Typecheck with mypy
         run: |
-            mypy fmmax
+            mypy src
             mypy examples
       - name: Validate docstrings
         run: |
-            darglint fmmax --strictness=short --ignore-raise=ValueError
+            darglint src --strictness=short --ignore-raise=ValueError
             darglint examples --strictness=short --ignore-raise=ValueError
 
   test-fmmax:
@@ -53,7 +53,7 @@ jobs:
             python -m pip install --upgrade pip
             pip install ".[tests,dev]"        
       - name: Test fmmax
-        run: python -m pytest tests/fmmax
+        run: pytest tests/fmmax
 
   test-examples:
     runs-on: ubuntu-latest
