@@ -12,4 +12,5 @@ from . import (
     sources,
     utils,
     vector,
+    vector_fourier,
 )
