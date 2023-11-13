@@ -238,7 +238,7 @@ def write_toc(output_dir: str, toc: Dict[str, Any]) -> None:
 
 
 if __name__ == "__main__":
-    input_dir = "../fmmax"
+    input_dir = "../src/fmmax"
     output_dir = "./docs/API"
     toc = traverse_directory(input_dir, output_dir)
 
