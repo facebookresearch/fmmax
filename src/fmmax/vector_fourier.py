@@ -403,7 +403,9 @@ def _fourier_loss(
     return jnp.sum(jnp.abs(fourier_field) ** 2 * kt[..., jnp.newaxis] ** 2)
 
 
-def _smoothness_loss(field: jnp.ndarray, basis_vectors: basis.LatticeVectors) -> jnp.ndarray:
+def _smoothness_loss(
+    field: jnp.ndarray, basis_vectors: basis.LatticeVectors
+) -> jnp.ndarray:
     """Compute loss associated with smoothness of `field`."""
     grads = _vector_field_forward_difference_gradient(field, basis_vectors)
     return jnp.mean(jnp.abs(jnp.asarray(grads)) ** 2)
