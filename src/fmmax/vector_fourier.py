@@ -403,7 +403,7 @@ def _fourier_loss(
     return jnp.sum(jnp.abs(fourier_field) ** 2 * kt[..., jnp.newaxis] ** 2)
 
 
-def _smoothness_loss(field: jnp.ndarray, basis_vectors: jnp.ndarray) -> jnp.ndarray:
+def _smoothness_loss(field: jnp.ndarray, basis_vectors: basis.LatticeVectors) -> jnp.ndarray:
     """Compute loss associated with smoothness of `field`."""
     grads = _vector_field_forward_difference_gradient(field, basis_vectors)
     return jnp.mean(jnp.abs(jnp.asarray(grads)) ** 2)
@@ -471,7 +471,7 @@ def _vector_field_forward_difference_gradient(
         primitive_lattice_vectors: Defines the unit cell coordinates.
 
     Returns:
-        Tuple containing the gradients, each iwth the same shape as `field`.
+        Tuple containing the gradients, each with the same shape as `field`.
     """
     basis_vectors = jnp.stack(
         [primitive_lattice_vectors.u, primitive_lattice_vectors.v],
@@ -480,15 +480,10 @@ def _vector_field_forward_difference_gradient(
 
     area = jnp.abs(jnp.linalg.det(basis_vectors))
     basis_vectors /= jnp.sqrt(area)
-
-    grads = [
-        _scalar_field_forward_difference_gradient(
-            field=field[..., i],
-            basis_vectors=basis_vectors,
-        )
-        for i in range(2)
-    ]
-    return tuple(grads)
+    return (
+        _scalar_field_forward_difference_gradient(field[..., 0], basis_vectors),
+        _scalar_field_forward_difference_gradient(field[..., 1], basis_vectors),
+    )
 
 
 def _scalar_field_forward_difference_gradient(
