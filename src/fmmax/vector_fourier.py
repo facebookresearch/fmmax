@@ -199,9 +199,26 @@ def _compute_tangent_field_no_batch(
     fourier_field = flat_fourier_field.reshape((expansion.num_terms, 2))
     field = fft.ifft(fourier_field, expansion=expansion, shape=grid_shape, axis=-2)
 
-    # Manually set the field in cases where `arr` is constant.
-    grad_is_zero = jnp.all(jnp.isclose(grad, 0.0), axis=(-3, -2, -1), keepdims=True)
-    field = jnp.where(grad_is_zero, jnp.ones_like(field), field)
+    # Manually set the field in cases where `arr` varies only along one axis or is
+    # entirely constant. This avoids nans which may occur on some platforms.
+    gx_is_zero = jnp.all(
+        jnp.isclose(grad[..., 0, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
+    )
+    gy_is_zero = jnp.all(
+        jnp.isclose(grad[..., 1, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
+    )
+    field = jnp.where(
+        gx_is_zero & ~gy_is_zero,
+        jnp.stack([jnp.ones(field.shape[:-1]), jnp.zeros(field.shape[:-1])], axis=-1),
+        field,
+    )
+    print(gx_is_zero, gy_is_zero)
+    field = jnp.where(
+        ~gx_is_zero & gy_is_zero,
+        jnp.stack([jnp.zeros(field.shape[:-1]), jnp.ones(field.shape[:-1])], axis=-1),
+        field,
+    )
+    field = jnp.where(gx_is_zero & gy_is_zero, jnp.ones_like(field), field)
     return normalize(field)
 
 

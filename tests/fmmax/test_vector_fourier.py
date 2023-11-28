@@ -9,7 +9,6 @@ import unittest
 import jax
 import jax.numpy as jnp
 import numpy as onp
-import pytest
 from parameterized import parameterized
 from scipy import ndimage
 
@@ -418,6 +417,61 @@ class TangentFieldMatchesExpectedTest(unittest.TestCase):
         arr = jnp.array(
             [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]], dtype=jnp.float32
         )
+        # Create an array that has a relatively large y-gradient, and a relatively
+        # small x-gradient. This avoids the codepath which manually gives fields
+        # when the array only varies in one direction.
+        arr = jnp.concatenate([arr, arr * 0.99, arr * 0.98], axis=0)
+        tx, ty = vector_fourier.compute_field_pol(
+            arr,
+            basis.Expansion(
+                basis_coefficients=jnp.asarray(
+                    [
+                        [0, 0],
+                        [0, 1],
+                        [0, -1],
+                        [0, 2],
+                        [0, -2],
+                        [0, 3],
+                        [0, -3],
+                        [1, 0],
+                        [-1, 0],
+                    ]
+                )
+            ),
+            basis.LatticeVectors(basis.X, basis.Y),
+            fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
+        )
+        expected_tx = jnp.asarray(
+            [
+                [
+                    0.085,
+                    0.300,
+                    0.570,
+                    0.840,
+                    1.000,
+                    0.910,
+                    0.550,
+                    0.000,
+                    -0.550,
+                    -0.910,
+                    -1.000,
+                    -0.840,
+                    -0.570,
+                    -0.300,
+                    -0.085,
+                ]
+            ]
+        )
+        expected_tx = jnp.concatenate([expected_tx, expected_tx, expected_tx], axis=0)
+        onp.testing.assert_allclose(tx, expected_tx, atol=0.05)
+        onp.testing.assert_allclose(ty, 0.0, atol=0.05)
+
+    def test_field_pol_gradient_x(self):
+        # Create an array that has only a y-gradient.
+        arr = jnp.array(
+            [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]], dtype=jnp.float32
+        )
         tx, ty = vector_fourier.compute_field_pol(
             arr,
             basis.Expansion(
@@ -426,30 +480,30 @@ class TangentFieldMatchesExpectedTest(unittest.TestCase):
                 )
             ),
             basis.LatticeVectors(basis.X, basis.Y),
-            fourier_loss_weight=fourier_loss_weight,
-            smoothness_loss_weight=smoothness_loss_weight,
+            fourier_loss_weight=0.01,
+            smoothness_loss_weight=0.0,
         )
-        expected_tx = [
-            [
-                0.085,
-                0.300,
-                0.570,
-                0.840,
-                1.000,
-                0.910,
-                0.550,
-                0.000,
-                -0.550,
-                -0.910,
-                -1.000,
-                -0.840,
-                -0.570,
-                -0.300,
-                -0.085,
-            ]
-        ]
-        onp.testing.assert_allclose(tx, expected_tx, atol=0.05)
+        onp.testing.assert_allclose(tx, jnp.ones_like(tx), atol=1e-7)
         onp.testing.assert_allclose(ty, 0.0, atol=1e-7)
+
+    def test_field_pol_gradient_y(self):
+        # Create an array that has only a y-gradient.
+        arr = jnp.array(
+            [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]], dtype=jnp.float32
+        ).T
+        tx, ty = vector_fourier.compute_field_pol(
+            arr,
+            basis.Expansion(
+                basis_coefficients=jnp.asarray(
+                    [[0, 0], [1, 0], [-1, 0], [2, 0], [-2, 0], [3, 0], [-3, 0]]
+                )
+            ),
+            basis.LatticeVectors(basis.X, basis.Y),
+            fourier_loss_weight=0.01,
+            smoothness_loss_weight=0.0,
+        )
+        onp.testing.assert_allclose(tx, 0.0, atol=1e-7)
+        onp.testing.assert_allclose(ty, jnp.ones_like(ty), atol=1e-7)
 
     @parameterized.expand(
         [
