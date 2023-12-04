@@ -135,6 +135,10 @@ def process_function(
             else f'{parent_name.split(".")[-1]}.md'
         )
         markdown = docstring_to_markdown(docstring)
+
+        curpath = os.path.abspath(os.curdir)
+        print("Current path is: {}".format(curpath))
+        print("Trying to open path {}".format(os.path.join(curpath,os.path.join(output_dir, filename))))
         with open(os.path.join(output_dir, filename), "a") as f:
             if is_method:
                 f.write(write_header(f"{parent_name}.{node.name}"))
@@ -241,6 +245,7 @@ if __name__ == "__main__":
     input_dir = "../src/fmmax"
     output_dir = "./docs/API"
     toc = traverse_directory(input_dir, output_dir)
+
 
     # The TOC output is currently broken and not really needed for now...
     # write_toc(output_dir, toc)
