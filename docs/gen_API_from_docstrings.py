@@ -203,6 +203,10 @@ def traverse_directory(input_dir: str, output_dir: str) -> Dict[str, Any]:
         Dict[str, Any]: The table of contents.
     """
     # Check if the output dir exists, create it if it doesn't
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    # Rmove any existing doc files
     files = glob.glob(os.path.join(output_dir, "*.md"))
     for f in files:
         os.remove(f)
