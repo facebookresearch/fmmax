@@ -136,9 +136,6 @@ def process_function(
         )
         markdown = docstring_to_markdown(docstring)
 
-        curpath = os.path.abspath(os.curdir)
-        print("Current path is: {}".format(curpath))
-        print("Trying to open path {}".format(os.path.join(curpath,os.path.join(output_dir, filename))))
         with open(os.path.join(output_dir, filename), "a") as f:
             if is_method:
                 f.write(write_header(f"{parent_name}.{node.name}"))
@@ -202,15 +199,16 @@ def traverse_directory(input_dir: str, output_dir: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: The table of contents.
     """
-    # Check if the output dir exists, create it if it doesn't
+    # Check if the output dir exists, create it if it doesn't.
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    
-    # Rmove any existing doc files
+
+    # Remove any existing doc files.
     files = glob.glob(os.path.join(output_dir, "*.md"))
     for f in files:
         os.remove(f)
 
+    # Walk through the file tree and process each file.
     toc = {}
     for root, dirs, files in os.walk(input_dir):
         for file in files:
@@ -249,7 +247,6 @@ if __name__ == "__main__":
     input_dir = "../src/fmmax"
     output_dir = "./docs/API"
     toc = traverse_directory(input_dir, output_dir)
-
 
     # The TOC output is currently broken and not really needed for now...
     # write_toc(output_dir, toc)
