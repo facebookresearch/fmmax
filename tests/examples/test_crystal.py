@@ -5,7 +5,11 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import unittest
 
+import jax
 import numpy as onp
+
+# Enable 64-bit precision for higher accuracy.
+jax.config.update("jax_enable_x64", True)
 
 from examples import crystal
 
@@ -30,10 +34,10 @@ class CrystalDipoleTest(unittest.TestCase):
         self.assertSequenceEqual(ex.shape, hz.shape)
 
         onp.testing.assert_allclose(
-            onp.mean(onp.abs((ex, ey, ez))), 0.770733, rtol=1e-4
+            onp.mean(onp.abs((ex, ey, ez))), 0.768176, rtol=1e-4
         )
         onp.testing.assert_allclose(
-            onp.mean(onp.abs((hx, hy, hz))), 0.467526, rtol=1e-4
+            onp.mean(onp.abs((hx, hy, hz))), 0.466219, rtol=1e-4
         )
 
 
@@ -58,10 +62,10 @@ class CrystalGaussianBeamTest(unittest.TestCase):
         self.assertSequenceEqual(ex.shape, hz.shape)
 
         onp.testing.assert_allclose(
-            onp.mean(onp.abs((ex, ey, ez))), 0.270351, rtol=1e-4
+            onp.mean(onp.abs((ex, ey, ez))), 0.270234, rtol=1e-4
         )
         onp.testing.assert_allclose(
-            onp.mean(onp.abs((hx, hy, hz))), 0.199234, rtol=1e-4
+            onp.mean(onp.abs((hx, hy, hz))), 0.199158, rtol=1e-4
         )
 
     def test_broadband_regression(self):
@@ -97,7 +101,7 @@ class CrystalGaussianBeamTest(unittest.TestCase):
                     )
                 )
             ),
-            0.270351,
+            0.270234,
             rtol=1e-4,
         )
         onp.testing.assert_allclose(
@@ -110,6 +114,6 @@ class CrystalGaussianBeamTest(unittest.TestCase):
                     )
                 )
             ),
-            0.199234,
+            0.199158,
             rtol=1e-4,
         )
