@@ -9,7 +9,6 @@ import unittest
 import jax
 import jax.numpy as jnp
 import numpy as onp
-import pytest
 from parameterized import parameterized
 from scipy import ndimage
 
@@ -25,6 +24,9 @@ class TangentVectorTest(unittest.TestCase):
         arr_scale,
         binarize_arr,
         use_jones_direct,
+        fourier_loss_weight,
+        smoothness_loss_weight,
+        steps=1,
     ):
         primitive_lattice_vectors = basis.LatticeVectors(
             basis.X * scale, basis.Y * scale
@@ -50,7 +52,9 @@ class TangentVectorTest(unittest.TestCase):
             expansion,
             primitive_lattice_vectors,
             use_jones_direct,
-            fourier_loss_weight=0.001,
+            fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
+            steps=steps,
         )
 
     @parameterized.expand(
@@ -74,7 +78,9 @@ class TangentVectorTest(unittest.TestCase):
             (1000, (80, 80), 1, True, True),  # Binarized, scale invariance.
         ]
     )
-    def test_invariances(self, scale, shape, arr_scale, binarize_arr, use_jones_direct):
+    def test_invariances_fourier_loss(
+        self, scale, shape, arr_scale, binarize_arr, use_jones_direct
+    ):
         reference_tx, reference_ty = self._compute_field(
             approximate_num_terms=200,
             scale=1,
@@ -82,6 +88,8 @@ class TangentVectorTest(unittest.TestCase):
             arr_scale=1,
             binarize_arr=binarize_arr,
             use_jones_direct=use_jones_direct,
+            fourier_loss_weight=0.001,
+            smoothness_loss_weight=0.0,
         )
         zoom = (shape[0] / 80, shape[1] / 80)
         expected_tx = ndimage.zoom(reference_tx, zoom, order=1) * arr_scale
@@ -94,6 +102,59 @@ class TangentVectorTest(unittest.TestCase):
             arr_scale=arr_scale,
             binarize_arr=binarize_arr,
             use_jones_direct=use_jones_direct,
+            fourier_loss_weight=0.001,
+            smoothness_loss_weight=0.0,
+        )
+        onp.testing.assert_allclose(tx, expected_tx, atol=0.05)
+        onp.testing.assert_allclose(ty, expected_ty, atol=0.05)
+
+    @parameterized.expand(
+        [
+            # Cases with grayscale density and `use_jones_direct = False`.
+            (1, (160, 120), 1, False, False),  # Resolution invariance.
+            (1000, (80, 80), 1, False, False),  # Scale invariance.
+            (1, (80, 80), (1 + 0j), False, False),  # Phase invariance.
+            (1, (80, 80), (1 / jnp.sqrt(2) + 1j / jnp.sqrt(2)), False, False),
+            (1, (80, 80), (0 + 1j), False, False),
+            # Cases with binarized density and `use_jones_direct = False`.
+            (1, (160, 120), 1, True, False),  # Resolution invariance.
+            (1000, (80, 80), 1, True, False),  # Scale invariance.
+            (1, (80, 80), (1 + 0j), True, False),  # Phase invariance.
+            (1, (80, 80), (1 / jnp.sqrt(2) + 1j / jnp.sqrt(2)), True, False),
+            (1, (80, 80), (0 + 1j), True, False),
+            # Cases with `use_jones_direct = True`.
+            (1, (160, 120), 1, False, True),  # Grayscale, resolution invariance.
+            (1000, (80, 80), 1, False, True),  # Grayscale, scale invariance.
+            (1, (160, 120), 1, True, True),  # Binarized, resolution invariance.
+            (1000, (80, 80), 1, True, True),  # Binarized, scale invariance.
+        ]
+    )
+    def test_invariances_smoothness_loss(
+        self, scale, shape, arr_scale, binarize_arr, use_jones_direct
+    ):
+        reference_tx, reference_ty = self._compute_field(
+            approximate_num_terms=200,
+            scale=1,
+            shape=(80, 80),
+            arr_scale=1,
+            binarize_arr=binarize_arr,
+            use_jones_direct=use_jones_direct,
+            fourier_loss_weight=0.0,
+            smoothness_loss_weight=0.1,
+        )
+        zoom = (shape[0] / 80, shape[1] / 80)
+        expected_tx = ndimage.zoom(reference_tx, zoom, order=1) * arr_scale
+        expected_ty = ndimage.zoom(reference_ty, zoom, order=1) * arr_scale
+
+        tx, ty = self._compute_field(
+            approximate_num_terms=200,
+            scale=scale,
+            shape=shape,
+            arr_scale=arr_scale,
+            binarize_arr=binarize_arr,
+            use_jones_direct=use_jones_direct,
+            fourier_loss_weight=0.0,
+            smoothness_loss_weight=0.1,
         )
         onp.testing.assert_allclose(tx, expected_tx, atol=0.05)
         onp.testing.assert_allclose(ty, expected_ty, atol=0.05)
@@ -121,6 +182,7 @@ class TangentVectorTest(unittest.TestCase):
             primitive_lattice_vectors,
             use_jones_direct=use_jones_direct,
             fourier_loss_weight=0.01,
+            smoothness_loss_weight=1.0,
         )
 
         for i in range(arr.shape[0]):
@@ -130,6 +192,7 @@ class TangentVectorTest(unittest.TestCase):
                 primitive_lattice_vectors,
                 use_jones_direct=use_jones_direct,
                 fourier_loss_weight=0.01,
+                smoothness_loss_weight=1.0,
             )
             onp.testing.assert_allclose(tx, tx_batch[i, :, :], rtol=1e-5)
             onp.testing.assert_allclose(ty, ty_batch[i, :, :], rtol=1e-5)
@@ -150,6 +213,7 @@ class TangentVectorTest(unittest.TestCase):
                 primitive_lattice_vectors=primitive_lattice_vectors,
                 use_jones_direct=use_jones_direct,
                 fourier_loss_weight=0.01,
+                smoothness_loss_weight=0.0,
             )
             return jnp.sum(jnp.abs(tx) ** 2) + jnp.sum(jnp.abs(ty) ** 2)
 
@@ -179,6 +243,7 @@ class TangentVectorTest(unittest.TestCase):
                 primitive_lattice_vectors=primitive_lattice_vectors,
                 use_jones_direct=use_jones_direct,
                 fourier_loss_weight=0.01,
+                smoothness_loss_weight=0.0,
             )
             return jnp.sum(jnp.abs(tx) ** 2) + jnp.sum(jnp.abs(ty) ** 2), (tx, ty)
 
@@ -188,8 +253,42 @@ class TangentVectorTest(unittest.TestCase):
         self.assertFalse(jnp.any(jnp.isnan(ty)))
         self.assertFalse(jnp.any(jnp.isnan(grad)))
 
-    # def test_field_converges(self):
-    #     pass
+    @parameterized.expand(
+        [
+            [True, True, 0.01, 0.0],
+            [False, True, 0.01, 0.0],
+            [True, False, 0.01, 0.0],
+            [False, False, 0.01, 0.0],
+            [True, True, 0.0, 1.0],
+            [False, True, 0.0, 1.0],
+            [True, False, 0.0, 1.0],
+            [False, False, 0.0, 1.0],
+        ]
+    )
+    def test_field_converges(
+        self,
+        binarize_arr,
+        use_jones_direct,
+        fourier_loss_weight,
+        smoothness_loss_weight,
+    ):
+        # Test that a single Newton iteration is sufficient.
+        field_fn = functools.partial(
+            self._compute_field,
+            approximate_num_terms=200,
+            scale=1,
+            shape=(80, 80),
+            arr_scale=1,
+            binarize_arr=binarize_arr,
+            use_jones_direct=use_jones_direct,
+            fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
+        )
+
+        tx, ty = field_fn(steps=2)
+        tx_multi_step, ty_multi_step = field_fn(steps=3)
+        onp.testing.assert_allclose(tx, tx_multi_step, atol=1e-4)
+        onp.testing.assert_allclose(ty, ty_multi_step, atol=1e-4)
 
 
 class NormalizeTest(unittest.TestCase):
@@ -252,6 +351,22 @@ class NormalizeTest(unittest.TestCase):
         self.assertFalse(onp.any(onp.isnan(gx)))
         self.assertFalse(onp.any(onp.isnan(gy)))
 
+    @parameterized.expand(
+        [
+            [vector_fourier.normalize_elementwise],
+            [vector_fourier.normalize],
+            [vector_fourier.normalize_jones],
+        ]
+    )
+    def test_batch_calculation_matches_single(self, normalize_fn):
+        onp.random.seed(0)
+        arr = onp.random.randn(8, 10, 10, 2)
+        arr = ndimage.zoom(arr, (1, 5, 5, 1))
+        normalized = normalize_fn(arr)
+        for i, arr_single in enumerate(arr):
+            normalized_single = normalize_fn(arr_single)
+            onp.testing.assert_array_equal(normalized[i, ...], normalized_single)
+
 
 class MagnitudeTest(unittest.TestCase):
     @parameterized.expand(
@@ -291,68 +406,126 @@ class AngleTest(unittest.TestCase):
         self.assertFalse(onp.any(onp.isnan(grad)))
 
 
-class GradientTest(unittest.TestCase):
-    pass
+class TangentFieldMatchesExpectedTest(unittest.TestCase):
+    @parameterized.expand(
+        [
+            [0.01, 0.0],
+            [0.0, 1.0],
+        ]
+    )
+    def test_field_pol(self, fourier_loss_weight, smoothness_loss_weight):
+        arr = jnp.array(
+            [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]], dtype=jnp.float32
+        )
+        # Create an array that has a relatively large y-gradient, and a relatively
+        # small x-gradient. This avoids the codepath which manually gives fields
+        # when the array only varies in one direction.
+        arr = jnp.concatenate([arr, arr * 0.99, arr * 0.98], axis=0)
+        tx, ty = vector_fourier.compute_field_pol(
+            arr,
+            basis.Expansion(
+                basis_coefficients=jnp.asarray(
+                    [
+                        [0, 0],
+                        [0, 1],
+                        [0, -1],
+                        [0, 2],
+                        [0, -2],
+                        [0, 3],
+                        [0, -3],
+                        [1, 0],
+                        [-1, 0],
+                    ]
+                )
+            ),
+            basis.LatticeVectors(basis.X, basis.Y),
+            fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
+        )
+        expected_tx = jnp.asarray(
+            [
+                [
+                    0.085,
+                    0.300,
+                    0.570,
+                    0.840,
+                    1.000,
+                    0.910,
+                    0.550,
+                    0.000,
+                    -0.550,
+                    -0.910,
+                    -1.000,
+                    -0.840,
+                    -0.570,
+                    -0.300,
+                    -0.085,
+                ]
+            ]
+        )
+        expected_tx = jnp.concatenate([expected_tx, expected_tx, expected_tx], axis=0)
+        onp.testing.assert_allclose(tx, expected_tx, atol=0.05)
+        onp.testing.assert_allclose(ty, 0.0, atol=0.05)
 
+    def test_field_pol_gradient_x(self):
+        # Create an array that has only a y-gradient.
+        arr = jnp.array(
+            [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]], dtype=jnp.float32
+        )
+        tx, ty = vector_fourier.compute_field_pol(
+            arr,
+            basis.Expansion(
+                basis_coefficients=jnp.asarray(
+                    [[0, 0], [0, 1], [0, -1], [0, 2], [0, -2], [0, 3], [0, -3]]
+                )
+            ),
+            basis.LatticeVectors(basis.X, basis.Y),
+            fourier_loss_weight=0.01,
+            smoothness_loss_weight=0.0,
+        )
+        onp.testing.assert_allclose(tx, jnp.ones_like(tx), atol=1e-7)
+        onp.testing.assert_allclose(ty, 0.0, atol=1e-7)
 
-class TestNewtonIteration(unittest.TestCase):
-    pass
+    def test_field_pol_gradient_y(self):
+        # Create an array that has only a y-gradient.
+        arr = jnp.array(
+            [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]], dtype=jnp.float32
+        ).T
+        tx, ty = vector_fourier.compute_field_pol(
+            arr,
+            basis.Expansion(
+                basis_coefficients=jnp.asarray(
+                    [[0, 0], [1, 0], [-1, 0], [2, 0], [-2, 0], [3, 0], [-3, 0]]
+                )
+            ),
+            basis.LatticeVectors(basis.X, basis.Y),
+            fourier_loss_weight=0.01,
+            smoothness_loss_weight=0.0,
+        )
+        onp.testing.assert_allclose(tx, 0.0, atol=1e-7)
+        onp.testing.assert_allclose(ty, jnp.ones_like(ty), atol=1e-7)
 
-
-# class LossTest(unittest.TestCase):
-#     @parameterized.parameterized.expand(
-#         [
-#             (1.0, 0.0, 1.0, 0.0, -1.0),
-#             (-1.0, 0.0, 1.0, 0.0, -1.0),
-#             (0.0, 1.0, 1.0, 0.0, 0.0),
-#         ]
-#     )
-#     def test_self_alignment_loss(self, tx, ty, tx0, ty0, expected):
-#         tx = jnp.asarray(tx)[jnp.newaxis, jnp.newaxis]
-#         ty = jnp.asarray(ty)[jnp.newaxis, jnp.newaxis]
-#         tx0 = jnp.asarray(tx0)[jnp.newaxis, jnp.newaxis]
-#         ty0 = jnp.asarray(ty0)[jnp.newaxis, jnp.newaxis]
-#         loss = vector_fourier._self_alignment_loss(tx, ty, tx0, ty0)
-#         onp.testing.assert_allclose(loss, expected)
-
-#     @parameterized.parameterized.expand(
-#         [
-#             (
-#                 jnp.ones((2, 2)),
-#                 jnp.zeros((2, 2)),
-#                 jnp.ones((2, 2)),
-#                 jnp.zeros((2, 2)),
-#                 -400,
-#             ),
-#             (
-#                 jnp.asarray([[1, 1], [-1, -1], [-1, -1], [1, 1]]),
-#                 jnp.zeros((4, 2)),
-#                 jnp.ones((4, 2)),
-#                 jnp.zeros((4, 2)),
-#                 -768.0,
-#             ),
-#         ]
-#     )
-#     def test_field_loss(self, tx, ty, tx0, ty0, expected):
-#         loss = vector_fourier._field_loss(
-#             tx, ty, tx0, ty0, alignment_weight=100, smoothness_weight=2
-#         )
-#         onp.testing.assert_allclose(loss, expected)
-
-#     def test_field_loss_batch_matches_single(self):
-#         key = jax.random.PRNGKey(0)
-#         tx, ty, tx0, ty0 = jax.random.uniform(key, (4, 8, 5, 10))
-#         loss = vector_fourier._field_loss(
-#             tx, ty, tx0, ty0, alignment_weight=100, smoothness_weight=2
-#         )
-#         expected_loss = 0
-#         for tx_slice, ty_slice, tx0_slice, ty0_slice in zip(tx, ty, tx0, ty0):
-#             expected_loss += vector_fourier._field_loss(
-#                 tx_slice,
-#                 ty_slice,
-#                 tx0_slice,
-#                 ty0_slice,
-#                 alignment_weight=100,
-#                 smoothness_weight=2,
-#             )
-#         onp.testing.assert_allclose(loss, expected_loss, rtol=1e-6)
+    @parameterized.expand(
+        [
+            [0.01, 0.0],
+            [0.0, 1.0],
+        ]
+    )
+    def test_optimize_jones(self, fourier_loss_weight, smoothness_loss_weight):
+        arr = jnp.array(
+            [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]], dtype=jnp.float32
+        )
+        tx, ty = vector_fourier.compute_field_jones_direct(
+            arr,
+            basis.Expansion(
+                basis_coefficients=jnp.asarray(
+                    [[0, 0], [0, 1], [0, -1], [0, 2], [0, -2], [0, 3], [0, -3]]
+                )
+            ),
+            basis.LatticeVectors(basis.X, basis.Y),
+            fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
+        )
+        expected_tx_magnitude = jnp.ones_like(arr)
+        onp.testing.assert_allclose(jnp.abs(tx), expected_tx_magnitude)
+        onp.testing.assert_allclose(ty, 0.0, atol=1e-7)

@@ -14,6 +14,7 @@ def compute_field_jones_direct(
     expansion: basis.Expansion,
     primitive_lattice_vectors: basis.LatticeVectors,
     fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute tangent vector field using the Jones direct method."""
     return compute_tangent_field(
@@ -22,6 +23,7 @@ def compute_field_jones_direct(
         primitive_lattice_vectors=primitive_lattice_vectors,
         use_jones_direct=True,
         fourier_loss_weight=fourier_loss_weight,
+        smoothness_loss_weight=smoothness_loss_weight,
     )
 
 
@@ -30,6 +32,7 @@ def compute_field_pol(
     expansion: basis.Expansion,
     primitive_lattice_vectors: basis.LatticeVectors,
     fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute tangent vector field using the Pol method."""
     return compute_tangent_field(
@@ -38,6 +41,7 @@ def compute_field_pol(
         primitive_lattice_vectors=primitive_lattice_vectors,
         use_jones_direct=False,
         fourier_loss_weight=fourier_loss_weight,
+        smoothness_loss_weight=smoothness_loss_weight,
     )
 
 
@@ -46,6 +50,7 @@ def compute_field_jones(
     expansion: basis.Expansion,
     primitive_lattice_vectors: basis.LatticeVectors,
     fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute tangent vector field using the Jones method."""
     tx, ty = compute_tangent_field(
@@ -54,6 +59,7 @@ def compute_field_jones(
         primitive_lattice_vectors=primitive_lattice_vectors,
         use_jones_direct=False,
         fourier_loss_weight=fourier_loss_weight,
+        smoothness_loss_weight=smoothness_loss_weight,
     )
     jxjy = normalize_jones(jnp.stack([tx, ty], axis=-1))
     jx = jxjy[..., 0]
@@ -66,6 +72,7 @@ def compute_field_normal(
     expansion: basis.Expansion,
     primitive_lattice_vectors: basis.LatticeVectors,
     fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute tangent vector field using the Normal method."""
     tx, ty = compute_tangent_field(
@@ -74,6 +81,7 @@ def compute_field_normal(
         primitive_lattice_vectors=primitive_lattice_vectors,
         use_jones_direct=False,
         fourier_loss_weight=fourier_loss_weight,
+        smoothness_loss_weight=smoothness_loss_weight,
     )
     txty = normalize_elementwise(jnp.stack([tx, ty], axis=-1))
     tx = txty[..., 0]
@@ -92,6 +100,7 @@ def compute_tangent_field(
     primitive_lattice_vectors: basis.LatticeVectors,
     use_jones_direct: bool,
     fourier_loss_weight: float,
+    smoothness_loss_weight: float,
     steps: int = 1,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute the tangent vector field for `arr`.
@@ -106,7 +115,9 @@ def compute_tangent_field(
         primitive_lattice_vectors: Define the unit cell coordinates.
         use_jones_direct: Specifies whether the complex Jones field is to be sought.
         fourier_loss_weight: Determines the weight of the loss term penalizing
-            Fourier terms corresponding to high frequencies.
+            Fourier terms corresponding to high frequencies. Should be positive.
+        smoothness_loss_weight: Determines the weight of the loss term rewarding
+            smoothness of the tangent field in real space. Should be positive.
         steps: The number of Newton iterations to carry out. Generally, the default
             single iteration is sufficient to obtain converged fields.
 
@@ -122,6 +133,7 @@ def compute_tangent_field(
             _compute_tangent_field_no_batch,
             use_jones_direct=use_jones_direct,
             fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
             steps=steps,
         ),
         in_axes=(0, None, None),
@@ -143,6 +155,7 @@ def _compute_tangent_field_no_batch(
     primitive_lattice_vectors: basis.LatticeVectors,
     use_jones_direct: bool,
     fourier_loss_weight: float,
+    smoothness_loss_weight: float,
     steps: int,
 ) -> jnp.ndarray:
     """Compute the tangent vector field for `arr` with no batch dimensions."""
@@ -164,8 +177,9 @@ def _compute_tangent_field_no_batch(
     target_field = normalize_elementwise(target_field)
     if use_jones_direct:
         target_field = normalize_jones(target_field)
-
-    initial_field = target_field
+        initial_field = target_field
+    else:
+        initial_field = normalize(jnp.stack([grad[..., 1], -grad[..., 0]], axis=-1))
 
     fourier_field = fft.fft(initial_field, expansion=expansion, axes=(-3, -2))
     flat_fourier_field = fourier_field.flatten()
@@ -178,15 +192,33 @@ def _compute_tangent_field_no_batch(
             target_field=target_field,
             elementwise_alignment_loss_weight=elementwise_alignment_weight,
             fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
         )
         flat_fourier_field -= jnp.linalg.solve(hessian, jac.conj())
 
     fourier_field = flat_fourier_field.reshape((expansion.num_terms, 2))
     field = fft.ifft(fourier_field, expansion=expansion, shape=grid_shape, axis=-2)
 
-    # Manually set the field in cases where `arr` is constant.
-    grad_is_zero = jnp.all(jnp.isclose(grad, 0.0), axis=(-3, -2, -1), keepdims=True)
-    field = jnp.where(grad_is_zero, jnp.ones_like(field), field)
+    # Manually set the field in cases where `arr` varies only along one axis or is
+    # entirely constant. This avoids nans which may occur on some platforms.
+    gx_is_zero = jnp.all(
+        jnp.isclose(grad[..., 0, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
+    )
+    gy_is_zero = jnp.all(
+        jnp.isclose(grad[..., 1, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
+    )
+    field = jnp.where(
+        gx_is_zero & ~gy_is_zero,
+        jnp.stack([jnp.ones(field.shape[:-1]), jnp.zeros(field.shape[:-1])], axis=-1),
+        field,
+    )
+    print(gx_is_zero, gy_is_zero)
+    field = jnp.where(
+        ~gx_is_zero & gy_is_zero,
+        jnp.stack([jnp.zeros(field.shape[:-1]), jnp.ones(field.shape[:-1])], axis=-1),
+        field,
+    )
+    field = jnp.where(gx_is_zero & gy_is_zero, jnp.ones_like(field), field)
     return normalize(field)
 
 
@@ -281,6 +313,7 @@ def field_loss_value_jac_and_hessian(
     target_field: jnp.ndarray,
     elementwise_alignment_loss_weight: jnp.ndarray,
     fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Compute the value, Jacobian, and Hessian of the field loss."""
     assert flat_fourier_field.ndim == 1
@@ -294,6 +327,7 @@ def field_loss_value_jac_and_hessian(
             target_field=target_field,
             elementwise_alignment_loss_weight=elementwise_alignment_loss_weight,
             fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
         )
         return value, value
 
@@ -315,6 +349,7 @@ def _field_loss(
     target_field: jnp.ndarray,
     elementwise_alignment_loss_weight: jnp.ndarray,
     fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> jnp.ndarray:
     """Compute loss that favors smooth"""
     shape: Tuple[int, int] = target_field.shape[-3:-1]  # type: ignore[assignment]
@@ -329,7 +364,12 @@ def _field_loss(
     )
 
     fourier_loss = _fourier_loss(fourier_field, expansion, primitive_lattice_vectors)
-    return alignment_loss + fourier_loss_weight * fourier_loss
+    smoothness_loss = _smoothness_loss(field, primitive_lattice_vectors)
+    return (
+        alignment_loss
+        + fourier_loss_weight * fourier_loss
+        + smoothness_loss_weight * smoothness_loss
+    )
 
 
 def _alignment_loss(
@@ -380,6 +420,14 @@ def _fourier_loss(
     return jnp.sum(jnp.abs(fourier_field) ** 2 * kt[..., jnp.newaxis] ** 2)
 
 
+def _smoothness_loss(
+    field: jnp.ndarray, basis_vectors: basis.LatticeVectors
+) -> jnp.ndarray:
+    """Compute loss associated with smoothness of `field`."""
+    grads = _vector_field_forward_difference_gradient(field, basis_vectors)
+    return jnp.mean(jnp.abs(jnp.asarray(grads)) ** 2)
+
+
 # -------------------------------------------------------------------------------------
 # Gradient calculation and transformation.
 # -------------------------------------------------------------------------------------
@@ -420,6 +468,68 @@ def compute_gradient(
     partial_grad = [_unpad(g, pad_width) for g in partial_grad]
     partial_grad = [g * arr.shape[ax] for g, ax in zip(partial_grad, axes)]
     return _transform_gradient(jnp.stack(partial_grad, axis=-1), basis_vectors)
+
+
+def _vector_field_forward_difference_gradient(
+    field: jnp.ndarray,
+    primitive_lattice_vectors: basis.LatticeVectors,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Computes the gradient of a vector field by forward difference.
+
+    The returned gradient consists of as many arrays as there are dimensions, each
+    having the same shape as `field`. In the three-dimensional case, we have
+
+        grad = (grad_field_x, grad_field_y, grad_field_z)
+
+    where
+
+        grad_field_x = stack([dfield_x / dx, dfield_y / dy, dfield_z / dz], axis=-1)
+
+    Args:
+        field: The field for which the gradient is sought.
+        primitive_lattice_vectors: Defines the unit cell coordinates.
+
+    Returns:
+        Tuple containing the gradients, each with the same shape as `field`.
+    """
+    basis_vectors = jnp.stack(
+        [primitive_lattice_vectors.u, primitive_lattice_vectors.v],
+        axis=-1,
+    )
+
+    area = jnp.abs(jnp.linalg.det(basis_vectors))
+    basis_vectors /= jnp.sqrt(area)
+    return (
+        _scalar_field_forward_difference_gradient(field[..., 0], basis_vectors),
+        _scalar_field_forward_difference_gradient(field[..., 1], basis_vectors),
+    )
+
+
+def _scalar_field_forward_difference_gradient(
+    field: jnp.ndarray,
+    basis_vectors: jnp.ndarray,
+) -> jnp.ndarray:
+    """Computes the gradient of a scalar field by forward difference.
+
+    Args:
+        field: The scalar field for which the forward-difference gradient is sought.
+        basis_vectors: The vectors defining the space in which `field` is defined.
+
+    Returns:
+        The gradient, with shape `field.shape + (dimensions,)`.
+    """
+    dimension = basis_vectors.shape[-1]
+    assert basis_vectors.shape[-2:] == (dimension, dimension)
+    axes = range(field.ndim - dimension, field.ndim)
+    diffs = [_periodic_forward_difference(field, axis=ax) for ax in axes]
+    partial_grad = jnp.stack(diffs, axis=-1)
+    return _transform_gradient(partial_grad, basis_vectors)
+
+
+def _periodic_forward_difference(field: jnp.ndarray, axis: int) -> jnp.ndarray:
+    """Computes the forward difference for `field` along `axis`."""
+    diff = jnp.roll(field, shift=-1, axis=axis) - field
+    return diff * field.shape[axis]
 
 
 def _transform_gradient(

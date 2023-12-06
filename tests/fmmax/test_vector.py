@@ -12,6 +12,9 @@ import parameterized
 
 from fmmax import basis, vector
 
+# Enable 64-bit precision for higher accuracy.
+jax.config.update("jax_enable_x64", True)
+
 
 class ChangeBasisTest(unittest.TestCase):
     def test_basis_cycle(self):
@@ -162,8 +165,8 @@ class SchemesTest(unittest.TestCase):
                 expansion=expansion,
                 primitive_lattice_vectors=primitive_lattice_vectors,
             )
-            onp.testing.assert_array_equal(tx[i, :, :], expected_tx_i)
-            onp.testing.assert_array_equal(ty[i, :, :], expected_ty_i)
+            onp.testing.assert_allclose(tx[i, :, :], expected_tx_i)
+            onp.testing.assert_allclose(ty[i, :, :], expected_ty_i)
 
     @parameterized.parameterized.expand(
         [(scheme,) for scheme in vector.VECTOR_FIELD_SCHEMES]

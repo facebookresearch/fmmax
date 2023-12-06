@@ -487,7 +487,6 @@ POL_FOURIER: str = "pol_fourier"
 FOURIER_LOSS_WEIGHT: float = 0.01
 FOURIER_LOSS_WEIGHT_JONES_DIRECT: float = 0.0001
 
-
 VECTOR_FIELD_SCHEMES: Dict[str, VectorFn] = {
     JONES_DIRECT: functools.partial(
         normalized_vector_field,
@@ -554,17 +553,21 @@ VECTOR_FIELD_SCHEMES: Dict[str, VectorFn] = {
     JONES_DIRECT_FOURIER: functools.partial(
         vector_fourier.compute_field_jones_direct,
         fourier_loss_weight=FOURIER_LOSS_WEIGHT_JONES_DIRECT,
+        smoothness_loss_weight=0.0,
     ),
     JONES_FOURIER: functools.partial(
         vector_fourier.compute_field_jones,
         fourier_loss_weight=FOURIER_LOSS_WEIGHT,
+        smoothness_loss_weight=0.0,
     ),
     NORMAL_FOURIER: functools.partial(
         vector_fourier.compute_field_normal,
         fourier_loss_weight=FOURIER_LOSS_WEIGHT,
+        smoothness_loss_weight=0.0,
     ),
     POL_FOURIER: functools.partial(
         vector_fourier.compute_field_pol,
         fourier_loss_weight=FOURIER_LOSS_WEIGHT,
+        smoothness_loss_weight=0.0,
     ),
 }
