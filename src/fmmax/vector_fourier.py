@@ -115,9 +115,9 @@ def compute_tangent_field(
         primitive_lattice_vectors: Define the unit cell coordinates.
         use_jones_direct: Specifies whether the complex Jones field is to be sought.
         fourier_loss_weight: Determines the weight of the loss term penalizing
-            Fourier terms corresponding to high frequencies.
+            Fourier terms corresponding to high frequencies. Should be positive.
         smoothness_loss_weight: Determines the weight of the loss term rewarding
-            smoothness of the tangent field in real space.
+            smoothness of the tangent field in real space. Should be positive.
         steps: The number of Newton iterations to carry out. Generally, the default
             single iteration is sufficient to obtain converged fields.
 
