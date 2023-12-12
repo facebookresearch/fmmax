@@ -445,7 +445,7 @@ def unflatten_transverse_wavevectors(
     expansion: basis.Expansion,
     brillouin_grid_axes: Tuple[int, int],
 ) -> jnp.ndarray:
-    """Unflattens transverse wavevectors for a given expansion and Brillouin integration scheme.
+    """Unflattens transverse wavevectors ($K_x$ and $K_y$) for a given expansion and Brillouin integration scheme.
 
     Args:
         transverse_wavevectors: The transverse wavevectors array, with shape
@@ -454,7 +454,13 @@ def unflatten_transverse_wavevectors(
         brillouin_grid_axes: The axes associated with the Brillouin zone grid.
 
     Returns:
-        The unflattened wavevectors, with shape `(..., num_kx, num_ky, 2)`.
+        The unflattened wavevectors, with shape `(..., num_kx, num_ky, 2)`. The trailing axis, when 
+        indexed, corresponds to the `kx` and `ky` directions respectively.
+
+    Examples:
+        >>> unflattend_wavevectors = (transverse_wavevectors, expansion, brillouin_grid_axes)
+        >>> kx = unflattend_wavevectors[..., 0]
+        >>> ky = unflattend_wavevectors[..., 1]
     """
     assert transverse_wavevectors.ndim >= 4
     assert transverse_wavevectors.shape[-2:] == (expansion.num_terms, 2)
@@ -473,6 +479,6 @@ def unflatten_transverse_wavevectors(
 
     transverse_wavevectors = unflatten(transverse_wavevectors, expansion)
 
-    # Transpose so the trailing axis is for the wavevector direction.
+    # Transpose so the trailing axis is for the wavevector direction (kx and ky).
     axes = tuple(range(transverse_wavevectors.ndim - 3)) + (-2, -1, -3)
     return jnp.transpose(transverse_wavevectors, axes)
