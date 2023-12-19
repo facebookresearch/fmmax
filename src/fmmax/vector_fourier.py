@@ -212,7 +212,6 @@ def _compute_tangent_field_no_batch(
         jnp.stack([jnp.ones(field.shape[:-1]), jnp.zeros(field.shape[:-1])], axis=-1),
         field,
     )
-    print(gx_is_zero, gy_is_zero)
     field = jnp.where(
         ~gx_is_zero & gy_is_zero,
         jnp.stack([jnp.zeros(field.shape[:-1]), jnp.ones(field.shape[:-1])], axis=-1),
