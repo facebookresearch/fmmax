@@ -494,14 +494,13 @@ def _vector_field_forward_difference_gradient(
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Computes the gradient of a vector field by forward difference.
 
-    The returned gradient consists of as many arrays as there are dimensions, each
-    having the same shape as `field`. In the three-dimensional case, we have
+    The returned gradients are,
 
-        grad = (grad_field_x, grad_field_y, grad_field_z)
+        grad = (grad_field_x, grad_field_y)
 
     where
 
-        grad_field_x = stack([dfield_x / dx, dfield_y / dy, dfield_z / dz], axis=-1)
+        grad_field_x = stack([dfield_x / dx, dfield_y / dy], axis=-1)
 
     Args:
         field: The field for which the gradient is sought.
