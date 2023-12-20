@@ -109,6 +109,19 @@ def compute_tangent_field(
     Newton iteration. Rather than optimizing the real-space tangent field, the
     Fourier coefficients are directly optimized.
 
+    The tangent field has several properties or invariances:
+
+      - The tangent field is independent of the scale of the unit cell; if the
+        unit cell is uniformly scaled (e.g. by changing units from nm to microns),
+        the vector field is unchanged.
+      - The tangent field for a supercell (containing e.g. 2x2 unit cells) is
+        identical to that of a single unit cell, so long as the number of terms in
+        the Fourier expansion is increased correspondingly. Note that this means that
+        the tangent field depends upon the number of terms in the Fourier expansion.
+      - The tangent field is independent of the resolution of the discretized unit
+        cell. That is, whether the permittivity distribution is specified with a
+        `(100, 100)` or `(200, 200)` shaped array has no impact on the resulting field.
+
     Args:
         arr: The array for which the normal vector field is sought.
         expansion: The Fourier expansion for which the field is to be optimized.
@@ -161,6 +174,12 @@ def _compute_tangent_field_no_batch(
     """Compute the tangent vector field for `arr` with no batch dimensions."""
     assert primitive_lattice_vectors.u.shape == (2,)
     assert arr.ndim == 2
+
+    # Rescale the weights so that a supercell containing multiple unit cells and having
+    # correspondlingly more terms in the Fourier expansion yields a tangent field
+    # identical to that obtained from just a single unit cell.
+    fourier_loss_weight /= (expansion.num_terms / 1000)
+    smoothness_loss_weight /= (expansion.num_terms / 1000)
 
     grid_shape: Tuple[int, int] = arr.shape[-2:]  # type: ignore[assignment]
     arr = _filter_and_adjust_resolution(arr, expansion)
