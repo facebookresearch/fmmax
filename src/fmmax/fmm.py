@@ -6,7 +6,7 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 import dataclasses
 import enum
 import functools
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -14,8 +14,12 @@ import jax.numpy as jnp
 from fmmax import basis, fft, fmm_matrices, utils, vector
 
 # xx, xy, yx, yy, and zz components of permittivity or permeability.
-_TensorComponents = Tuple[
+TensorComponents = Tuple[
     jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray
+]
+VectorFn = Callable[
+    [jnp.ndarray, basis.Expansion, basis.LatticeVectors],
+    Tuple[jnp.ndarray, jnp.ndarray],
 ]
 
 
@@ -40,7 +44,7 @@ def eigensolve_isotropic_media(
     primitive_lattice_vectors: basis.LatticeVectors,
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
-    formulation: Formulation,
+    formulation: Formulation | VectorFn,
 ) -> "LayerSolveResult":
     """Performs the eigensolve for a layer with isotropic permittivity.
 
@@ -55,7 +59,8 @@ def eigensolve_isotropic_media(
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
         permittivity: The permittivity array.
         expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used.
+        formulation: Specifies the formulation to be used, or a callable which computes
+            the tangent vector field for a custom vector FMM formulation.
 
     Returns:
         The `LayerSolveResult`.
@@ -86,7 +91,7 @@ def eigensolve_anisotropic_media(
     permittivity_yy: jnp.ndarray,
     permittivity_zz: jnp.ndarray,
     expansion: basis.Expansion,
-    formulation: Formulation,
+    formulation: Formulation | VectorFn,
 ) -> "LayerSolveResult":
     """Performs the eigensolve for a layer with anisotropic permittivity.
 
@@ -106,7 +111,8 @@ def eigensolve_anisotropic_media(
         permittivity_yy: The yy-component of the permittivity tensor.
         permittivity_zz: The zz-component of the permittivity tensor.
         expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used.
+        formulation: Specifies the formulation to be used, or a callable which computes
+            the tangent vector field for a custom vector FMM formulation.
 
     Returns:
         The `LayerSolveResult`.
@@ -146,7 +152,7 @@ def eigensolve_general_anisotropic_media(
     permeability_yy: jnp.ndarray,
     permeability_zz: jnp.ndarray,
     expansion: basis.Expansion,
-    formulation: Formulation,
+    formulation: Formulation | VectorFn,
     vector_field_source: Optional[jnp.ndarray] = None,
 ) -> "LayerSolveResult":
     """Performs the eigensolve for a general anistropic layer.
@@ -175,7 +181,8 @@ def eigensolve_general_anisotropic_media(
         permeability_yy: The yy-component of the permeability tensor.
         permeability_zz: The zz-component of the permeability tensor.
         expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used.
+        formulation: Specifies the formulation to be used, or a callable which computes
+            the tangent vector field for a custom vector FMM formulation.
         vector_field_source: Optional array used to calculate the vector field for
             vector formulations of the FMM. If not specified, `(permittivity_xx +
             permittivity_yy) / 2` is used. Ignored for the `FFT` formulation. Should
@@ -422,7 +429,7 @@ def _eigensolve_patterned_isotropic_media(
     primitive_lattice_vectors: basis.LatticeVectors,
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
-    formulation: Formulation,
+    formulation: Formulation | VectorFn,
 ) -> LayerSolveResult:
     r"""Returns the results of a patterned isotropic layer eigensolve.
 
@@ -435,7 +442,8 @@ def _eigensolve_patterned_isotropic_media(
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
         permittivity: The permittivity array.
         expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used.
+        formulation: Specifies the formulation to be used, or a callable which computes
+            the tangent vector field for a custom vector FMM formulation.
 
     Returns:
         The `LayerSolveResult`.
@@ -484,8 +492,8 @@ def _eigensolve_uniform_general_anisotropic_media(
     wavelength: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
-    permittivities: _TensorComponents,
-    permeabilities: _TensorComponents,
+    permittivities: TensorComponents,
+    permeabilities: TensorComponents,
     expansion: basis.Expansion,
 ) -> LayerSolveResult:
     """Returns the results of a uniform anisotropic layer eigensolve.
@@ -587,10 +595,10 @@ def _eigensolve_patterned_general_anisotropic_media(
     wavelength: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
-    permittivities: _TensorComponents,
-    permeabilities: _TensorComponents,
+    permittivities: TensorComponents,
+    permeabilities: TensorComponents,
     expansion: basis.Expansion,
-    formulation: Formulation,
+    formulation: Formulation | VectorFn,
     vector_field_source: jnp.ndarray,
 ) -> LayerSolveResult:
     """Returns the results of a patterned anisotropic layer eigensolve.
@@ -607,7 +615,8 @@ def _eigensolve_patterned_general_anisotropic_media(
         permeabilities: The elements of the permeability tensor: `(mu_xx, mu_xy,
             mu_yx, mu_yy, mu_zz)`, each having shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used.
+        formulation: Specifies the formulation to be used, or a callable which computes
+            the tangent vector field for a custom vector FMM formulation.
         vector_field_source: Array used to calculate the vector field, with shape
             matching the permittivities and permeabilities.
 
@@ -772,7 +781,7 @@ def fourier_matrices_patterned_isotropic_media(
     primitive_lattice_vectors: basis.LatticeVectors,
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
-    formulation: Formulation,
+    formulation: Formulation | VectorFn,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Return Fourier convolution matrices for patterned nonmagnetic isotropic media.
 
@@ -784,8 +793,8 @@ def fourier_matrices_patterned_isotropic_media(
         primitive_lattice_vectors: The primitive vectors for the real-space lattice.
         permittivity: The permittivity array, with shape `(..., nx, ny)`.
         expansion: The field expansion to be used.
-        formulation: Specifies the formulation to be used, e.g. a vector formulation
-            or the non-vector `FFT` formulation.
+        formulation: Specifies the formulation to be used, or a callable which computes
+            the tangent vector field for a custom vector FMM formulation.
 
     Returns:
         inverse_z_permittivity_matrix: The Fourier convolution matrix for the inverse
@@ -800,7 +809,10 @@ def fourier_matrices_patterned_isotropic_media(
             expansion=expansion,
         )
     else:
-        vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
+        if isinstance(formulation, Formulation):
+            vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
+        else:
+            vector_fn = formulation
         tx, ty = vector_fn(permittivity, expansion, primitive_lattice_vectors)
         _transverse_permittivity_fn = functools.partial(
             fmm_matrices.transverse_permittivity_vector,
@@ -824,10 +836,10 @@ def fourier_matrices_patterned_isotropic_media(
 
 def fourier_matrices_patterned_anisotropic_media(
     primitive_lattice_vectors: basis.LatticeVectors,
-    permittivities: _TensorComponents,
-    permeabilities: _TensorComponents,
+    permittivities: TensorComponents,
+    permeabilities: TensorComponents,
     expansion: basis.Expansion,
-    formulation: Formulation,
+    formulation: Formulation | VectorFn,
     vector_field_source: jnp.ndarray,
 ) -> Tuple[
     jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray
@@ -879,7 +891,10 @@ def fourier_matrices_patterned_anisotropic_media(
             expansion=expansion,
         )
     else:
-        vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
+        if isinstance(formulation, Formulation):
+            vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
+        else:
+            vector_fn = formulation
         tx, ty = vector_fn(vector_field_source, expansion, primitive_lattice_vectors)
         _transverse_permittivity_fn = functools.partial(
             fmm_matrices.transverse_permittivity_vector_anisotropic,
