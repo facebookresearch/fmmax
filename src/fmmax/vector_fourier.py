@@ -187,10 +187,7 @@ def _compute_tangent_field_no_batch(
     arr = _filter_and_adjust_resolution(arr, expansion)
     grad = compute_gradient(arr, primitive_lattice_vectors)
 
-    # Normalize the gradient if its maximum magnitude exceeds unity.
-    grad_magnitude = _field_magnitude(grad)
-    norm = jnp.maximum(1.0, jnp.amax(grad_magnitude, axis=(-3, -2, -1), keepdims=True))
-    grad /= norm
+    grad = normalize(grad)
 
     elementwise_alignment_weight = _field_magnitude(grad)
 

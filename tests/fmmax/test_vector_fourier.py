@@ -68,12 +68,16 @@ class TangentVectorTest(unittest.TestCase):
             (1, (80, 80), (1 + 0j), False, False),  # Phase invariance.
             (1, (80, 80), (1 / jnp.sqrt(2) + 1j / jnp.sqrt(2)), False, False),
             (1, (80, 80), (0 + 1j), False, False),
+            (1, (80, 80), 0.1, False, False),  # Amplitude invariance.
+            (1, (80, 80), 10.0, False, False),
             # Cases with binarized density and `use_jones_direct = False`.
             (1, (160, 120), 1, True, False),  # Resolution invariance.
             (1000, (80, 80), 1, True, False),  # Scale invariance.
             (1, (80, 80), (1 + 0j), True, False),  # Phase invariance.
             (1, (80, 80), (1 / jnp.sqrt(2) + 1j / jnp.sqrt(2)), True, False),
             (1, (80, 80), (0 + 1j), True, False),
+            (1, (80, 80), 0.1, True, False),
+            (1, (80, 80), 10.0, True, False),
             # Cases with `use_jones_direct = True`.
             (1, (160, 120), 1, False, True),  # Grayscale, resolution invariance.
             (1000, (80, 80), 1, False, True),  # Grayscale, scale invariance.
@@ -95,8 +99,9 @@ class TangentVectorTest(unittest.TestCase):
             smoothness_loss_weight=0.0,
         )
         zoom = (shape[0] / 80, shape[1] / 80)
-        expected_tx = ndimage.zoom(reference_tx, zoom, order=1) * arr_scale
-        expected_ty = ndimage.zoom(reference_ty, zoom, order=1) * arr_scale
+        norm = arr_scale / jnp.abs(arr_scale)
+        expected_tx = ndimage.zoom(reference_tx, zoom, order=1) * norm
+        expected_ty = ndimage.zoom(reference_ty, zoom, order=1) * norm
 
         tx, ty = self._compute_field(
             approximate_num_terms=200,
@@ -119,12 +124,16 @@ class TangentVectorTest(unittest.TestCase):
             (1, (80, 80), (1 + 0j), False, False),  # Phase invariance.
             (1, (80, 80), (1 / jnp.sqrt(2) + 1j / jnp.sqrt(2)), False, False),
             (1, (80, 80), (0 + 1j), False, False),
+            (1, (80, 80), 0.1, False, False),  # Amplitude invariance.
+            (1, (80, 80), 10.0, False, False),
             # Cases with binarized density and `use_jones_direct = False`.
             (1, (160, 120), 1, True, False),  # Resolution invariance.
             (1000, (80, 80), 1, True, False),  # Scale invariance.
             (1, (80, 80), (1 + 0j), True, False),  # Phase invariance.
             (1, (80, 80), (1 / jnp.sqrt(2) + 1j / jnp.sqrt(2)), True, False),
             (1, (80, 80), (0 + 1j), True, False),
+            (1, (80, 80), 0.1, True, False),
+            (1, (80, 80), 10.0, True, False),
             # Cases with `use_jones_direct = True`.
             (1, (160, 120), 1, False, True),  # Grayscale, resolution invariance.
             (1000, (80, 80), 1, False, True),  # Grayscale, scale invariance.
@@ -146,8 +155,9 @@ class TangentVectorTest(unittest.TestCase):
             smoothness_loss_weight=1.0,
         )
         zoom = (shape[0] / 80, shape[1] / 80)
-        expected_tx = ndimage.zoom(reference_tx, zoom, order=1) * arr_scale
-        expected_ty = ndimage.zoom(reference_ty, zoom, order=1) * arr_scale
+        norm = arr_scale / jnp.abs(arr_scale)
+        expected_tx = ndimage.zoom(reference_tx, zoom, order=1) * norm
+        expected_ty = ndimage.zoom(reference_ty, zoom, order=1) * norm
 
         tx, ty = self._compute_field(
             approximate_num_terms=200,
@@ -202,7 +212,9 @@ class TangentVectorTest(unittest.TestCase):
         )
 
         # Compute the supercell example.
-        supercell_primitive_lattice_vectors = basis.LatticeVectors(basis.X * 2, basis.Y * 2)
+        supercell_primitive_lattice_vectors = basis.LatticeVectors(
+            basis.X * 2, basis.Y * 2
+        )
         supercell_expansion = basis.generate_expansion(
             primitive_lattice_vectors=supercell_primitive_lattice_vectors,
             approximate_num_terms=4 * expansion.num_terms,
