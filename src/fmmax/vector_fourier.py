@@ -121,6 +121,8 @@ def compute_tangent_field(
       - The tangent field is independent of the resolution of the discretized unit
         cell. That is, whether the permittivity distribution is specified with a
         `(100, 100)` or `(200, 200)` shaped array has no impact on the resulting field.
+      - The tangent field is independent of the amplitude of the array from which it is
+        obtained, e.g. the permittivity contrast.
 
     Args:
         arr: The array for which the normal vector field is sought.
@@ -178,8 +180,8 @@ def _compute_tangent_field_no_batch(
     # Rescale the weights so that a supercell containing multiple unit cells and having
     # correspondlingly more terms in the Fourier expansion yields a tangent field
     # identical to that obtained from just a single unit cell.
-    fourier_loss_weight /= (expansion.num_terms / 1000)
-    smoothness_loss_weight /= (expansion.num_terms / 1000)
+    fourier_loss_weight /= expansion.num_terms
+    smoothness_loss_weight /= expansion.num_terms
 
     grid_shape: Tuple[int, int] = arr.shape[-2:]  # type: ignore[assignment]
     arr = _filter_and_adjust_resolution(arr, expansion)
