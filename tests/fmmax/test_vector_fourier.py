@@ -267,8 +267,8 @@ class TangentVectorTest(unittest.TestCase):
                 fourier_loss_weight=0.1,
                 smoothness_loss_weight=1.0,
             )
-            onp.testing.assert_allclose(tx, tx_batch[i, :, :], rtol=1e-5)
-            onp.testing.assert_allclose(ty, ty_batch[i, :, :], rtol=1e-5)
+            onp.testing.assert_allclose(tx, tx_batch[i, :, :], atol=1e-6)
+            onp.testing.assert_allclose(ty, ty_batch[i, :, :], atol=1e-6)
 
     @parameterized.expand([[True], [False]])
     def test_gradient_no_nan(self, use_jones_direct):

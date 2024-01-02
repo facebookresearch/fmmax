@@ -187,6 +187,16 @@ def _compute_tangent_field_no_batch(
     arr = _filter_and_adjust_resolution(arr, expansion)
     grad = compute_gradient(arr, primitive_lattice_vectors)
 
+    # When the gradient is zero, we return a spatially invariant field, and provide a
+    # dummy gradient for the field calculation to avoid NaNs in gradient calculation.
+    gx_is_zero = jnp.all(
+        jnp.isclose(grad[..., 0, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
+    )
+    gy_is_zero = jnp.all(
+        jnp.isclose(grad[..., 1, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
+    )
+    grad = jnp.where(gx_is_zero & gy_is_zero, jnp.ones_like(grad), grad)
+
     grad = normalize(grad)
 
     elementwise_alignment_weight = _field_magnitude(grad)
@@ -219,12 +229,6 @@ def _compute_tangent_field_no_batch(
 
     # Manually set the field in cases where `arr` varies only along one axis or is
     # entirely constant. This avoids nans which may occur on some platforms.
-    gx_is_zero = jnp.all(
-        jnp.isclose(grad[..., 0, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
-    )
-    gy_is_zero = jnp.all(
-        jnp.isclose(grad[..., 1, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
-    )
     field = jnp.where(
         gx_is_zero & ~gy_is_zero,
         jnp.stack([jnp.ones(field.shape[:-1]), jnp.zeros(field.shape[:-1])], axis=-1),
