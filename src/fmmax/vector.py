@@ -460,6 +460,14 @@ def _remove_mean_phase(
 # -----------------------------------------------------------------------------
 
 
+OPTIMIZER = jopt.momentum(step_size=0.2, mass=0.8)
+ALIGNMENT_WEIGHT = 1.0
+SMOOTHNESS_WEIGHT = 1.0
+STEPS_DIM_MULTIPLE = 10.0
+SMOOTHING_KERNEL = utils.gaussian_kernel(shape=(9, 9), fwhm=3.0)
+RESIZE_MAX_DIM = 140
+RESIZE_METHOD = jax.image.ResizeMethod.CUBIC
+
 VectorFn = Callable[
     [jnp.ndarray, basis.Expansion, basis.LatticeVectors],
     Tuple[jnp.ndarray, jnp.ndarray],
@@ -470,85 +478,37 @@ JONES: str = "jones"
 NORMAL: str = "normal"
 POL: str = "pol"
 
-OPTIMIZER = jopt.momentum(step_size=0.2, mass=0.8)
-ALIGNMENT_WEIGHT = 1.0
-SMOOTHNESS_WEIGHT = 1.0
-STEPS_DIM_MULTIPLE = 10.0
-SMOOTHING_KERNEL = utils.gaussian_kernel(shape=(9, 9), fwhm=3.0)
-RESIZE_MAX_DIM = 140
-RESIZE_METHOD = jax.image.ResizeMethod.CUBIC
-
-
 JONES_DIRECT_FOURIER: str = "jones_direct_fourier"
 JONES_FOURIER: str = "jones_fourier"
 NORMAL_FOURIER: str = "normal_fourier"
 POL_FOURIER: str = "pol_fourier"
 
-FOURIER_LOSS_WEIGHT: float = 0.01
-FOURIER_LOSS_WEIGHT_JONES_DIRECT: float = 0.0001
+FOURIER_LOSS_WEIGHT: float = 0.2
+SMOOTHNESS_LOSS_WEIGHT: float = 2.0
+
+FOURIER_LOSS_WEIGHT_JONES_DIRECT: float = 0.05
+SMOOTHNESS_LOSS_WEIGHT_JONES_DIRECT: float = 0.5
 
 VECTOR_FIELD_SCHEMES: Dict[str, VectorFn] = {
     JONES_DIRECT: functools.partial(
-        normalized_vector_field,
-        vector_fn=functools.partial(
-            tangent_field,
-            use_jones=True,  # Directly compute Jones field.
-            optimizer=OPTIMIZER,
-            alignment_weight=ALIGNMENT_WEIGHT,
-            smoothness_weight=SMOOTHNESS_WEIGHT,
-            steps_dim_multiple=STEPS_DIM_MULTIPLE,
-            smoothing_kernel=SMOOTHING_KERNEL,
-        ),
-        # The `JONES_DIRECT` scheme directly produces the Jones field, which we
-        # just normalize to ensure the elements have a maximum magnitude of `1`.
-        normalize_fn=normalize_pol,
-        resize_max_dim=RESIZE_MAX_DIM,
-        resize_method=RESIZE_METHOD,
+        vector_fourier.compute_field_jones_direct,
+        fourier_loss_weight=0.0,
+        smoothness_loss_weight=SMOOTHNESS_LOSS_WEIGHT_JONES_DIRECT,
     ),
     JONES: functools.partial(
-        normalized_vector_field,
-        vector_fn=functools.partial(
-            tangent_field,
-            use_jones=False,  # Obtain Jones field by normalization.
-            optimizer=OPTIMIZER,
-            alignment_weight=ALIGNMENT_WEIGHT,
-            smoothness_weight=SMOOTHNESS_WEIGHT,
-            steps_dim_multiple=STEPS_DIM_MULTIPLE,
-            smoothing_kernel=SMOOTHING_KERNEL,
-        ),
-        normalize_fn=normalize_jones,
-        resize_max_dim=RESIZE_MAX_DIM,
-        resize_method=RESIZE_METHOD,
+        vector_fourier.compute_field_jones,
+        fourier_loss_weight=0.0,
+        smoothness_loss_weight=SMOOTHNESS_LOSS_WEIGHT,
     ),
     NORMAL: functools.partial(
-        normalized_vector_field,
-        vector_fn=functools.partial(
-            tangent_field,
-            use_jones=False,
-            optimizer=OPTIMIZER,
-            alignment_weight=ALIGNMENT_WEIGHT,
-            smoothness_weight=SMOOTHNESS_WEIGHT,
-            steps_dim_multiple=STEPS_DIM_MULTIPLE,
-            smoothing_kernel=SMOOTHING_KERNEL,
-        ),
-        normalize_fn=normalize_normal,
-        resize_max_dim=RESIZE_MAX_DIM,
-        resize_method=RESIZE_METHOD,
+        vector_fourier.compute_field_normal,
+        fourier_loss_weight=0.0,
+        smoothness_loss_weight=SMOOTHNESS_LOSS_WEIGHT,
     ),
     POL: functools.partial(
-        normalized_vector_field,
-        vector_fn=functools.partial(
-            tangent_field,
-            use_jones=False,
-            optimizer=OPTIMIZER,
-            alignment_weight=ALIGNMENT_WEIGHT,
-            smoothness_weight=SMOOTHNESS_WEIGHT,
-            steps_dim_multiple=STEPS_DIM_MULTIPLE,
-            smoothing_kernel=SMOOTHING_KERNEL,
-        ),
-        normalize_fn=normalize_pol,
-        resize_max_dim=RESIZE_MAX_DIM,
-        resize_method=RESIZE_METHOD,
+        vector_fourier.compute_field_pol,
+        fourier_loss_weight=0.0,
+        smoothness_loss_weight=SMOOTHNESS_LOSS_WEIGHT,
     ),
     JONES_DIRECT_FOURIER: functools.partial(
         vector_fourier.compute_field_jones_direct,
