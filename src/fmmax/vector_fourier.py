@@ -109,6 +109,21 @@ def compute_tangent_field(
     Newton iteration. Rather than optimizing the real-space tangent field, the
     Fourier coefficients are directly optimized.
 
+    The tangent field has several properties or invariances:
+
+      - The tangent field is independent of the scale of the unit cell; if the
+        unit cell is uniformly scaled (e.g. by changing units from nm to microns),
+        the vector field is unchanged.
+      - The tangent field for a supercell (containing e.g. 2x2 unit cells) is
+        identical to that of a single unit cell, so long as the number of terms in
+        the Fourier expansion is increased correspondingly. Note that this means that
+        the tangent field depends upon the number of terms in the Fourier expansion.
+      - The tangent field is independent of the resolution of the discretized unit
+        cell. That is, whether the permittivity distribution is specified with a
+        `(100, 100)` or `(200, 200)` shaped array has no impact on the resulting field.
+      - The tangent field is independent of the amplitude of the array from which it is
+        obtained, e.g. the permittivity contrast.
+
     Args:
         arr: The array for which the normal vector field is sought.
         expansion: The Fourier expansion for which the field is to be optimized.
@@ -162,14 +177,27 @@ def _compute_tangent_field_no_batch(
     assert primitive_lattice_vectors.u.shape == (2,)
     assert arr.ndim == 2
 
+    # Rescale the weights so that a supercell containing multiple unit cells and having
+    # correspondlingly more terms in the Fourier expansion yields a tangent field
+    # identical to that obtained from just a single unit cell.
+    fourier_loss_weight /= expansion.num_terms
+    smoothness_loss_weight /= expansion.num_terms
+
     grid_shape: Tuple[int, int] = arr.shape[-2:]  # type: ignore[assignment]
     arr = _filter_and_adjust_resolution(arr, expansion)
     grad = compute_gradient(arr, primitive_lattice_vectors)
 
-    # Normalize the gradient if its maximum magnitude exceeds unity.
-    grad_magnitude = _field_magnitude(grad)
-    norm = jnp.maximum(1.0, jnp.amax(grad_magnitude, axis=(-3, -2, -1), keepdims=True))
-    grad /= norm
+    # When the gradient is zero, we return a spatially invariant field, and provide a
+    # dummy gradient for the field calculation to avoid NaNs in gradient calculation.
+    gx_is_zero = jnp.all(
+        jnp.isclose(grad[..., 0, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
+    )
+    gy_is_zero = jnp.all(
+        jnp.isclose(grad[..., 1, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
+    )
+    grad = jnp.where(gx_is_zero & gy_is_zero, jnp.ones_like(grad), grad)
+
+    grad = normalize(grad)
 
     elementwise_alignment_weight = _field_magnitude(grad)
 
@@ -201,18 +229,11 @@ def _compute_tangent_field_no_batch(
 
     # Manually set the field in cases where `arr` varies only along one axis or is
     # entirely constant. This avoids nans which may occur on some platforms.
-    gx_is_zero = jnp.all(
-        jnp.isclose(grad[..., 0, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
-    )
-    gy_is_zero = jnp.all(
-        jnp.isclose(grad[..., 1, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
-    )
     field = jnp.where(
         gx_is_zero & ~gy_is_zero,
         jnp.stack([jnp.ones(field.shape[:-1]), jnp.zeros(field.shape[:-1])], axis=-1),
         field,
     )
-    print(gx_is_zero, gy_is_zero)
     field = jnp.where(
         ~gx_is_zero & gy_is_zero,
         jnp.stack([jnp.zeros(field.shape[:-1]), jnp.ones(field.shape[:-1])], axis=-1),
@@ -476,14 +497,13 @@ def _vector_field_forward_difference_gradient(
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Computes the gradient of a vector field by forward difference.
 
-    The returned gradient consists of as many arrays as there are dimensions, each
-    having the same shape as `field`. In the three-dimensional case, we have
+    The returned gradients are,
 
-        grad = (grad_field_x, grad_field_y, grad_field_z)
+        grad = (grad_field_x, grad_field_y)
 
     where
 
-        grad_field_x = stack([dfield_x / dx, dfield_y / dy, dfield_z / dz], axis=-1)
+        grad_field_x = stack([dfield_x / dx, dfield_y / dy], axis=-1)
 
     Args:
         field: The field for which the gradient is sought.

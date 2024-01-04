@@ -15,6 +15,19 @@ from scipy import ndimage
 from fmmax import basis, vector_fourier
 
 
+def _generate_array(shape, arr_scale, binarize_arr):
+    x, y = jnp.meshgrid(
+        jnp.linspace(0, 1, shape[0]),
+        jnp.linspace(0, 1, shape[1]),
+        indexing="ij",
+    )
+    distance = jnp.sqrt((x - 0.5) ** 2 + (y - 0.5) ** 2)
+    arr = jnp.exp(-(distance**2) * 30)
+    if binarize_arr:
+        arr = (arr > 0.5).astype(float)
+    return arr * arr_scale
+
+
 class TangentVectorTest(unittest.TestCase):
     def _compute_field(
         self,
@@ -36,17 +49,7 @@ class TangentVectorTest(unittest.TestCase):
             approximate_num_terms=approximate_num_terms,
             truncation=basis.Truncation.CIRCULAR,
         )
-        x, y = jnp.meshgrid(
-            jnp.linspace(0, scale, shape[0]),
-            jnp.linspace(0, scale, shape[1]),
-            indexing="ij",
-        )
-        distance = jnp.sqrt((x - scale / 2) ** 2 + (y - scale / 2) ** 2)
-        arr = jnp.exp(-(distance**2) / scale**2 * 30)
-        if binarize_arr:
-            arr = (arr > 0.5).astype(float)
-        arr *= arr_scale
-
+        arr = _generate_array(shape, arr_scale, binarize_arr)
         return vector_fourier.compute_tangent_field(
             arr,
             expansion,
@@ -65,12 +68,16 @@ class TangentVectorTest(unittest.TestCase):
             (1, (80, 80), (1 + 0j), False, False),  # Phase invariance.
             (1, (80, 80), (1 / jnp.sqrt(2) + 1j / jnp.sqrt(2)), False, False),
             (1, (80, 80), (0 + 1j), False, False),
+            (1, (80, 80), 0.1, False, False),  # Amplitude invariance.
+            (1, (80, 80), 10.0, False, False),
             # Cases with binarized density and `use_jones_direct = False`.
             (1, (160, 120), 1, True, False),  # Resolution invariance.
             (1000, (80, 80), 1, True, False),  # Scale invariance.
             (1, (80, 80), (1 + 0j), True, False),  # Phase invariance.
             (1, (80, 80), (1 / jnp.sqrt(2) + 1j / jnp.sqrt(2)), True, False),
             (1, (80, 80), (0 + 1j), True, False),
+            (1, (80, 80), 0.1, True, False),
+            (1, (80, 80), 10.0, True, False),
             # Cases with `use_jones_direct = True`.
             (1, (160, 120), 1, False, True),  # Grayscale, resolution invariance.
             (1000, (80, 80), 1, False, True),  # Grayscale, scale invariance.
@@ -88,12 +95,13 @@ class TangentVectorTest(unittest.TestCase):
             arr_scale=1,
             binarize_arr=binarize_arr,
             use_jones_direct=use_jones_direct,
-            fourier_loss_weight=0.001,
+            fourier_loss_weight=0.1,
             smoothness_loss_weight=0.0,
         )
         zoom = (shape[0] / 80, shape[1] / 80)
-        expected_tx = ndimage.zoom(reference_tx, zoom, order=1) * arr_scale
-        expected_ty = ndimage.zoom(reference_ty, zoom, order=1) * arr_scale
+        norm = arr_scale / jnp.abs(arr_scale)
+        expected_tx = ndimage.zoom(reference_tx, zoom, order=1) * norm
+        expected_ty = ndimage.zoom(reference_ty, zoom, order=1) * norm
 
         tx, ty = self._compute_field(
             approximate_num_terms=200,
@@ -102,7 +110,7 @@ class TangentVectorTest(unittest.TestCase):
             arr_scale=arr_scale,
             binarize_arr=binarize_arr,
             use_jones_direct=use_jones_direct,
-            fourier_loss_weight=0.001,
+            fourier_loss_weight=0.1,
             smoothness_loss_weight=0.0,
         )
         onp.testing.assert_allclose(tx, expected_tx, atol=0.05)
@@ -116,12 +124,16 @@ class TangentVectorTest(unittest.TestCase):
             (1, (80, 80), (1 + 0j), False, False),  # Phase invariance.
             (1, (80, 80), (1 / jnp.sqrt(2) + 1j / jnp.sqrt(2)), False, False),
             (1, (80, 80), (0 + 1j), False, False),
+            (1, (80, 80), 0.1, False, False),  # Amplitude invariance.
+            (1, (80, 80), 10.0, False, False),
             # Cases with binarized density and `use_jones_direct = False`.
             (1, (160, 120), 1, True, False),  # Resolution invariance.
             (1000, (80, 80), 1, True, False),  # Scale invariance.
             (1, (80, 80), (1 + 0j), True, False),  # Phase invariance.
             (1, (80, 80), (1 / jnp.sqrt(2) + 1j / jnp.sqrt(2)), True, False),
             (1, (80, 80), (0 + 1j), True, False),
+            (1, (80, 80), 0.1, True, False),
+            (1, (80, 80), 10.0, True, False),
             # Cases with `use_jones_direct = True`.
             (1, (160, 120), 1, False, True),  # Grayscale, resolution invariance.
             (1000, (80, 80), 1, False, True),  # Grayscale, scale invariance.
@@ -140,11 +152,12 @@ class TangentVectorTest(unittest.TestCase):
             binarize_arr=binarize_arr,
             use_jones_direct=use_jones_direct,
             fourier_loss_weight=0.0,
-            smoothness_loss_weight=0.1,
+            smoothness_loss_weight=1.0,
         )
         zoom = (shape[0] / 80, shape[1] / 80)
-        expected_tx = ndimage.zoom(reference_tx, zoom, order=1) * arr_scale
-        expected_ty = ndimage.zoom(reference_ty, zoom, order=1) * arr_scale
+        norm = arr_scale / jnp.abs(arr_scale)
+        expected_tx = ndimage.zoom(reference_tx, zoom, order=1) * norm
+        expected_ty = ndimage.zoom(reference_ty, zoom, order=1) * norm
 
         tx, ty = self._compute_field(
             approximate_num_terms=200,
@@ -154,10 +167,70 @@ class TangentVectorTest(unittest.TestCase):
             binarize_arr=binarize_arr,
             use_jones_direct=use_jones_direct,
             fourier_loss_weight=0.0,
-            smoothness_loss_weight=0.1,
+            smoothness_loss_weight=1.0,
         )
         onp.testing.assert_allclose(tx, expected_tx, atol=0.05)
         onp.testing.assert_allclose(ty, expected_ty, atol=0.05)
+
+    @parameterized.expand(
+        [
+            [True, True, 0.1, 0.0],
+            [True, False, 0.1, 0.0],
+            [False, True, 0.1, 0.0],
+            [False, False, 0.1, 0.0],
+            [True, True, 0.0, 1.0],
+            [True, False, 0.0, 1.0],
+            [False, True, 0.0, 1.0],
+            [False, False, 0.0, 1.0],
+        ]
+    )
+    def test_supercell(
+        self,
+        binarize_arr,
+        use_jones_direct,
+        fourier_loss_weight,
+        smoothness_loss_weight,
+    ):
+        approximate_num_terms = 200
+
+        # Compute the non-supercell example.
+        primitive_lattice_vectors = basis.LatticeVectors(basis.X, basis.Y)
+        expansion = basis.generate_expansion(
+            primitive_lattice_vectors=primitive_lattice_vectors,
+            approximate_num_terms=approximate_num_terms,
+            truncation=basis.Truncation.PARALLELOGRAMIC,
+        )
+        arr = _generate_array((80, 80), arr_scale=1, binarize_arr=binarize_arr)
+        tx, ty = vector_fourier.compute_tangent_field(
+            arr,
+            expansion,
+            primitive_lattice_vectors,
+            use_jones_direct,
+            fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
+            steps=1,
+        )
+
+        # Compute the supercell example.
+        supercell_primitive_lattice_vectors = basis.LatticeVectors(
+            basis.X * 2, basis.Y * 2
+        )
+        supercell_expansion = basis.generate_expansion(
+            primitive_lattice_vectors=supercell_primitive_lattice_vectors,
+            approximate_num_terms=4 * expansion.num_terms,
+            truncation=basis.Truncation.PARALLELOGRAMIC,
+        )
+        supercell_tx, supercell_ty = vector_fourier.compute_tangent_field(
+            jnp.tile(arr, (2, 2)),
+            supercell_expansion,
+            supercell_primitive_lattice_vectors,
+            use_jones_direct,
+            fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
+            steps=1,
+        )
+        onp.testing.assert_allclose(supercell_tx, jnp.tile(tx, (2, 2)), atol=5e-2)
+        onp.testing.assert_allclose(supercell_ty, jnp.tile(ty, (2, 2)), atol=5e-2)
 
     @parameterized.expand([[True], [False]])
     def test_batch_calculation_matches_single(self, use_jones_direct):
@@ -181,7 +254,7 @@ class TangentVectorTest(unittest.TestCase):
             expansion,
             primitive_lattice_vectors,
             use_jones_direct=use_jones_direct,
-            fourier_loss_weight=0.01,
+            fourier_loss_weight=0.1,
             smoothness_loss_weight=1.0,
         )
 
@@ -191,11 +264,11 @@ class TangentVectorTest(unittest.TestCase):
                 expansion,
                 primitive_lattice_vectors,
                 use_jones_direct=use_jones_direct,
-                fourier_loss_weight=0.01,
+                fourier_loss_weight=0.1,
                 smoothness_loss_weight=1.0,
             )
-            onp.testing.assert_allclose(tx, tx_batch[i, :, :], rtol=1e-5)
-            onp.testing.assert_allclose(ty, ty_batch[i, :, :], rtol=1e-5)
+            onp.testing.assert_allclose(tx, tx_batch[i, :, :], atol=1e-6)
+            onp.testing.assert_allclose(ty, ty_batch[i, :, :], atol=1e-6)
 
     @parameterized.expand([[True], [False]])
     def test_gradient_no_nan(self, use_jones_direct):
@@ -242,7 +315,7 @@ class TangentVectorTest(unittest.TestCase):
                 expansion=expansion,
                 primitive_lattice_vectors=primitive_lattice_vectors,
                 use_jones_direct=use_jones_direct,
-                fourier_loss_weight=0.01,
+                fourier_loss_weight=0.1,
                 smoothness_loss_weight=0.0,
             )
             return jnp.sum(jnp.abs(tx) ** 2) + jnp.sum(jnp.abs(ty) ** 2), (tx, ty)
@@ -255,10 +328,10 @@ class TangentVectorTest(unittest.TestCase):
 
     @parameterized.expand(
         [
-            [True, True, 0.01, 0.0],
-            [False, True, 0.01, 0.0],
-            [True, False, 0.01, 0.0],
-            [False, False, 0.01, 0.0],
+            [True, True, 0.1, 0.0],
+            [False, True, 0.1, 0.0],
+            [True, False, 0.1, 0.0],
+            [False, False, 0.1, 0.0],
             [True, True, 0.0, 1.0],
             [False, True, 0.0, 1.0],
             [True, False, 0.0, 1.0],
@@ -409,7 +482,7 @@ class AngleTest(unittest.TestCase):
 class TangentFieldMatchesExpectedTest(unittest.TestCase):
     @parameterized.expand(
         [
-            [0.01, 0.0],
+            [0.1, 0.0],
             [0.0, 1.0],
         ]
     )
@@ -480,7 +553,7 @@ class TangentFieldMatchesExpectedTest(unittest.TestCase):
                 )
             ),
             basis.LatticeVectors(basis.X, basis.Y),
-            fourier_loss_weight=0.01,
+            fourier_loss_weight=0.1,
             smoothness_loss_weight=0.0,
         )
         onp.testing.assert_allclose(tx, jnp.ones_like(tx), atol=1e-7)
@@ -499,7 +572,7 @@ class TangentFieldMatchesExpectedTest(unittest.TestCase):
                 )
             ),
             basis.LatticeVectors(basis.X, basis.Y),
-            fourier_loss_weight=0.01,
+            fourier_loss_weight=0.1,
             smoothness_loss_weight=0.0,
         )
         onp.testing.assert_allclose(tx, 0.0, atol=1e-7)
@@ -507,7 +580,7 @@ class TangentFieldMatchesExpectedTest(unittest.TestCase):
 
     @parameterized.expand(
         [
-            [0.01, 0.0],
+            [0.1, 0.0],
             [0.0, 1.0],
         ]
     )
