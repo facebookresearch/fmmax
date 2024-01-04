@@ -4,7 +4,7 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
 import functools
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, List, Tuple
 
 import jax
 import jax.example_libraries.optimizers as jopt
