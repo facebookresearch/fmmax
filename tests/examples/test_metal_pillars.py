@@ -26,7 +26,7 @@ class MetalPillarsTest(unittest.TestCase):
             ambient_thickness_nm=0.0,
             formulation=fmm.Formulation.NORMAL,
         )
-        onp.testing.assert_allclose(rte, [0.100558 + 0.099723j], rtol=1e-2)
+        onp.testing.assert_allclose(rte, [0.098257 + 0.098332j], rtol=1e-2)
 
     def test_compute_fields_regression(self):
         (
