@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-__version__ = "v0.4.1"
+__version__ = "v0.5.0"
 
 from . import (
     basis,
@@ -14,5 +14,4 @@ from . import (
     sources,
     utils,
     vector,
-    vector_fourier,
 )

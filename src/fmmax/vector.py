@@ -4,474 +4,586 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
 import functools
-from typing import Any, Callable, Dict, Tuple
+from typing import Callable, Dict, List, Tuple
 
 import jax
 import jax.example_libraries.optimizers as jopt
 import jax.numpy as jnp
 import numpy as onp
 
-from fmmax import basis, utils, vector_fourier
-
-PyTree = Any
+from fmmax import basis, fft, utils
 
 
-def normalized_vector_field(
+def compute_field_jones_direct(
     arr: jnp.ndarray,
     expansion: basis.Expansion,
     primitive_lattice_vectors: basis.LatticeVectors,
-    vector_fn: Callable,
-    normalize_fn: Callable,
-    resize_max_dim: int,
-    resize_method: jax.image.ResizeMethod,
+    fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Generates a normalized tangent vector field according to the specified method.
-
-    Some `vector_fn` can be computationally expensive, and so this function
-    resizes the input `arr` so that the maximum size of the two trailing
-    dimensions is `resize_max_dim`. When `arr` is smaller than the maximum
-    size, no resampling is performed.
-
-    The tangent fields are then computed for this resized array, and then
-    resized again to obtain fields at the original resolution.
-
-    Args:
-        arr: The array for which the tangent vector field is sought.
-        expansion: The Fourier expansion for which the field is to be optimized.
-        primitive_lattice_vectors: Define the unit cell coordinates.
-        vector_fn: Function used to generate the vector field.
-        normalize_fn: Function used to normalize the vector field.
-        resize_max_dim: Determines the size of the array for which the tangent
-            vector field is computed; `arr` is resized so that it has a maximum
-            size of `vector_arr_size` along any dimension.
-        resize_method: Method used in scaling `arr` prior to calculating the
-            tangent vector field.
-
-    Returns:
-        The normalized vector field.
-    """
-    del expansion
-
-    shape = arr.shape
-    resize_factor = resize_max_dim / max(shape[-2:])
-
-    if resize_factor < 1:
-        assert any(d > resize_max_dim for d in shape[-2:])
-        coarse_shape = shape[:-2] + tuple(
-            [int(onp.ceil(d * resize_factor)) for d in shape[-2:]]
-        )
-        assert len(coarse_shape) == arr.ndim
-        arr = utils.resample(arr, shape=coarse_shape, method=resize_method)
-
-    tu, tv = vector_fn(arr)
-    assert tu.shape == tv.shape == arr.shape
-
-    if resize_factor < 1:
-        tu = jax.image.resize(tu, shape, method=resize_method)
-        tv = jax.image.resize(tv, shape, method=resize_method)
-        assert tu.shape == tv.shape == shape
-
-    tx, ty = change_vector_field_basis(
-        tu,
-        tv,
-        u=primitive_lattice_vectors.u,
-        v=primitive_lattice_vectors.v,
-        x=basis.X,
-        y=basis.Y,
+    """Compute tangent vector field using the Jones direct method."""
+    return compute_tangent_field(
+        arr=arr,
+        expansion=expansion,
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        use_jones_direct=True,
+        fourier_loss_weight=fourier_loss_weight,
+        smoothness_loss_weight=smoothness_loss_weight,
     )
-    return normalize_fn(tx, ty)
 
 
-def change_vector_field_basis(
-    tu: jnp.ndarray,
-    tv: jnp.ndarray,
-    u: jnp.ndarray,
-    v: jnp.ndarray,
-    x: jnp.ndarray,
-    y: jnp.ndarray,
+def compute_field_pol(
+    arr: jnp.ndarray,
+    expansion: basis.Expansion,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Changes the basis for a vector field.
-
-    Specifically, given a field with amplitudes `(tu, tv)` of the basis
-    vectors `(u, v)`, this function computes the amplitudes for the basis
-    vectors `(x, y)`.
-
-    Args:
-        tu: The amplitude of the first basis vector in the original basis.
-        tv: The amplitude of the second basis vector in the original basis.
-        u: The first vector of the original basis.
-        v: The second vector of the original basis.
-        x: The first vector of the new basis.
-        y: The second vector of the new basis.
-
-    Returns:
-        The field `(tx, ty)` in the new basis.
-    """
-    xy = jnp.stack([x, y], axis=-1)
-    uxy = jnp.linalg.solve(xy, u)
-    vxy = jnp.linalg.solve(xy, v)
-    tx = tu * uxy[..., 0] + tv * vxy[..., 0]
-    ty = tu * uxy[..., 1] + tv * vxy[..., 1]
-    return tx, ty
+    """Compute tangent vector field using the Pol method."""
+    return compute_tangent_field(
+        arr=arr,
+        expansion=expansion,
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        use_jones_direct=False,
+        fourier_loss_weight=fourier_loss_weight,
+        smoothness_loss_weight=smoothness_loss_weight,
+    )
 
 
-def compute_gradient(arr: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Computes the gradient of `arr` with respect to `x` and `y`.
-
-    This function uses periodic boundary conditions. The `x` and `y`
-    dimensions correspond to the trailing axes of `arr`.
-
-    Args:
-        arr: The array whose gradient is sought.
-
-    Returns:
-        The `(gx, gy)` gradients along the x- and y- directions.
-    """
-    batch_dims = arr.ndim - 2
-    padding = tuple([(0, 0)] * batch_dims + [(1, 1), (1, 1)])
-    arr_padded = jnp.pad(arr, padding, mode="wrap")
-    gradient_x, gradient_y = jnp.gradient(arr_padded, axis=(-2, -1))
-    gradient_x = gradient_x[..., 1:-1, 1:-1]
-    gradient_y = gradient_y[..., 1:-1, 1:-1]
-    return gradient_x, gradient_y
-
-
-# -----------------------------------------------------------------------------
-# Functions related to vector field normalization.
-# -----------------------------------------------------------------------------
-
-
-def normalize_normal(
-    tx: jnp.ndarray,
-    ty: jnp.ndarray,
+def compute_field_jones(
+    arr: jnp.ndarray,
+    expansion: basis.Expansion,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Normalizes the tangent vector field using the "Normal" method of [2012 Liu]."""
-    magnitude = utils.magnitude(tx, ty)
-    magnitude_safe = jnp.where(jnp.isclose(magnitude, 0), 1, magnitude)
-    tx /= magnitude_safe
-    ty /= magnitude_safe
-    return tx, ty
-
-
-def normalize_pol(
-    tx: jnp.ndarray,
-    ty: jnp.ndarray,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Normalizes the tangent vector field using the "Pol" method of [2012 Liu]."""
-    magnitude = utils.magnitude(tx, ty)
-    max_magnitude = jnp.amax(magnitude, axis=(-2, -1), keepdims=True)
-    max_magnitude_safe = jnp.where(jnp.isclose(max_magnitude, 0.0), 1.0, max_magnitude)
-    tx /= max_magnitude_safe
-    ty /= max_magnitude_safe
-    return tx, ty
-
-
-def normalize_jones(
-    tx: jnp.ndarray,
-    ty: jnp.ndarray,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Generates a Jones vector field following the "Jones" method of [2012 Liu]."""
-    magnitude = utils.magnitude(tx, ty)
-    max_magnitude = jnp.amax(magnitude, axis=(-2, -1), keepdims=True)
-    max_magnitude_safe = jnp.where(jnp.isclose(max_magnitude, 0.0), 1.0, max_magnitude)
-    tx /= max_magnitude_safe
-    ty /= max_magnitude_safe
-    magnitude = magnitude / max_magnitude_safe
-
-    magnitude_near_zero = jnp.isclose(magnitude, 0.0)
-    magnitude_safe = jnp.where(magnitude_near_zero, 1.0, magnitude)
-    tx_norm = jnp.where(magnitude_near_zero, 1 / jnp.sqrt(2), tx / magnitude_safe)
-    ty_norm = jnp.where(magnitude_near_zero, 1 / jnp.sqrt(2), ty / magnitude_safe)
-
-    phi = jnp.pi / 8 * (1 + jnp.cos(jnp.pi * magnitude))
-    theta = utils.angle(tx_norm + 1j * ty_norm)
-
-    jx = jnp.exp(1j * theta) * (tx_norm * jnp.cos(phi) - ty_norm * 1j * jnp.sin(phi))
-    jy = jnp.exp(1j * theta) * (ty_norm * jnp.cos(phi) + tx_norm * 1j * jnp.sin(phi))
-
+    """Compute tangent vector field using the Jones method."""
+    tx, ty = compute_tangent_field(
+        arr=arr,
+        expansion=expansion,
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        use_jones_direct=False,
+        fourier_loss_weight=fourier_loss_weight,
+        smoothness_loss_weight=smoothness_loss_weight,
+    )
+    jxjy = normalize_jones(jnp.stack([tx, ty], axis=-1))
+    jx = jxjy[..., 0]
+    jy = jxjy[..., 1]
     return jx, jy
 
 
-# -----------------------------------------------------------------------------
-# Functions related to vector field generation by minimizing a functional.
-# -----------------------------------------------------------------------------
-
-
-def tangent_field(
+def compute_field_normal(
     arr: jnp.ndarray,
-    use_jones: bool,
-    optimizer: jopt.Optimizer,
-    alignment_weight: float,
-    smoothness_weight: float,
-    steps_dim_multiple: int,
-    smoothing_kernel: jnp.ndarray,
+    expansion: basis.Expansion,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Computes a real or complex tangent vector field.
-
-    The field is tangent to the interfaces of features in `arr`, and varies smoothly
-    between interfaces. It is obtained by optimization which minimizes a functional
-    of the field which favors alignment with interfaces of features in `arr` as well
-    as smoothness of the field. The maximum magnitude of the computed field is `1`.
-
-    The tangent field is complex when `use_jones` is `True`, and real otherwise. Real
-    fields are suitable for normalization using methods in this module. The complex
-    field obtained when `use_jones` is `True` requires no normalization.
-
-    Args:
-        arr: The array for which the tangent field is sought.
-        use_jones: Specifies whether a complex Jones field or a real tangent vector
-            field is sought.
-        optimizer: The optimizer used to minimize the functional.
-        alignment_weight: The weight of an alignment term in the functional. Larger
-            values will reward alignment with interfaces of features in `arr`.
-        smoothness_weight: The weight of a smoothness term in the functional. Larger
-            values will reward a smoother tangent field.
-        steps_dim_multiple: Controls the number of steps in the optimization. The
-            number of steps is the product of `steps_dim_multiple` and the dimension
-            of the largest of the two trailing axes of `arr`.
-        smoothing_kernel: Kernel used to smooth `arr` prior to the computation.
-
-    Returns:
-        The tangent vector fields, `(tx, ty)`.
-    """
-    tx, ty, _ = _tangent_field_with_loss(
+    """Compute tangent vector field using the Normal method."""
+    tx, ty = compute_tangent_field(
         arr=arr,
-        use_jones=use_jones,
-        optimizer=optimizer,
-        alignment_weight=alignment_weight,
-        smoothness_weight=smoothness_weight,
-        steps_dim_multiple=steps_dim_multiple,
-        smoothing_kernel=smoothing_kernel,
+        expansion=expansion,
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        use_jones_direct=False,
+        fourier_loss_weight=fourier_loss_weight,
+        smoothness_loss_weight=smoothness_loss_weight,
     )
+    txty = normalize_elementwise(jnp.stack([tx, ty], axis=-1))
+    tx = txty[..., 0]
+    ty = txty[..., 1]
     return tx, ty
 
 
-def _tangent_field_with_loss(
+# -----------------------------------------------------------------------------
+# Underlying functions used to compute all variants of the tangent fields.
+# -----------------------------------------------------------------------------
+
+
+def compute_tangent_field(
     arr: jnp.ndarray,
-    use_jones: bool,
-    optimizer: jopt.Optimizer,
-    alignment_weight: float,
-    smoothness_weight: float,
-    steps_dim_multiple: int,
-    smoothing_kernel: jnp.ndarray,
-) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    """Returns a tangent vector field and the functional values."""
-    arr = jax.lax.stop_gradient(arr)
-    arr_smoothed = utils.padded_conv(arr, smoothing_kernel, padding_mode="wrap")
+    expansion: basis.Expansion,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    use_jones_direct: bool,
+    fourier_loss_weight: float,
+    smoothness_loss_weight: float,
+    steps: int = 1,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Compute the tangent vector field for `arr`.
 
-    gx, gy = compute_gradient(arr_smoothed)
-    tx0, ty0 = gy, -gx
+    The calculation finds the minimum of a quadratic loss function using a single
+    Newton iteration. Rather than optimizing the real-space tangent field, the
+    Fourier coefficients are directly optimized.
 
-    # Normalize the gradient if its maximum magnitude exceeds unity.
-    magnitude = utils.magnitude(tx0, ty0)
-    norm = jnp.maximum(1.0, jnp.amax(magnitude, axis=(-2, -1), keepdims=True))
-    tx0 /= norm
-    ty0 /= norm
+    The tangent field has several properties or invariances:
 
-    # If the permittivity is uniform, the vector field `(tx0, ty0)` will be
-    # zero and the optimization will yield `nan`. Make a dummy vector field
-    # to avoid this.
-    permittivity_gradient_is_zero = jnp.all(
-        jnp.isclose(tx0, 0.0), axis=(-2, -1), keepdims=True
-    ) & jnp.all(jnp.isclose(ty0, 0.0), axis=(-2, -1), keepdims=True)
-    tx0 = jnp.where(permittivity_gradient_is_zero, jnp.ones_like(tx0), tx0)
-    ty0 = jnp.where(permittivity_gradient_is_zero, jnp.ones_like(ty0), ty0)
-
-    # Remove the average phase of `(tx0, ty0)`, ensuring it is mostly real.
-    tx0, ty0 = _remove_mean_phase(tx0, ty0)
-
-    # Obtain initial `(tx, ty)` by taking the real part of `(tx0, ty0)` and
-    # normalizing, so that all nonzero elements have magnitude `1`. This
-    # ensures that the initial `(tx, ty)` is well aligned with `(tx0, ty0)`.
-    tx, ty = normalize_normal(tx0.real, ty0.real)
-
-    # If the Jones field is sought, transform `(tx, ty)` into a Jones field.
-    if use_jones:
-        tx, ty = normalize_jones(tx, ty)
-
-    loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray] = functools.partial(
-        _field_loss,
-        tx0=tx0,
-        ty0=ty0,
-        alignment_weight=alignment_weight,
-        smoothness_weight=smoothness_weight,
-    )
-    return _optimize_tangent_field(
-        tx=tx,
-        ty=ty,
-        loss_fn=loss_fn,
-        optimizer=optimizer,
-        steps_dim_multiple=steps_dim_multiple,
-    )
-
-
-def _optimize_tangent_field(
-    tx: jnp.ndarray,
-    ty: jnp.ndarray,
-    loss_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray],
-    optimizer: jopt.Optimizer,
-    steps_dim_multiple: int,
-) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    """Optimizes `tx` and `ty` by minimizing a functional.
+      - The tangent field is independent of the scale of the unit cell; if the
+        unit cell is uniformly scaled (e.g. by changing units from nm to microns),
+        the vector field is unchanged.
+      - The tangent field for a supercell (containing e.g. 2x2 unit cells) is
+        identical to that of a single unit cell, so long as the number of terms in
+        the Fourier expansion is increased correspondingly. Note that this means that
+        the tangent field depends upon the number of terms in the Fourier expansion.
+      - The tangent field is independent of the resolution of the discretized unit
+        cell. That is, whether the permittivity distribution is specified with a
+        `(100, 100)` or `(200, 200)` shaped array has no impact on the resulting field.
+      - The tangent field is independent of the amplitude of the array from which it is
+        obtained, e.g. the permittivity contrast.
 
     Args:
-        tx: The initial `tx`.
-        ty: The initial `ty`.
-        loss_fn: The loss function to be minimized.
-        optimizer: The optimizer used to minimize the functional.
-        steps_dim_multiple: Controls the number of steps in the optimization. The
-            number of steps is the product of `steps_dim_multiple` and the dimension
-            of the largest of the two trailing axes of `tx`.
+        arr: The array for which the normal vector field is sought.
+        expansion: The Fourier expansion for which the field is to be optimized.
+        primitive_lattice_vectors: Define the unit cell coordinates.
+        use_jones_direct: Specifies whether the complex Jones field is to be sought.
+        fourier_loss_weight: Determines the weight of the loss term penalizing
+            Fourier terms corresponding to high frequencies. Should be positive.
+        smoothness_loss_weight: Determines the weight of the loss term rewarding
+            smoothness of the tangent field in real space. Should be positive.
+        steps: The number of Newton iterations to carry out. Generally, the default
+            single iteration is sufficient to obtain converged fields.
 
     Returns:
-        The tangent vector fields and array giving the functional values throughout
-        the optimization, `(tx, ty, values)`.
+        The normal field, `(tx, ty)`.
     """
+    batch_shape = arr.shape[:-2]
+    arr = utils.atleast_nd(arr, n=3)
+    arr = arr.reshape((-1,) + arr.shape[-2:])
 
-    def _step_fn(step_state, dummy_x):
-        del dummy_x
-        step, state = step_state
-        tx, ty = optimizer.params_fn(state)
-        value, grads = jax.value_and_grad(loss_fn, argnums=(0, 1))(tx, ty)
-        conj_grads = jax.tree_util.tree_map(jnp.conj, grads)
-        state = optimizer.update_fn(step, conj_grads, state)
-        state = _clip_magnitude_state(state, max_magnitude=1.0)
-        return (step + 1, state), value
+    field_fn = jax.vmap(
+        functools.partial(
+            _compute_tangent_field_no_batch,
+            use_jones_direct=use_jones_direct,
+            fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
+            steps=steps,
+        ),
+        in_axes=(0, None, None),
+    )
+    field = field_fn(
+        arr,
+        expansion,
+        primitive_lattice_vectors,
+    )
+    field = field.reshape(batch_shape + field.shape[-3:])
+    tx = field[..., 0]
+    ty = field[..., 1]
+    return tx, ty
 
-    num_steps = steps_dim_multiple * max(tx.shape[-2:])
-    state = optimizer.init_fn((tx, ty))
-    (_, state), values = jax.lax.scan(_step_fn, (0, state), xs=None, length=num_steps)
-    tx, ty = optimizer.params_fn(state)
-    return tx, ty, values
+
+def _compute_tangent_field_no_batch(
+    arr: jnp.ndarray,
+    expansion: basis.Expansion,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    use_jones_direct: bool,
+    fourier_loss_weight: float,
+    smoothness_loss_weight: float,
+    steps: int,
+) -> jnp.ndarray:
+    """Compute the tangent vector field for `arr` with no batch dimensions."""
+    assert primitive_lattice_vectors.u.shape == (2,)
+    assert arr.ndim == 2
+
+    # Rescale the weights so that a supercell containing multiple unit cells and having
+    # correspondlingly more terms in the Fourier expansion yields a tangent field
+    # identical to that obtained from just a single unit cell.
+    fourier_loss_weight /= expansion.num_terms
+    smoothness_loss_weight /= expansion.num_terms
+
+    grid_shape: Tuple[int, int] = arr.shape[-2:]  # type: ignore[assignment]
+    arr = _filter_and_adjust_resolution(arr, expansion)
+    grad = compute_gradient(arr, primitive_lattice_vectors)
+
+    # When the gradient is zero, we return a spatially invariant field, and provide a
+    # dummy gradient for the field calculation to avoid NaNs in gradient calculation.
+    gx_is_zero = jnp.all(
+        jnp.isclose(grad[..., 0, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
+    )
+    gy_is_zero = jnp.all(
+        jnp.isclose(grad[..., 1, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
+    )
+    grad = jnp.where(gx_is_zero & gy_is_zero, jnp.ones_like(grad), grad)
+
+    grad = normalize(grad)
+
+    elementwise_alignment_weight = _field_magnitude(grad)
+
+    target_field = jnp.stack([grad[..., 1], -grad[..., 0]], axis=-1)
+    target_field = normalize_elementwise(target_field)
+    if use_jones_direct:
+        target_field = normalize_jones(target_field)
+        initial_field = target_field
+    else:
+        initial_field = normalize(jnp.stack([grad[..., 1], -grad[..., 0]], axis=-1))
+
+    fourier_field = fft.fft(initial_field, expansion=expansion, axes=(-3, -2))
+    flat_fourier_field = fourier_field.flatten()
+
+    for _ in range(steps):
+        _, jac, hessian = field_loss_value_jac_and_hessian(
+            flat_fourier_field=flat_fourier_field,
+            expansion=expansion,
+            primitive_lattice_vectors=primitive_lattice_vectors,
+            target_field=target_field,
+            elementwise_alignment_loss_weight=elementwise_alignment_weight,
+            fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
+        )
+        flat_fourier_field -= jnp.linalg.solve(hessian, jac.conj())
+
+    fourier_field = flat_fourier_field.reshape((expansion.num_terms, 2))
+    field = fft.ifft(fourier_field, expansion=expansion, shape=grid_shape, axis=-2)
+
+    # Manually set the field in cases where `arr` varies only along one axis or is
+    # entirely constant. This avoids nans which may occur on some platforms.
+    field = jnp.where(
+        gx_is_zero & ~gy_is_zero,
+        jnp.stack([jnp.ones(field.shape[:-1]), jnp.zeros(field.shape[:-1])], axis=-1),
+        field,
+    )
+    field = jnp.where(
+        ~gx_is_zero & gy_is_zero,
+        jnp.stack([jnp.zeros(field.shape[:-1]), jnp.ones(field.shape[:-1])], axis=-1),
+        field,
+    )
+    field = jnp.where(gx_is_zero & gy_is_zero, jnp.ones_like(field), field)
+    return normalize(field)
 
 
-def _clip_magnitude_state(
-    state: jopt.OptimizerState,
-    max_magnitude: float,
-) -> jopt.OptimizerState:
-    """Extracts parameters from `state`, clips their magnitude, and repacks the state."""
-    leaves, treedef = jax.tree_util.tree_flatten(state)
-    assert len(leaves) % 2 == 0
-    idx_tx = 0
-    idx_ty = len(leaves) // 2
-    tx = leaves[idx_tx]
-    ty = leaves[idx_ty]
-    assert tx.shape == ty.shape
-    tx, ty = _clip_magnitude(tx, ty, max_magnitude)
-    leaves = list(leaves)
-    leaves[idx_tx] = tx
-    leaves[idx_ty] = ty
-    return jax.tree_util.tree_unflatten(treedef, leaves)
+# -------------------------------------------------------------------------------------
+# Normalization and transform functions.
+# -------------------------------------------------------------------------------------
+
+
+def normalize_jones(field: jnp.ndarray) -> jnp.ndarray:
+    """Generates a Jones vector field following the "Jones" method of [2012 Liu]."""
+    assert field.shape[-1] == 2
+    field = normalize(field)
+    magnitude = _field_magnitude(field)
+
+    magnitude_near_zero = jnp.isclose(magnitude, 0.0)
+    magnitude_safe = jnp.where(magnitude_near_zero, 1.0, magnitude)
+    tx_norm = jnp.where(
+        magnitude_near_zero,
+        1 / jnp.sqrt(2),
+        field[..., 0, jnp.newaxis] / magnitude_safe,
+    )
+    ty_norm = jnp.where(
+        magnitude_near_zero,
+        1 / jnp.sqrt(2),
+        field[..., 1, jnp.newaxis] / magnitude_safe,
+    )
+
+    phi = jnp.pi / 8 * (1 + jnp.cos(jnp.pi * magnitude))
+    theta = _angle(tx_norm + 1j * ty_norm)
+
+    jx = jnp.exp(1j * theta) * (tx_norm * jnp.cos(phi) - ty_norm * 1j * jnp.sin(phi))
+    jy = jnp.exp(1j * theta) * (ty_norm * jnp.cos(phi) + tx_norm * 1j * jnp.sin(phi))
+    return jnp.concatenate([jx, jy], axis=-1)
+
+
+def normalize_elementwise(field: jnp.ndarray) -> jnp.ndarray:
+    """Normalize the elements of `field` to have magnitude `1` everywhere."""
+    magnitude = _field_magnitude(field)
+    magnitude_safe = jnp.where(jnp.isclose(magnitude, 0), 1, magnitude)
+    return field / magnitude_safe
+
+
+def normalize(field: jnp.ndarray) -> jnp.ndarray:
+    """Normalize `field` so that it has maximum magnitude `1`."""
+    max_magnitude = _max_field_magnitude(field)
+    max_magnitude_safe = jnp.where(jnp.isclose(max_magnitude, 0), 1, max_magnitude)
+    return field / max_magnitude_safe
+
+
+def _field_magnitude(field: jnp.ndarray) -> jnp.ndarray:
+    """Return the magnitude of `field`"""
+    magnitude_squared = jnp.sum(jnp.abs(field) ** 2, axis=-1, keepdims=True)
+    is_zero = magnitude_squared == 0
+    magnitude_squared_safe = jnp.where(is_zero, 1.0, magnitude_squared)
+    return jnp.where(is_zero, 0.0, jnp.sqrt(magnitude_squared_safe))
+
+
+def _max_field_magnitude(field: jnp.ndarray) -> jnp.ndarray:
+    """Returns the magnitude of the largest component in `field`."""
+    return jnp.amax(_field_magnitude(field), axis=(-3, -2), keepdims=True)
+
+
+def _angle(x: jnp.ndarray) -> jnp.ndarray:
+    """Computes `angle(x)` with special logic for when `x` equals zero."""
+    # Avoid taking the angle of an array with any near-zero elements, to avoid
+    # `nan` in the gradients.
+    is_near_zero = jnp.isclose(x, 0.0)
+    x_safe = jnp.where(is_near_zero, (1.0 + 0.0j), x)
+    return jnp.angle(x_safe)
+
+
+def _filter_and_adjust_resolution(
+    x: jnp.ndarray,
+    expansion: basis.Expansion,
+) -> jnp.ndarray:
+    """Filter `x` and adjust its resolution for the given `expansion`."""
+    y = fft.fft(x, expansion=expansion)
+    min_shape = fft.min_array_shape_for_expansion(expansion)
+    doubled_min_shape = (2 * min_shape[0], 2 * min_shape[1])
+    return fft.ifft(y, expansion=expansion, shape=doubled_min_shape)
+
+
+# -------------------------------------------------------------------------------------
+# Loss function
+# -------------------------------------------------------------------------------------
+
+
+def field_loss_value_jac_and_hessian(
+    flat_fourier_field: jnp.ndarray,
+    expansion: basis.Expansion,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    target_field: jnp.ndarray,
+    elementwise_alignment_loss_weight: jnp.ndarray,
+    fourier_loss_weight: float,
+    smoothness_loss_weight: float,
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    """Compute the value, Jacobian, and Hessian of the field loss."""
+    assert flat_fourier_field.ndim == 1
+
+    def fn(flat_fourier_field):
+        fourier_field = jnp.reshape(flat_fourier_field, (-1, 2))
+        value = _field_loss(
+            fourier_field=fourier_field,
+            expansion=expansion,
+            primitive_lattice_vectors=primitive_lattice_vectors,
+            target_field=target_field,
+            elementwise_alignment_loss_weight=elementwise_alignment_loss_weight,
+            fourier_loss_weight=fourier_loss_weight,
+            smoothness_loss_weight=smoothness_loss_weight,
+        )
+        return value, value
+
+    def jac_fn(flat_fourier_field):
+        jac, value = jax.jacrev(fn, has_aux=True)(flat_fourier_field)
+        return jac, (value, jac)
+
+    hessian, (value, jac) = jax.jacrev(jac_fn, has_aux=True, holomorphic=True)(
+        flat_fourier_field
+    )
+
+    return value, jac, hessian
 
 
 def _field_loss(
-    tx: jnp.ndarray,
-    ty: jnp.ndarray,
-    tx0: jnp.ndarray,
-    ty0: jnp.ndarray,
-    alignment_weight: float,
-    smoothness_weight: float,
+    fourier_field: jnp.ndarray,
+    expansion: basis.Expansion,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    target_field: jnp.ndarray,
+    elementwise_alignment_loss_weight: jnp.ndarray,
+    fourier_loss_weight: float,
+    smoothness_loss_weight: float,
 ) -> jnp.ndarray:
-    """Returns the tangent loss.
-
-    The tangent loss is minimized when `(tx, ty)` is aligned with
-    `(tx0, ty0)` and is smooth.
-
-    Args:
-        tx: The x-component of the field to be optimized.
-        ty: The y-component of the field to be optimized.
-        tx0: The x-component of the target field.
-        ty0: The y-component of the target field.
-        alignment_weight: Determines the weight of term rewarding alignement of
-            `(tx, ty)` with `(tx0, ty0)`.
-        smoothness_weight: Determines the weight of the smoothness of `(tx, ty)`.
-
-    Returns:
-        The loss value.
-    """
-    self_alignment_loss = alignment_weight * _self_alignment_loss(tx, ty, tx0, ty0)
-    gx = jnp.sum(jnp.abs(jnp.asarray(_forward_difference_gradient(tx))) ** 2)
-    gy = jnp.sum(jnp.abs(jnp.asarray(_forward_difference_gradient(ty))) ** 2)
-    smoothness_loss = smoothness_weight * (gx + gy)
-    return self_alignment_loss + smoothness_loss
-
-
-def _forward_difference_gradient(arr: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Computes the gradient by forward finite difference."""
-    gx = jnp.roll(arr, axis=-2, shift=-1) - arr
-    gy = jnp.roll(arr, axis=-1, shift=-1) - arr
-    return gx, gy
-
-
-def _self_alignment_loss(
-    tx: jnp.ndarray,
-    ty: jnp.ndarray,
-    tx0: jnp.ndarray,
-    ty0: jnp.ndarray,
-) -> jnp.ndarray:
-    """Returns a loss associated with alignment of `(tx, ty)` and `(tx0, ty0)`.
-
-    Args:
-        tx: The x-component of the field to be optimized.
-        ty: The y-component of the field to be optimized.
-        tx0: The x-component of the target field.
-        ty0: The y-component of the target field.
-
-    Returns:
-        The loss value.
-    """
-    alignment_loss = -jnp.abs(tx * jnp.conj(tx0) + ty * jnp.conj(ty0))
-    magnitude_loss = jax.nn.relu(utils.magnitude(tx, ty) - 1) ** 2
-    return jnp.sum(alignment_loss + magnitude_loss)
-
-
-def _clip_magnitude(
-    ax: jnp.ndarray,
-    ay: jnp.ndarray,
-    max_magnitude: float,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Clips `(ax, ay)` to have a maximum magnitude."""
-    magnitude = utils.magnitude(ax, ay)
-    magnitude_safe = jnp.where(jnp.isclose(magnitude, 0.0), 1.0, magnitude)
-    norm_safe = jnp.where(
-        magnitude < max_magnitude,
-        1.0,
-        max_magnitude / magnitude_safe,
+    """Compute loss that favors smooth"""
+    shape: Tuple[int, int] = target_field.shape[-3:-1]  # type: ignore[assignment]
+    field = fft.ifft(
+        y=fourier_field,
+        expansion=expansion,
+        shape=shape,
+        axis=-2,
     )
-    return ax * norm_safe, ay * norm_safe
+    alignment_loss = _alignment_loss(
+        field, target_field, elementwise_alignment_loss_weight
+    )
+
+    fourier_loss = _fourier_loss(fourier_field, expansion, primitive_lattice_vectors)
+    smoothness_loss = _smoothness_loss(field, primitive_lattice_vectors)
+    return (
+        alignment_loss
+        + fourier_loss_weight * fourier_loss
+        + smoothness_loss_weight * smoothness_loss
+    )
 
 
-def _remove_mean_phase(
-    ax: jnp.ndarray, ay: jnp.ndarray
+def _alignment_loss(
+    field: jnp.ndarray,
+    target_field: jnp.ndarray,
+    elementwise_alignment_loss_weight: jnp.ndarray,
+) -> jnp.ndarray:
+    """Compute loss that penalizes differences between `field` and `target_field`."""
+    assert elementwise_alignment_loss_weight.ndim == field.ndim
+    elementwise_loss = jnp.sum(
+        jnp.abs(field - target_field) ** 2, axis=-1, keepdims=True
+    )
+    return jnp.mean(elementwise_alignment_loss_weight * elementwise_loss)
+
+
+def _fourier_loss(
+    fourier_field: jnp.ndarray,
+    expansion: basis.Expansion,
+    primitive_lattice_vectors: basis.LatticeVectors,
+) -> jnp.ndarray:
+    """Compute loss that penalizes high frequency Fourier components.
+
+    The loss is scaled for the size of the unit cell, i.e. two unit cells with
+    identical `fourier_field` and scaled `primitive_lattice_vectors` will have
+    identical loss.
+
+    Args:
+        fourier_field: The Fourier field for which the loss is sought.
+        expansion: The Fourier expansion for the field.
+        primitive_lattice_vectors: Defines the unit cell coordinates.
+
+    Returns:
+        The scalar fourier loss value.
+    """
+    transverse_wavevectors = basis.transverse_wavevectors(
+        primitive_lattice_vectors=primitive_lattice_vectors,
+        expansion=expansion,
+        in_plane_wavevector=jnp.zeros((2,)),
+    )
+
+    basis_vectors = jnp.stack(
+        [primitive_lattice_vectors.u, primitive_lattice_vectors.v],
+        axis=-1,
+    )
+    area = jnp.abs(jnp.linalg.det(basis_vectors))
+
+    kt = jnp.linalg.norm(transverse_wavevectors, axis=-1) * jnp.sqrt(area)
+    return jnp.sum(jnp.abs(fourier_field) ** 2 * kt[..., jnp.newaxis] ** 2)
+
+
+def _smoothness_loss(
+    field: jnp.ndarray, basis_vectors: basis.LatticeVectors
+) -> jnp.ndarray:
+    """Compute loss associated with smoothness of `field`."""
+    grads = _vector_field_forward_difference_gradient(field, basis_vectors)
+    return jnp.mean(jnp.abs(jnp.asarray(grads)) ** 2)
+
+
+# -------------------------------------------------------------------------------------
+# Gradient calculation and transformation.
+# -------------------------------------------------------------------------------------
+
+
+def compute_gradient(
+    arr: jnp.ndarray,
+    primitive_lattice_vectors: basis.LatticeVectors,
+) -> jnp.ndarray:
+    """Computes the gradient of `arr`.
+
+    The gradient is scaled for the size of the unit cell, i.e. two unit cells with
+    identical `arr` and scaled `primitive_lattice_vectors` will have identical
+    gradient.
+
+    Args:
+        arr: The array for which the gradient is sought.
+        primitive_lattice_vectors: Defines the unit cell coordinates.
+
+    Returns:
+        The gradient, with shape `arr.shape + (2,)`.
+    """
+    basis_vectors = jnp.stack(
+        [primitive_lattice_vectors.u, primitive_lattice_vectors.v],
+        axis=-1,
+    )
+
+    area = jnp.abs(jnp.linalg.det(basis_vectors))
+    basis_vectors /= jnp.sqrt(area)
+
+    batch_dims = arr.ndim - 2
+    pad_width = tuple([(0, 0)] * batch_dims + [(1, 1)] * 2)
+    arr_padded = jnp.pad(arr, pad_width, mode="wrap")
+
+    axes = tuple(range(-2, 0))
+    partial_grad: List[jnp.ndarray]
+    partial_grad = jnp.gradient(arr_padded, axis=axes)  # type: ignore[assignment]
+    partial_grad = [_unpad(g, pad_width) for g in partial_grad]
+    partial_grad = [g * arr.shape[ax] for g, ax in zip(partial_grad, axes)]
+    return _transform_gradient(jnp.stack(partial_grad, axis=-1), basis_vectors)
+
+
+def _vector_field_forward_difference_gradient(
+    field: jnp.ndarray,
+    primitive_lattice_vectors: basis.LatticeVectors,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Removes the average phase of `(ax, ay)`."""
-    magnitude = utils.magnitude(ax, ay)
-    magnitude_squared_safe = jnp.where(jnp.isclose(magnitude, 0.0), 1.0, magnitude**2)
-    phase = (
-        utils.angle(ax) * jnp.abs(ax) ** 2 + utils.angle(ay) * jnp.abs(ay) ** 2
-    ) / magnitude_squared_safe
-    mean_phase = jnp.mean(phase, axis=(-2, -1), keepdims=True)
-    norm = jnp.exp(1j * mean_phase)
-    return ax / norm, ay / norm
+    """Computes the gradient of a vector field by forward difference.
+
+    The returned gradients are,
+
+        grad = (grad_field_x, grad_field_y)
+
+    where
+
+        grad_field_x = stack([dfield_x / dx, dfield_y / dy], axis=-1)
+
+    Args:
+        field: The field for which the gradient is sought.
+        primitive_lattice_vectors: Defines the unit cell coordinates.
+
+    Returns:
+        Tuple containing the gradients, each with the same shape as `field`.
+    """
+    basis_vectors = jnp.stack(
+        [primitive_lattice_vectors.u, primitive_lattice_vectors.v],
+        axis=-1,
+    )
+
+    area = jnp.abs(jnp.linalg.det(basis_vectors))
+    basis_vectors /= jnp.sqrt(area)
+    return (
+        _scalar_field_forward_difference_gradient(field[..., 0], basis_vectors),
+        _scalar_field_forward_difference_gradient(field[..., 1], basis_vectors),
+    )
+
+
+def _scalar_field_forward_difference_gradient(
+    field: jnp.ndarray,
+    basis_vectors: jnp.ndarray,
+) -> jnp.ndarray:
+    """Computes the gradient of a scalar field by forward difference.
+
+    Args:
+        field: The scalar field for which the forward-difference gradient is sought.
+        basis_vectors: The vectors defining the space in which `field` is defined.
+
+    Returns:
+        The gradient, with shape `field.shape + (dimensions,)`.
+    """
+    dimension = basis_vectors.shape[-1]
+    assert basis_vectors.shape[-2:] == (dimension, dimension)
+    axes = range(field.ndim - dimension, field.ndim)
+    diffs = [_periodic_forward_difference(field, axis=ax) for ax in axes]
+    partial_grad = jnp.stack(diffs, axis=-1)
+    return _transform_gradient(partial_grad, basis_vectors)
+
+
+def _periodic_forward_difference(field: jnp.ndarray, axis: int) -> jnp.ndarray:
+    """Computes the forward difference for `field` along `axis`."""
+    diff = jnp.roll(field, shift=-1, axis=axis) - field
+    return diff * field.shape[axis]
+
+
+def _transform_gradient(
+    partial_grad: jnp.ndarray,
+    basis_vectors: jnp.ndarray,
+) -> jnp.ndarray:
+    """Compute gradient from partial gradient with arbitrary basis vectors."""
+    # https://en.wikipedia.org/wiki/Gradient#General_coordinates
+    metric_tensor = _metric_tensor(basis_vectors)
+    inverse_metric_tensor = jnp.linalg.inv(metric_tensor)
+    result: jnp.ndarray = partial_grad @ inverse_metric_tensor @ basis_vectors.T
+    return result
+
+
+def _metric_tensor(basis_vectors: jnp.ndarray) -> jnp.ndarray:
+    """Compute the metric tensor for a non-Cartesian, non-orthogonal basis."""
+    return basis_vectors.T @ basis_vectors
+
+
+def _unpad(arr: jnp.ndarray, pad_width: Tuple[Tuple[int, int], ...]) -> jnp.ndarray:
+    """Undoes a pad operation."""
+    slices = [slice(lo, size - hi) for (lo, hi), size in zip(pad_width, arr.shape)]
+    return arr[tuple(slices)]
 
 
 # -----------------------------------------------------------------------------
 # Library of available vector field generating schemes.
 # -----------------------------------------------------------------------------
 
-
-OPTIMIZER = jopt.momentum(step_size=0.2, mass=0.8)
-ALIGNMENT_WEIGHT = 1.0
-SMOOTHNESS_WEIGHT = 1.0
-STEPS_DIM_MULTIPLE = 10.0
-SMOOTHING_KERNEL = utils.gaussian_kernel(shape=(9, 9), fwhm=3.0)
-RESIZE_MAX_DIM = 140
-RESIZE_METHOD = jax.image.ResizeMethod.CUBIC
-
-VectorFn = Callable[
-    [jnp.ndarray, basis.Expansion, basis.LatticeVectors],
-    Tuple[jnp.ndarray, jnp.ndarray],
-]
 
 JONES_DIRECT: str = "jones_direct"
 JONES: str = "jones"
@@ -489,44 +601,49 @@ SMOOTHNESS_LOSS_WEIGHT: float = 2.0
 FOURIER_LOSS_WEIGHT_JONES_DIRECT: float = 0.05
 SMOOTHNESS_LOSS_WEIGHT_JONES_DIRECT: float = 0.5
 
+VectorFn = Callable[
+    [jnp.ndarray, basis.Expansion, basis.LatticeVectors],
+    Tuple[jnp.ndarray, jnp.ndarray],
+]
+
 VECTOR_FIELD_SCHEMES: Dict[str, VectorFn] = {
     JONES_DIRECT: functools.partial(
-        vector_fourier.compute_field_jones_direct,
+        compute_field_jones_direct,
         fourier_loss_weight=0.0,
         smoothness_loss_weight=SMOOTHNESS_LOSS_WEIGHT_JONES_DIRECT,
     ),
     JONES: functools.partial(
-        vector_fourier.compute_field_jones,
+        compute_field_jones,
         fourier_loss_weight=0.0,
         smoothness_loss_weight=SMOOTHNESS_LOSS_WEIGHT,
     ),
     NORMAL: functools.partial(
-        vector_fourier.compute_field_normal,
+        compute_field_normal,
         fourier_loss_weight=0.0,
         smoothness_loss_weight=SMOOTHNESS_LOSS_WEIGHT,
     ),
     POL: functools.partial(
-        vector_fourier.compute_field_pol,
+        compute_field_pol,
         fourier_loss_weight=0.0,
         smoothness_loss_weight=SMOOTHNESS_LOSS_WEIGHT,
     ),
     JONES_DIRECT_FOURIER: functools.partial(
-        vector_fourier.compute_field_jones_direct,
+        compute_field_jones_direct,
         fourier_loss_weight=FOURIER_LOSS_WEIGHT_JONES_DIRECT,
         smoothness_loss_weight=0.0,
     ),
     JONES_FOURIER: functools.partial(
-        vector_fourier.compute_field_jones,
+        compute_field_jones,
         fourier_loss_weight=FOURIER_LOSS_WEIGHT,
         smoothness_loss_weight=0.0,
     ),
     NORMAL_FOURIER: functools.partial(
-        vector_fourier.compute_field_normal,
+        compute_field_normal,
         fourier_loss_weight=FOURIER_LOSS_WEIGHT,
         smoothness_loss_weight=0.0,
     ),
     POL_FOURIER: functools.partial(
-        vector_fourier.compute_field_pol,
+        compute_field_pol,
         fourier_loss_weight=FOURIER_LOSS_WEIGHT,
         smoothness_loss_weight=0.0,
     ),
