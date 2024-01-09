@@ -189,18 +189,26 @@ def _compute_tangent_field_no_batch(
     smoothness_loss_weight /= expansion.num_terms
 
     grid_shape: Tuple[int, int] = arr.shape[-2:]  # type: ignore[assignment]
-    arr = _filter_and_adjust_resolution(arr, expansion)
     grad = compute_gradient(arr, primitive_lattice_vectors)
+    grad = jnp.stack(
+        [
+            _filter_and_adjust_resolution(grad[..., 0], expansion),
+            _filter_and_adjust_resolution(grad[..., 1], expansion),
+        ],
+        axis=-1,
+    )
 
     # When the gradient is zero, we return a spatially invariant field, and provide a
-    # dummy gradient for the field calculation to avoid NaNs in gradient calculation.
+    # dummy gradient for the field calculation to avoid NaNs when backpropagating
+    # through the vector field calculation.
     gx_is_zero = jnp.all(
         jnp.isclose(grad[..., 0, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
     )
     gy_is_zero = jnp.all(
         jnp.isclose(grad[..., 1, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
     )
-    grad = jnp.where(gx_is_zero & gy_is_zero, jnp.ones_like(grad), grad)
+    dummy_grad = jnp.broadcast_to(jnp.asarray([1, 0], dtype=complex), grad.shape)
+    grad = jnp.where(gx_is_zero & gy_is_zero, dummy_grad, grad)
 
     grad = normalize(grad)
 
@@ -563,7 +571,7 @@ def _transform_gradient(
 ) -> jnp.ndarray:
     """Compute gradient from partial gradient with arbitrary basis vectors."""
     # https://en.wikipedia.org/wiki/Gradient#General_coordinates
-    metric_tensor = _metric_tensor(basis_vectors)
+    metric_tensor = _metric_tensor(basis_vectors).astype(partial_grad.dtype)
     inverse_metric_tensor = jnp.linalg.inv(metric_tensor)
     result: jnp.ndarray = partial_grad @ inverse_metric_tensor @ basis_vectors.T
     return result

@@ -22,11 +22,11 @@ class MetalPillarsTest(unittest.TestCase):
         # regressions in accuracy of the simulator.
         n, rte, _, _ = metal_pillars.simulate_pillars(
             wavelength_nm=jnp.array([450.0]),
-            approximate_num_terms=100,
+            approximate_num_terms=400,
             ambient_thickness_nm=0.0,
             formulation=fmm.Formulation.NORMAL,
         )
-        onp.testing.assert_allclose(rte, [0.098257 + 0.098332j], rtol=1e-2)
+        onp.testing.assert_allclose(rte, [0.069906 - 0.050099j], rtol=1e-2)
 
     def test_compute_fields_regression(self):
         (
@@ -52,7 +52,7 @@ class MetalPillarsTest(unittest.TestCase):
             onp.testing.assert_allclose(
                 jnp.mean(jnp.abs(efields) ** 2, axis=(2, 3, 4, 5)),
                 onp.asarray(
-                    [[0.046205, 0.053076], [1.04755, 1.874822], [0.145197, 0.079207]]
+                    [[0.046316, 0.052124], [1.047591, 1.859426], [0.145127, 0.077935]]
                 ),
                 rtol=0.01,
             )
@@ -60,7 +60,7 @@ class MetalPillarsTest(unittest.TestCase):
             onp.testing.assert_allclose(
                 jnp.mean(jnp.abs(hfields) ** 2, axis=(2, 3, 4, 5)),
                 onp.asarray(
-                    [[1.037646, 1.827289], [0.004959, 0.003465], [0.045051, 0.049506]]
+                    [[1.037612, 1.810816], [0.004971, 0.003377], [0.045081, 0.048233]]
                 ),
                 rtol=0.01,
             )
