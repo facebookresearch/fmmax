@@ -223,7 +223,6 @@ class DiffractionGratingGradientTest(unittest.TestCase):
             approximate_num_terms=300,
             truncation=basis.Truncation.CIRCULAR,
         )
-        
 
         def grating_efficiency(
             density_array: jnp.ndarray,
@@ -236,11 +235,11 @@ class DiffractionGratingGradientTest(unittest.TestCase):
             permittivities = (
                 jnp.full((1, 1), 1.0),
                 utils.interpolate_permittivity(
-                    permittivity_solid=jnp.asarray((3.45 + 0.00001j)**2),
-                    permittivity_void=jnp.asarray((1.0 + 0.00001j)**2),
+                    permittivity_solid=jnp.asarray((3.45 + 0.00001j) ** 2),
+                    permittivity_void=jnp.asarray((1.0 + 0.00001j) ** 2),
                     density=density_array,
                 ),
-                jnp.full((1, 1), (1.45 + 0.0j)**2),
+                jnp.full((1, 1), (1.45 + 0.0j) ** 2),
             )
 
             layer_solve_results = [
@@ -294,7 +293,9 @@ class DiffractionGratingGradientTest(unittest.TestCase):
             )
 
             # Sum the fluxes over the two polarizations for each order.
-            bwd_flux_ambient = bwd_flux_ambient[..., :n, :] + bwd_flux_ambient[..., n:, :]
+            bwd_flux_ambient = (
+                bwd_flux_ambient[..., :n, :] + bwd_flux_ambient[..., n:, :]
+            )
 
             transmission_efficiency = bwd_flux_ambient / total_incident_flux
 
@@ -309,8 +310,7 @@ class DiffractionGratingGradientTest(unittest.TestCase):
             )
             target_order_efficiency = efficiency[..., 1, :]
             return jnp.mean(target_order_efficiency)
-        
+
         density = jnp.ones((118, 45))
         grad = jax.grad(loss_fn)(density)
         self.assertFalse(jnp.any(jnp.isnan(grad)))
-        
