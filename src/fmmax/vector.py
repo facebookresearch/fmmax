@@ -393,17 +393,28 @@ def _field_loss(
         shape=shape,
         axis=-2,
     )
-    alignment_loss = _alignment_loss(
-        field, target_field, elementwise_alignment_loss_weight
-    )
+    loss = _alignment_loss(field, target_field, elementwise_alignment_loss_weight)
 
-    fourier_loss = _fourier_loss(fourier_field, expansion, primitive_lattice_vectors)
-    smoothness_loss = _smoothness_loss(field, primitive_lattice_vectors)
-    return (
-        alignment_loss
-        + fourier_loss_weight * fourier_loss
-        + smoothness_loss_weight * smoothness_loss
-    )
+    # Avoid calculating the fourier loss and smoothness loss if their weights are zero.
+    # On some platforms, including a smoothness loss can signifcantly slow the compile
+    # times, and so this optimization increases performance.
+    with jax.ensure_compile_time_eval():
+        assert jnp.size(fourier_loss_weight) == 1
+        assert jnp.size(smoothness_loss_weight) == 1
+        use_fourier_loss = fourier_loss_weight > 0
+        use_smoothness_loss = smoothness_loss_weight > 0
+
+    if use_fourier_loss:
+        loss += fourier_loss_weight * _fourier_loss(
+            fourier_field, expansion, primitive_lattice_vectors
+        )
+
+    if use_smoothness_loss:
+        loss += smoothness_loss_weight * _smoothness_loss(
+            field, primitive_lattice_vectors
+        )
+
+    return loss
 
 
 def _alignment_loss(
