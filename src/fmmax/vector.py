@@ -144,6 +144,7 @@ def compute_tangent_field(
     Returns:
         The normal field, `(tx, ty)`.
     """
+    arr = jax.lax.stop_gradient(arr)
     batch_shape = arr.shape[:-2]
     arr = utils.atleast_nd(arr, n=3)
     arr = arr.reshape((-1,) + arr.shape[-2:])
