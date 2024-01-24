@@ -42,6 +42,15 @@ FMMAX can be installed via pip:
 pip install fmmax
 ```
 
+For developers requiring a local installation, you will need to first clone this repository and then perform a local install from within the root directory using:
+```
+pip install -e ".[dev]"
+```
+
+The `[dev]` modifier specifies optional dependencies for developers which are listed in `pyproject.toml`.
+
+Note: for this to work, it may be necessary to first update your pip installation using e.g. `python3 -m pip install --upgrade pip`.
+
 ## Citing FMMAX
 
 If you use FMMAX, please consider citing [our paper](https://arxiv.org/abs/2308.08573),
