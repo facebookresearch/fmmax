@@ -345,10 +345,7 @@ def simulate_crystal_with_gaussian_beam(
 
         k = 2 * jnp.pi / wavelengths_padded
         z_r = (
-            jnp.pi
-            * beam_waist**2
-            * jnp.sqrt(permittivity_ambient)
-            / wavelengths_padded
+            jnp.pi * beam_waist**2 * jnp.sqrt(permittivity_ambient) / wavelengths_padded
         )
         w_z = beam_waist * jnp.sqrt(1 + (z / z_r) ** 2)
         r = jnp.sqrt(x**2 + y**2)
