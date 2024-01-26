@@ -8,7 +8,6 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 import numpy as onp
-from jax.experimental import host_callback
 
 EPS_EIG = 1e-6
 
@@ -132,10 +131,13 @@ def _eig_host(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
         with jax.default_device(jax.devices("cpu")[0]):
             return jax.jit(jnp.linalg.eig)(matrix)
 
-    return host_callback.call(
+    return jax.pure_callback(
         _eig_cpu,
+        (
+            jnp.ones(matrix.shape[:-1], dtype=complex),  # Eigenvalues
+            jnp.ones(matrix.shape, dtype=complex),  # Eigenvectors
+        ),
         matrix.astype(complex),
-        result_shape=(eigenvalues_shape, eigenvectors_shape),
     )
 
 

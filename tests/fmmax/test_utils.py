@@ -270,6 +270,16 @@ class EigTest(unittest.TestCase):
         expected_jac = _jacfwd_fd(fn)(matrix)
         onp.testing.assert_allclose(jac, expected_jac, rtol=RTOL_FD)
 
+    def test_can_vmap(self):
+        matrix = jax.random.normal(jax.random.PRNGKey(0), (2, 4, 4))
+        matrix += 1j * jax.random.normal(jax.random.PRNGKey(1), (2, 4, 4))
+
+        batch_eigval, batch_eigvec = utils.eig(matrix)
+        vmap_eigval, vmap_eigvec = jax.vmap(utils.eig)(matrix)
+
+        onp.testing.assert_array_equal(vmap_eigval, batch_eigval)
+        onp.testing.assert_array_equal(vmap_eigvec, vmap_eigvec)
+
 
 class AbsoluteAxesTest(unittest.TestCase):
     @parameterized.parameterized.expand(([(0, 0), 3], [(1, -2), 3]))
