@@ -43,6 +43,13 @@ def export_notebooks(notebook_dir: str, output_dir: str = None) -> None:
             with open(output_filepath, "w") as f:
                 f.write(body)
 
+            # Save the images to the output directory
+            for image_filename, image_data in resources["outputs"].items():
+                with open(
+                    os.path.join(output_dir or notebook_dir, image_filename), "wb"
+                ) as f:
+                    f.write(image_data)
+
 
 if __name__ == "__main__":
     # Set the path to the directory containing the notebooks
