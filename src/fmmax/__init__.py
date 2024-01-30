@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
-__version__ = "v0.5.4"
+__version__ = "v0.5.5"
 
 from . import (
     basis,

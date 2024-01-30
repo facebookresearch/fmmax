@@ -138,6 +138,7 @@ def _eig_host(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
             jnp.ones(matrix.shape, dtype=complex),  # Eigenvectors
         ),
         matrix.astype(complex),
+        vectorized=True,
     )
 
 
