@@ -246,8 +246,8 @@ class LayerSolveResult:
         omega_script_k_matrix: The omega-script-k matrix from equation 26 of
             [2012 Liu], which is needed to generate the layer scattering matrix.
         tangent_vector_field: The tangent vector field used to compute the transverse
-            permittivity matrix. 
-            A tuple of 2 for `(tx, ty)`. 
+            permittivity matrix.
+            A tuple of 2 for `(tx, ty)`.
             None if it doesn't exist.
     """
 
@@ -817,7 +817,7 @@ def fourier_matrices_patterned_isotropic_media(
             of the permittivity.
         transverse_permittivity_matrix: The transverse permittivity matrix.
         tangent_vector_field: The tangent vector field used to compute the transverse
-            permittivity matrix. A tuple of two for `(tx, ty)`. 
+            permittivity matrix. A tuple of two for `(tx, ty)`.
             None if it doesn't exist.
     """
     if formulation is Formulation.FFT:
@@ -901,8 +901,8 @@ def fourier_matrices_patterned_anisotropic_media(
             of the permeability.
         transverse_permeability_matrix: The transverse permittivity matrix.
         tangent_vector_field: The tangent vector field used to compute the transverse
-            permittivity matrix. 
-            A tuple of 2 for `(tx, ty)`. 
+            permittivity matrix.
+            A tuple of 2 for `(tx, ty)`.
             None if it doesn't exist.
     """
     if formulation is Formulation.FFT:

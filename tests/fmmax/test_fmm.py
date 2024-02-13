@@ -261,7 +261,9 @@ class LayerEigensolveTest(unittest.TestCase):
                     expected_eigenvalues, expected_eigenvectors = _sort_eigs(
                         single_result.eigenvalues, single_result.eigenvectors
                     )
-                    onp.testing.assert_allclose(eigenvalues**2, expected_eigenvalues**2)
+                    onp.testing.assert_allclose(
+                        eigenvalues**2, expected_eigenvalues**2
+                    )
                     onp.testing.assert_allclose(
                         result.z_permittivity_matrix[i, j, k, :, :],
                         single_result.z_permittivity_matrix,
@@ -321,7 +323,9 @@ class EigensolveJitTest(unittest.TestCase):
             permittivity=permittivity,
             formulation=formulation,
         )
-        onp.testing.assert_allclose(result.eigenvalues**2, jit_result.eigenvalues**2)
+        onp.testing.assert_allclose(
+            result.eigenvalues**2, jit_result.eigenvalues**2
+        )
 
 
 class AnistropicLayerEigensolveTest(unittest.TestCase):
@@ -492,7 +496,9 @@ class AnistropicLayerFFTMatrixTest(unittest.TestCase):
         onp.testing.assert_array_equal(
             transverse_permittivity_matrix, transverse_permittivity_matrix_expected
         )
-        onp.testing.assert_array_equal(tangent_vector_field, tangent_vector_field_expected)
+        onp.testing.assert_array_equal(
+            tangent_vector_field, tangent_vector_field_expected
+        )
 
 
 class FourierMatrixBatchMatchesSingleTest(unittest.TestCase):
