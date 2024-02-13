@@ -709,7 +709,7 @@ def _numerical_eigensolve(
     inverse_z_permeability_matrix: jnp.ndarray,
     transverse_permeability_matrix: jnp.ndarray,
     expansion: basis.Expansion,
-    tangent_vector_field: Optional[jnp.ndarray] = None,
+    tangent_vector_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]] = None,
 ) -> LayerSolveResult:
     r"""Returns the results of a patterned layer eigensolve.
 
@@ -796,7 +796,9 @@ def fourier_matrices_patterned_isotropic_media(
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
     formulation: Formulation | VectorFn,
-) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+) -> Tuple[
+    jnp.ndarray, jnp.ndarray, jnp.ndarray, Optional[Tuple[jnp.ndarray, jnp.ndarray]]
+]:
     """Return Fourier convolution matrices for patterned nonmagnetic isotropic media.
 
     All matrices are forms of the Fourier convolution matrices defined in equation
@@ -862,7 +864,13 @@ def fourier_matrices_patterned_anisotropic_media(
     formulation: Formulation | VectorFn,
     vector_field_source: jnp.ndarray,
 ) -> Tuple[
-    jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    Optional[Tuple[jnp.ndarray, jnp.ndarray]],
 ]:
     """Return Fourier convolution matrices for patterned anisotropic media.
 
