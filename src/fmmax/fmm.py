@@ -247,7 +247,7 @@ class LayerSolveResult:
             [2012 Liu], which is needed to generate the layer scattering matrix.
         tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
             transverse permittivity matrix, if a vector FMM formulation is used. If
-            field to the `LayerSolveResult`.
+            the `FFT` formulation is used, the vector field is `None`.
     """
 
     wavelength: jnp.ndarray
@@ -322,6 +322,13 @@ class LayerSolveResult:
                 f"`omega_script_k_matrix` must have shape matching `eigenvectors`, but got "
                 f"shapes {self.omega_script_k_matrix.shape}  and {self.eigenvectors.shape}."
             )
+
+        if self.tangent_vector_field is not None:
+            if self.tangent_vector_field[0].ndim != self.eigenvectors.ndim:
+                raise ValueError(
+                    f"`tangent_vector_field` must have ndim compatible with `eigenvectors`, but got "
+                    f"shapes {self.tangent_vector_field[0].ndim} and {self.eigenvectors.ndim}."
+                )
 
 
 # -----------------------------------------------------------------------------
@@ -424,6 +431,7 @@ def _eigensolve_uniform_isotropic_media(
         z_permeability_matrix=z_permeability_matrix,
         inverse_z_permeability_matrix=z_permeability_matrix,
         omega_script_k_matrix=omega_script_k_matrix,
+        tangent_vector_field=None,
     )
 
 
@@ -732,7 +740,7 @@ def _numerical_eigensolve(
         expansion: The field expansion to be used.
         tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
             transverse permittivity matrix, if a vector FMM formulation is used. If
-            field to the `LayerSolveResult`.
+            the `FFT` formulation is used, the vector field is `None`.
 
     Returns:
         The `LayerSolveResult`.
@@ -820,7 +828,7 @@ def fourier_matrices_patterned_isotropic_media(
         transverse_permittivity_matrix: The transverse permittivity matrix.
         tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
             transverse permittivity matrix, if a vector FMM formulation is used. If
-            field to the `LayerSolveResult`.
+            the `FFT` formulation is used, the vector field is `None`.
     """
     if formulation is Formulation.FFT:
         _transverse_permittivity_fn = functools.partial(
@@ -910,7 +918,7 @@ def fourier_matrices_patterned_anisotropic_media(
         transverse_permeability_matrix: The transverse permittivity matrix.
         tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
             transverse permittivity matrix, if a vector FMM formulation is used. If
-            field to the `LayerSolveResult`.
+            the `FFT` formulation is used, the vector field is `None`.
     """
     if formulation is Formulation.FFT:
         _transverse_permittivity_fn = functools.partial(
@@ -1074,6 +1082,7 @@ jax.tree_util.register_pytree_node(
             x.z_permeability_matrix,
             x.inverse_z_permeability_matrix,
             x.omega_script_k_matrix,
+            x.tangent_vector_field,
         ),
         None,
     ),

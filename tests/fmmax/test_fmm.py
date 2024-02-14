@@ -670,6 +670,7 @@ class LayerSolveResultInputValidationTest(unittest.TestCase):
             ("z_permeability_matrix", jnp.ones((1,))),
             ("inverse_z_permeability_matrix", jnp.ones((1,))),
             ("omega_script_k_matrix", jnp.ones((1,))),
+            ("tangent_vector_field", (jnp.ones((1,)), jnp.ones((1,)))),
         ]
     )
     def test_invalid_shape(self, name, invalid_shape):
@@ -691,6 +692,10 @@ class LayerSolveResultInputValidationTest(unittest.TestCase):
             "z_permeability_matrix": jnp.ones((3, 4, 5, num, num)),
             "inverse_z_permeability_matrix": jnp.ones((3, 4, 5, num, num)),
             "omega_script_k_matrix": jnp.ones((3, 4, 5, 2 * num, 2 * num)),
+            "tangent_vector_field": (
+                jnp.ones((1, 1, 2, 64, 60)),
+                jnp.ones((1, 1, 2, 64, 60)),
+            ),
         }
         kwargs[name] = invalid_shape
         with self.assertRaisesRegex(ValueError, f"`{name}` must have "):
