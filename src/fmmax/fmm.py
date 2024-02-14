@@ -245,10 +245,9 @@ class LayerSolveResult:
             of permeability.
         omega_script_k_matrix: The omega-script-k matrix from equation 26 of
             [2012 Liu], which is needed to generate the layer scattering matrix.
-        tangent_vector_field: The tangent vector field used to compute the transverse
-            permittivity matrix.
-            A tuple of 2 for `(tx, ty)`.
-            None if it doesn't exist.
+        tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
+            transverse permittivity matrix, if a vector FMM formulation is used. If
+            field to the `LayerSolveResult`.
     """
 
     wavelength: jnp.ndarray
@@ -262,7 +261,7 @@ class LayerSolveResult:
     z_permeability_matrix: jnp.ndarray
     inverse_z_permeability_matrix: jnp.ndarray
     omega_script_k_matrix: jnp.ndarray
-    tangent_vector_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]] = None
+    tangent_vector_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]]
 
     @property
     def batch_shape(self) -> Tuple[int, ...]:
@@ -709,7 +708,7 @@ def _numerical_eigensolve(
     inverse_z_permeability_matrix: jnp.ndarray,
     transverse_permeability_matrix: jnp.ndarray,
     expansion: basis.Expansion,
-    tangent_vector_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]] = None,
+    tangent_vector_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]],
 ) -> LayerSolveResult:
     r"""Returns the results of a patterned layer eigensolve.
 
@@ -731,7 +730,8 @@ def _numerical_eigensolve(
         transverse_permeability_matrix: The fourier-transformed transverse permeability
             matrix.
         expansion: The field expansion to be used.
-        tangent_vector_field: this argument merely exists to pass the tangent vector
+        tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
+            transverse permittivity matrix, if a vector FMM formulation is used. If
             field to the `LayerSolveResult`.
 
     Returns:
@@ -818,9 +818,9 @@ def fourier_matrices_patterned_isotropic_media(
         z_permittivity_matrix: The Fourier convolution matrix for the z-component
             of the permittivity.
         transverse_permittivity_matrix: The transverse permittivity matrix.
-        tangent_vector_field: The tangent vector field used to compute the transverse
-            permittivity matrix. A tuple of two for `(tx, ty)`.
-            None if it doesn't exist.
+        tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
+            transverse permittivity matrix, if a vector FMM formulation is used. If
+            field to the `LayerSolveResult`.
     """
     if formulation is Formulation.FFT:
         _transverse_permittivity_fn = functools.partial(
@@ -908,10 +908,9 @@ def fourier_matrices_patterned_anisotropic_media(
         z_permeability_matrix: The Fourier convolution matrix for the z-component
             of the permeability.
         transverse_permeability_matrix: The transverse permittivity matrix.
-        tangent_vector_field: The tangent vector field used to compute the transverse
-            permittivity matrix.
-            A tuple of 2 for `(tx, ty)`.
-            None if it doesn't exist.
+        tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
+            transverse permittivity matrix, if a vector FMM formulation is used. If
+            field to the `LayerSolveResult`.
     """
     if formulation is Formulation.FFT:
         _transverse_permittivity_fn = functools.partial(
