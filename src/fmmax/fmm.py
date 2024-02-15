@@ -245,6 +245,9 @@ class LayerSolveResult:
             of permeability.
         omega_script_k_matrix: The omega-script-k matrix from equation 26 of
             [2012 Liu], which is needed to generate the layer scattering matrix.
+        tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
+            transverse permittivity matrix, if a vector FMM formulation is used. If
+            the `FFT` formulation is used, the vector field is `None`.
     """
 
     wavelength: jnp.ndarray
@@ -258,6 +261,7 @@ class LayerSolveResult:
     z_permeability_matrix: jnp.ndarray
     inverse_z_permeability_matrix: jnp.ndarray
     omega_script_k_matrix: jnp.ndarray
+    tangent_vector_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]]
 
     @property
     def batch_shape(self) -> Tuple[int, ...]:
@@ -317,6 +321,14 @@ class LayerSolveResult:
             raise ValueError(
                 f"`omega_script_k_matrix` must have shape matching `eigenvectors`, but got "
                 f"shapes {self.omega_script_k_matrix.shape}  and {self.eigenvectors.shape}."
+            )
+
+        if self.tangent_vector_field is not None and (
+            self.tangent_vector_field[0].ndim != self.eigenvectors.ndim
+        ):
+            raise ValueError(
+                f"`tangent_vector_field` must have ndim compatible with `eigenvectors`, but got "
+                f"shapes {self.tangent_vector_field[0]} and {self.eigenvectors}."
             )
 
 
@@ -420,6 +432,7 @@ def _eigensolve_uniform_isotropic_media(
         z_permeability_matrix=z_permeability_matrix,
         inverse_z_permeability_matrix=z_permeability_matrix,
         omega_script_k_matrix=omega_script_k_matrix,
+        tangent_vector_field=None,
     )
 
 
@@ -455,6 +468,7 @@ def _eigensolve_patterned_isotropic_media(
         inverse_z_permittivity_matrix,
         z_permittivity_matrix,
         transverse_permittivity_matrix,
+        tangent_vector_field,
     ) = fourier_matrices_patterned_isotropic_media(
         primitive_lattice_vectors=primitive_lattice_vectors,
         permittivity=permittivity,
@@ -485,6 +499,7 @@ def _eigensolve_patterned_isotropic_media(
         inverse_z_permeability_matrix=inverse_z_permeability_matrix,
         transverse_permeability_matrix=transverse_permeability_matrix,
         expansion=expansion,
+        tangent_vector_field=tangent_vector_field,
     )
 
 
@@ -588,6 +603,7 @@ def _eigensolve_uniform_general_anisotropic_media(
         inverse_z_permeability_matrix=inverse_z_permeability_matrix,
         transverse_permeability_matrix=transverse_permeability_matrix,
         expansion=expansion,
+        tangent_vector_field=None,
     )
 
 
@@ -649,6 +665,7 @@ def _eigensolve_patterned_general_anisotropic_media(
         inverse_z_permeability_matrix,
         z_permeability_matrix,
         transverse_permeability_matrix,
+        tangent_vector_field,
     ) = fourier_matrices_patterned_anisotropic_media(
         primitive_lattice_vectors=primitive_lattice_vectors,
         permittivities=(
@@ -680,6 +697,7 @@ def _eigensolve_patterned_general_anisotropic_media(
         inverse_z_permeability_matrix=inverse_z_permeability_matrix,
         transverse_permeability_matrix=transverse_permeability_matrix,
         expansion=expansion,
+        tangent_vector_field=tangent_vector_field,
     )
 
 
@@ -699,6 +717,7 @@ def _numerical_eigensolve(
     inverse_z_permeability_matrix: jnp.ndarray,
     transverse_permeability_matrix: jnp.ndarray,
     expansion: basis.Expansion,
+    tangent_vector_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]],
 ) -> LayerSolveResult:
     r"""Returns the results of a patterned layer eigensolve.
 
@@ -720,6 +739,9 @@ def _numerical_eigensolve(
         transverse_permeability_matrix: The fourier-transformed transverse permeability
             matrix.
         expansion: The field expansion to be used.
+        tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
+            transverse permittivity matrix, if a vector FMM formulation is used. If
+            the `FFT` formulation is used, the vector field is `None`.
 
     Returns:
         The `LayerSolveResult`.
@@ -769,6 +791,7 @@ def _numerical_eigensolve(
         z_permeability_matrix=z_permeability_matrix,
         inverse_z_permeability_matrix=inverse_z_permeability_matrix,
         omega_script_k_matrix=omega_script_k_matrix,
+        tangent_vector_field=tangent_vector_field,
     )
 
 
@@ -782,7 +805,9 @@ def fourier_matrices_patterned_isotropic_media(
     permittivity: jnp.ndarray,
     expansion: basis.Expansion,
     formulation: Formulation | VectorFn,
-) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+) -> Tuple[
+    jnp.ndarray, jnp.ndarray, jnp.ndarray, Optional[Tuple[jnp.ndarray, jnp.ndarray]]
+]:
     """Return Fourier convolution matrices for patterned nonmagnetic isotropic media.
 
     All matrices are forms of the Fourier convolution matrices defined in equation
@@ -802,12 +827,16 @@ def fourier_matrices_patterned_isotropic_media(
         z_permittivity_matrix: The Fourier convolution matrix for the z-component
             of the permittivity.
         transverse_permittivity_matrix: The transverse permittivity matrix.
+        tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
+            transverse permittivity matrix, if a vector FMM formulation is used. If
+            the `FFT` formulation is used, the vector field is `None`.
     """
     if formulation is Formulation.FFT:
         _transverse_permittivity_fn = functools.partial(
             fmm_matrices.transverse_permittivity_fft,
             expansion=expansion,
         )
+        tangent_vector_field = None
     else:
         if isinstance(formulation, Formulation):
             vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
@@ -820,6 +849,7 @@ def fourier_matrices_patterned_isotropic_media(
             ty=ty,
             expansion=expansion,
         )
+        tangent_vector_field = (tx, ty)
 
     _transform = functools.partial(fft.fourier_convolution_matrix, expansion=expansion)
 
@@ -831,6 +861,7 @@ def fourier_matrices_patterned_isotropic_media(
         inverse_z_permittivity_matrix,
         z_permittivity_matrix,
         transverse_permittivity_matrix,
+        tangent_vector_field,
     )
 
 
@@ -842,7 +873,13 @@ def fourier_matrices_patterned_anisotropic_media(
     formulation: Formulation | VectorFn,
     vector_field_source: jnp.ndarray,
 ) -> Tuple[
-    jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    Optional[Tuple[jnp.ndarray, jnp.ndarray]],
 ]:
     """Return Fourier convolution matrices for patterned anisotropic media.
 
@@ -880,6 +917,9 @@ def fourier_matrices_patterned_anisotropic_media(
         z_permeability_matrix: The Fourier convolution matrix for the z-component
             of the permeability.
         transverse_permeability_matrix: The transverse permittivity matrix.
+        tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
+            transverse permittivity matrix, if a vector FMM formulation is used. If
+            the `FFT` formulation is used, the vector field is `None`.
     """
     if formulation is Formulation.FFT:
         _transverse_permittivity_fn = functools.partial(
@@ -890,6 +930,7 @@ def fourier_matrices_patterned_anisotropic_media(
             fmm_matrices.transverse_permeability_fft_anisotropic,
             expansion=expansion,
         )
+        tangent_vector_field = None
     else:
         if isinstance(formulation, Formulation):
             vector_fn = vector.VECTOR_FIELD_SCHEMES[formulation.value]
@@ -908,6 +949,7 @@ def fourier_matrices_patterned_anisotropic_media(
             ty=ty,
             expansion=expansion,
         )
+        tangent_vector_field = (tx, ty)
 
     _transform = functools.partial(fft.fourier_convolution_matrix, expansion=expansion)
 
@@ -950,6 +992,7 @@ def fourier_matrices_patterned_anisotropic_media(
         inverse_z_permeability_matrix,
         z_permeability_matrix,
         transverse_permeability_matrix,
+        tangent_vector_field,
     )
 
 
@@ -1040,6 +1083,7 @@ jax.tree_util.register_pytree_node(
             x.z_permeability_matrix,
             x.inverse_z_permeability_matrix,
             x.omega_script_k_matrix,
+            x.tangent_vector_field,
         ),
         None,
     ),

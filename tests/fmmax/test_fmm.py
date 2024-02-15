@@ -448,6 +448,7 @@ class AnistropicLayerFFTMatrixTest(unittest.TestCase):
             inverse_z_permittivity_matrix_expected,
             z_permittivity_matrix_expected,
             transverse_permittivity_matrix_expected,
+            tangent_vector_field_expected,
         ) = fmm.fourier_matrices_patterned_isotropic_media(
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivity=permittivity,
@@ -461,6 +462,7 @@ class AnistropicLayerFFTMatrixTest(unittest.TestCase):
             _,
             _,
             _,
+            tangent_vector_field,
         ) = fmm.fourier_matrices_patterned_anisotropic_media(
             primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
             permittivities=(
@@ -490,6 +492,9 @@ class AnistropicLayerFFTMatrixTest(unittest.TestCase):
         onp.testing.assert_array_equal(
             transverse_permittivity_matrix, transverse_permittivity_matrix_expected
         )
+        onp.testing.assert_array_equal(
+            tangent_vector_field, tangent_vector_field_expected
+        )
 
 
 class FourierMatrixBatchMatchesSingleTest(unittest.TestCase):
@@ -516,6 +521,7 @@ class FourierMatrixBatchMatchesSingleTest(unittest.TestCase):
             batch_inverse_z_permittivity_matrix,
             batch_z_permittivity_matrix,
             batch_transverse_permittivity_matrix,
+            batch_tangent_vector_field,
         ) = fmm.fourier_matrices_patterned_isotropic_media(
             PRIMITIVE_LATTICE_VECTORS, permittivity, EXPANSION, formulation
         )
@@ -525,6 +531,7 @@ class FourierMatrixBatchMatchesSingleTest(unittest.TestCase):
                 inverse_z_permittivity_matrix,
                 z_permittivity_matrix,
                 transverse_permittivity_matrix,
+                tangent_vector_field,
             ) = fmm.fourier_matrices_patterned_isotropic_media(
                 PRIMITIVE_LATTICE_VECTORS, p, EXPANSION, formulation
             )
@@ -571,6 +578,7 @@ class FourierMatrixBatchMatchesSingleTest(unittest.TestCase):
             batch_inverse_z_permeability_matrix,
             batch_z_permeability_matrix,
             batch_transverse_permeability_matrix,
+            batch_tangent_vector_field,
         ) = fmm.fourier_matrices_patterned_anisotropic_media(
             PRIMITIVE_LATTICE_VECTORS,
             tuple(permittivities),
@@ -588,6 +596,7 @@ class FourierMatrixBatchMatchesSingleTest(unittest.TestCase):
                 inverse_z_permeability_matrix,
                 z_permeability_matrix,
                 transverse_permeability_matrix,
+                tangent_vector_field,
             ) = fmm.fourier_matrices_patterned_anisotropic_media(
                 PRIMITIVE_LATTICE_VECTORS,
                 tuple(permittivities[:, i, ...]),
@@ -622,6 +631,19 @@ class FourierMatrixBatchMatchesSingleTest(unittest.TestCase):
                 batch_transverse_permeability_matrix[i, ...],
                 atol=1e-15,
             )
+            if formulation != fmm.Formulation.FFT:
+                onp.testing.assert_allclose(
+                    tangent_vector_field[0],
+                    batch_tangent_vector_field[0][i, ...],
+                    atol=1e-15,
+                )
+                onp.testing.assert_allclose(
+                    tangent_vector_field[1],
+                    batch_tangent_vector_field[1][i, ...],
+                    atol=1e-15,
+                )
+            else:
+                self.assertEqual(tangent_vector_field, None)
 
 
 class SignSelectionTest(unittest.TestCase):
@@ -648,6 +670,7 @@ class LayerSolveResultInputValidationTest(unittest.TestCase):
             ("z_permeability_matrix", jnp.ones((1,))),
             ("inverse_z_permeability_matrix", jnp.ones((1,))),
             ("omega_script_k_matrix", jnp.ones((1,))),
+            ("tangent_vector_field", (jnp.ones((1,)), jnp.ones((1,)))),
         ]
     )
     def test_invalid_shape(self, name, invalid_shape):
@@ -669,6 +692,10 @@ class LayerSolveResultInputValidationTest(unittest.TestCase):
             "z_permeability_matrix": jnp.ones((3, 4, 5, num, num)),
             "inverse_z_permeability_matrix": jnp.ones((3, 4, 5, num, num)),
             "omega_script_k_matrix": jnp.ones((3, 4, 5, 2 * num, 2 * num)),
+            "tangent_vector_field": (
+                jnp.ones((1, 1, 2, 64, 60)),
+                jnp.ones((1, 1, 2, 64, 60)),
+            ),
         }
         kwargs[name] = invalid_shape
         with self.assertRaisesRegex(ValueError, f"`{name}` must have "):
