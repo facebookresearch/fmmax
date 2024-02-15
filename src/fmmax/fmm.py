@@ -323,12 +323,13 @@ class LayerSolveResult:
                 f"shapes {self.omega_script_k_matrix.shape}  and {self.eigenvectors.shape}."
             )
 
-        if self.tangent_vector_field is not None:
-            if self.tangent_vector_field[0].ndim != self.eigenvectors.ndim:
-                raise ValueError(
-                    f"`tangent_vector_field` must have ndim compatible with `eigenvectors`, but got "
-                    f"shapes {self.tangent_vector_field[0].ndim} and {self.eigenvectors.ndim}."
-                )
+        if self.tangent_vector_field is not None and (
+            self.tangent_vector_field[0].ndim != self.eigenvectors.ndim
+        ):
+            raise ValueError(
+                f"`tangent_vector_field` must have ndim compatible with `eigenvectors`, but got "
+                f"shapes {self.tangent_vector_field[0]} and {self.eigenvectors}."
+            )
 
 
 # -----------------------------------------------------------------------------
