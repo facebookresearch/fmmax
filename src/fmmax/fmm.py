@@ -243,8 +243,9 @@ class LayerSolveResult:
         z_permeability_matrix: The fourier-transformed zz-component of permeability.
         inverse_z_permeability_matrix: The fourier-transformed inverse of zz-component
             of permeability.
-        omega_script_k_matrix: The omega-script-k matrix from equation 26 of
-            [2012 Liu], which is needed to generate the layer scattering matrix.
+        transverse_permeability_matrix: The transverse permeability matrix, needed to
+            calculate the omega-script-k matrix from equation 26 of [2012 Liu]. This
+            is needed to generate the layer scattering matrix.
         tangent_vector_field: The tangent vector field `(tx, ty)` used to compute the
             transverse permittivity matrix, if a vector FMM formulation is used. If
             the `FFT` formulation is used, the vector field is `None`.
@@ -260,12 +261,26 @@ class LayerSolveResult:
     inverse_z_permittivity_matrix: jnp.ndarray
     z_permeability_matrix: jnp.ndarray
     inverse_z_permeability_matrix: jnp.ndarray
-    omega_script_k_matrix: jnp.ndarray
+    transverse_permeability_matrix: jnp.ndarray
     tangent_vector_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]]
 
     @property
     def batch_shape(self) -> Tuple[int, ...]:
         return self.eigenvectors.shape[:-2]
+
+    @property
+    def omega_script_k_matrix(self):
+        """Compute omega-script-k matrix from equation 26 of [2012 Liu]."""
+        return fmm_matrices.omega_script_k_matrix_patterned(
+            wavelength=self.wavelength,
+            z_permittivity_matrix=self.z_permittivity_matrix,
+            transverse_permeability_matrix=self.transverse_permeability_matrix,
+            transverse_wavevectors=basis.transverse_wavevectors(
+                in_plane_wavevector=self.in_plane_wavevector,
+                primitive_lattice_vectors=self.primitive_lattice_vectors,
+                expansion=self.expansion,
+            ),
+        )
 
     def __post_init__(self) -> None:
         """Validates shapes of the `LayerSolveResult` attributes."""
@@ -316,6 +331,11 @@ class LayerSolveResult:
             raise ValueError(
                 f"`z_permeability_matrix` must have shape compatible with `eigenvectors`, but got "
                 f"shapes {self.z_permeability_matrix.shape}  and {self.eigenvectors.shape}."
+            )
+        if _incompatible(self.transverse_permeability_matrix, self.eigenvectors.shape):
+            raise ValueError(
+                f"`transverse_permeability_matrix` must have shape compatible with `eigenvectors`, but got "
+                f"shapes {self.transverse_permeability_matrix.shape}  and {self.eigenvectors.shape}."
             )
         if self.omega_script_k_matrix.shape != self.eigenvectors.shape:
             raise ValueError(
@@ -412,14 +432,6 @@ def _eigensolve_uniform_isotropic_media(
     )
     z_permittivity_matrix = utils.diag(z_permittivity_matrix)
     z_permeability_matrix = utils.diag(jnp.ones(z_permittivity_matrix.shape[:-1]))
-
-    # The matrix from equation 26 of [2012 Liu].
-    angular_frequency_squared = angular_frequency[..., jnp.newaxis, jnp.newaxis] ** 2
-    angular_frequency_squared *= jnp.eye(num_eigenvalues)
-    omega_script_k_matrix = (
-        angular_frequency_squared
-        - fmm_matrices.script_k_matrix_uniform(permittivity, transverse_wavevectors)
-    )
     return LayerSolveResult(
         wavelength=wavelength,
         in_plane_wavevector=in_plane_wavevector,
@@ -431,7 +443,7 @@ def _eigensolve_uniform_isotropic_media(
         inverse_z_permittivity_matrix=inverse_z_permittivity_matrix,
         z_permeability_matrix=z_permeability_matrix,
         inverse_z_permeability_matrix=z_permeability_matrix,
-        omega_script_k_matrix=omega_script_k_matrix,
+        transverse_permeability_matrix=utils.diag(jnp.ones_like(eigenvalues)),
         tangent_vector_field=None,
     )
 
@@ -760,15 +772,11 @@ def _numerical_eigensolve(
         z_permeability_matrix, transverse_wavevectors
     )
 
-    # The script-k matrix from equation 19 of [2012 Liu].
-    script_k_matrix = fmm_matrices.script_k_matrix_patterned(
-        z_permittivity_matrix, transverse_wavevectors
-    )
-
-    # The matrix from equation 26 of [2012 Liu], modified for magnetic materials.
-    angular_frequency_squared = angular_frequency[..., jnp.newaxis, jnp.newaxis] ** 2
-    omega_script_k_matrix = (
-        angular_frequency_squared * transverse_permeability_matrix - script_k_matrix
+    omega_script_k_matrix = fmm_matrices.omega_script_k_matrix_patterned(
+        wavelength=wavelength,
+        z_permittivity_matrix=z_permittivity_matrix,
+        transverse_permeability_matrix=transverse_permeability_matrix,
+        transverse_wavevectors=transverse_wavevectors,
     )
 
     # The matrix from equation 28 of [2012 Liu], modified for magnetic materials.
@@ -790,7 +798,7 @@ def _numerical_eigensolve(
         inverse_z_permittivity_matrix=inverse_z_permittivity_matrix,
         z_permeability_matrix=z_permeability_matrix,
         inverse_z_permeability_matrix=inverse_z_permeability_matrix,
-        omega_script_k_matrix=omega_script_k_matrix,
+        transverse_permeability_matrix=transverse_permeability_matrix,
         tangent_vector_field=tangent_vector_field,
     )
 
@@ -1082,7 +1090,7 @@ jax.tree_util.register_pytree_node(
             x.inverse_z_permittivity_matrix,
             x.z_permeability_matrix,
             x.inverse_z_permeability_matrix,
-            x.omega_script_k_matrix,
+            x.transverse_permeability_matrix,
             x.tangent_vector_field,
         ),
         None,
