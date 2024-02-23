@@ -10,6 +10,23 @@ import jax.numpy as jnp
 
 from fmmax import basis, fft, utils
 
+
+def omega_script_k_matrix_patterned(
+    wavelength: jnp.ndarray,
+    z_permittivity_matrix: jnp.ndarray,
+    transverse_permeability_matrix: jnp.ndarray,
+    transverse_wavevectors: jnp.ndarray,
+) -> jnp.ndarray:
+    """Compute the omega-script-k matrix of equation 26 from [2012 Liu]."""
+    # The script-k matrix from equation 19 of [2012 Liu].
+    script_k_matrix = script_k_matrix_patterned(
+        z_permittivity_matrix, transverse_wavevectors
+    )
+    angular_frequency = utils.angular_frequency_for_wavelength(wavelength)
+    angular_frequency_squared = angular_frequency[..., jnp.newaxis, jnp.newaxis] ** 2
+    return angular_frequency_squared * transverse_permeability_matrix - script_k_matrix
+
+
 # -----------------------------------------------------------------------------
 # Functions to compute the k- and script-k matrices.
 # -----------------------------------------------------------------------------

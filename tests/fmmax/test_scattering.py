@@ -59,7 +59,9 @@ def _dummy_solve_result(
         inverse_z_permittivity_matrix=_random_normal_complex(keys[3], (dim, dim)),
         z_permeability_matrix=_random_normal_complex(keys[4], (dim, dim)),
         inverse_z_permeability_matrix=_random_normal_complex(keys[5], (dim, dim)),
-        omega_script_k_matrix=_random_normal_complex(keys[6], (2 * dim, 2 * dim)),
+        transverse_permeability_matrix=_random_normal_complex(
+            keys[6], (2 * dim, 2 * dim)
+        ),
         tangent_vector_field=(
             _random_normal_complex(keys[7], (2 * dim, 2 * dim)),
             _random_normal_complex(keys[7], (2 * dim, 2 * dim)),
