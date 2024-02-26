@@ -9,7 +9,6 @@ from typing import Callable, Dict, List, Tuple
 import jax
 import jax.example_libraries.optimizers as jopt
 import jax.numpy as jnp
-import numpy as onp
 
 from fmmax import basis, fft, utils
 
@@ -216,7 +215,6 @@ def _compute_tangent_field_no_batch(
     fourier_field = fft.fft(initial_field, expansion=expansion, axes=(-3, -2))
 
     flat_fourier_field = fourier_field.flatten()
-
     for _ in range(steps):
         _, jac, hessian = field_loss_value_jac_and_hessian(
             flat_fourier_field=flat_fourier_field,
@@ -228,8 +226,8 @@ def _compute_tangent_field_no_batch(
             smoothness_loss_weight=smoothness_loss_weight,
         )
         flat_fourier_field -= jnp.linalg.solve(hessian, jac.conj())
-
     fourier_field = flat_fourier_field.reshape((expansion.num_terms, 2))
+
     field = fft.ifft(fourier_field, expansion=expansion, shape=grid_shape, axis=-2)
 
     # Manually set the tangent field in the 1d case.
