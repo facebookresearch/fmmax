@@ -543,8 +543,8 @@ class TangentFieldMatchesExpectedTest(unittest.TestCase):
         onp.testing.assert_allclose(tx, expected_tx, atol=0.05)
         onp.testing.assert_allclose(ty, 0.0, atol=0.05)
 
-    def test_field_pol_gradient_x(self):
-        # Create an array that has only a y-gradient.
+    def test_field_pol_gradient_y(self):
+        # Create an array that has only a y-gradient. Only tx is nonzero.
         arr = jnp.array(
             [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]], dtype=jnp.float32
         )
@@ -559,11 +559,12 @@ class TangentFieldMatchesExpectedTest(unittest.TestCase):
             fourier_loss_weight=0.1,
             smoothness_loss_weight=0.0,
         )
-        onp.testing.assert_allclose(tx, jnp.ones_like(tx), atol=1e-7)
-        onp.testing.assert_allclose(ty, 0.0, atol=1e-7)
+        onp.testing.assert_allclose(jnp.abs(tx.real), jnp.ones_like(tx), atol=1e-7)
+        onp.testing.assert_allclose(jnp.abs(tx.imag), 0.0, atol=1e-6)
+        onp.testing.assert_allclose(ty, 0.0, atol=1e-6)
 
-    def test_field_pol_gradient_y(self):
-        # Create an array that has only a y-gradient.
+    def test_field_pol_gradient_x(self):
+        # Create an array that has only a x-gradient. Only ty is nonzero.
         arr = jnp.array(
             [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]], dtype=jnp.float32
         ).T
@@ -578,8 +579,9 @@ class TangentFieldMatchesExpectedTest(unittest.TestCase):
             fourier_loss_weight=0.1,
             smoothness_loss_weight=0.0,
         )
-        onp.testing.assert_allclose(tx, 0.0, atol=1e-7)
-        onp.testing.assert_allclose(ty, jnp.ones_like(ty), atol=1e-7)
+        onp.testing.assert_allclose(tx, 0.0, atol=1e-6)
+        onp.testing.assert_allclose(jnp.abs(ty.real), jnp.ones_like(ty), atol=1e-7)
+        onp.testing.assert_allclose(jnp.abs(ty.imag), 0.0, atol=1e-6)
 
     @parameterized.expand(
         [

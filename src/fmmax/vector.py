@@ -9,9 +9,10 @@ from typing import Callable, Dict, List, Tuple
 import jax
 import jax.example_libraries.optimizers as jopt
 import jax.numpy as jnp
-import numpy as onp
 
 from fmmax import basis, fft, utils
+
+_ATOL_ANGLE = 1e-4
 
 
 def compute_field_jones_direct(
@@ -182,39 +183,28 @@ def _compute_tangent_field_no_batch(
     """Compute the tangent vector field for `arr` with no batch dimensions."""
     assert primitive_lattice_vectors.u.shape == (2,)
     assert arr.ndim == 2
+    grid_shape: Tuple[int, int] = arr.shape[-2:]  # type: ignore[assignment]
 
-    # Rescale the weights so that a supercell containing multiple unit cells and having
-    # correspondlingly more terms in the Fourier expansion yields a tangent field
-    # identical to that obtained from just a single unit cell.
+    # Rescale the weights so that a supercell containing multiple unit cells and
+    # having appropriately more terms in the Fourier expansion yields a tangent
+    # field identical to that obtained from just a single unit cell.
     fourier_loss_weight /= expansion.num_terms
     smoothness_loss_weight /= expansion.num_terms
 
-    grid_shape: Tuple[int, int] = arr.shape[-2:]  # type: ignore[assignment]
     grad = compute_gradient(arr, primitive_lattice_vectors)
-    grad = jnp.stack(
-        [
-            _filter_and_adjust_resolution(grad[..., 0], expansion),
-            _filter_and_adjust_resolution(grad[..., 1], expansion),
-        ],
-        axis=-1,
-    )
-
-    # When the gradient is zero, we return a spatially invariant field, and provide a
-    # dummy gradient for the field calculation to avoid NaNs when backpropagating
-    # through the vector field calculation.
-    gx_is_zero = jnp.all(
-        jnp.isclose(grad[..., 0, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
-    )
-    gy_is_zero = jnp.all(
-        jnp.isclose(grad[..., 1, jnp.newaxis], 0.0), axis=(-3, -2, -1), keepdims=True
-    )
-    dummy_grad = jnp.broadcast_to(jnp.asarray([1, 0], dtype=complex), grad.shape)
-    grad = jnp.where(gx_is_zero & gy_is_zero, dummy_grad, grad)
-
-    grad = normalize(grad)
+    gx = _filter_and_adjust_resolution(grad[..., 0], expansion)
+    gy = _filter_and_adjust_resolution(grad[..., 1], expansion)
+    grad = normalize(jnp.stack([gx, gy], axis=-1))
 
     elementwise_alignment_weight = _field_magnitude(grad)
 
+    # Provide a dummy gradient for the 1D case, which avoids possible nans in the
+    # Newton solve below. The tangent vector field will be manually specified.
+    is_1d, grad_angle = _is_1d_field(grad)
+    dummy_grad = jnp.broadcast_to(jnp.asarray([1, 0], dtype=complex), grad.shape)
+    grad = jnp.where(is_1d, dummy_grad, grad)
+
+    # Compute the target field with which the tangent field should be aligned.
     target_field = jnp.stack([grad[..., 1], -grad[..., 0]], axis=-1)
     target_field = normalize_elementwise(target_field)
     if use_jones_direct:
@@ -222,10 +212,9 @@ def _compute_tangent_field_no_batch(
         initial_field = target_field
     else:
         initial_field = normalize(jnp.stack([grad[..., 1], -grad[..., 0]], axis=-1))
-
     fourier_field = fft.fft(initial_field, expansion=expansion, axes=(-3, -2))
-    flat_fourier_field = fourier_field.flatten()
 
+    flat_fourier_field = fourier_field.flatten()
     for _ in range(steps):
         _, jac, hessian = field_loss_value_jac_and_hessian(
             flat_fourier_field=flat_fourier_field,
@@ -237,23 +226,13 @@ def _compute_tangent_field_no_batch(
             smoothness_loss_weight=smoothness_loss_weight,
         )
         flat_fourier_field -= jnp.linalg.solve(hessian, jac.conj())
-
     fourier_field = flat_fourier_field.reshape((expansion.num_terms, 2))
+
     field = fft.ifft(fourier_field, expansion=expansion, shape=grid_shape, axis=-2)
 
-    # Manually set the field in cases where `arr` varies only along one axis or is
-    # entirely constant. This avoids nans which may occur on some platforms.
-    field = jnp.where(
-        gx_is_zero & ~gy_is_zero,
-        jnp.stack([jnp.ones(field.shape[:-1]), jnp.zeros(field.shape[:-1])], axis=-1),
-        field,
-    )
-    field = jnp.where(
-        ~gx_is_zero & gy_is_zero,
-        jnp.stack([jnp.zeros(field.shape[:-1]), jnp.ones(field.shape[:-1])], axis=-1),
-        field,
-    )
-    field = jnp.where(gx_is_zero & gy_is_zero, jnp.ones_like(field), field)
+    # Manually set the tangent field in the 1d case.
+    field_1d = jnp.stack([jnp.sin(grad_angle), jnp.cos(grad_angle)])
+    field = jnp.where(is_1d, field_1d, field)
     return normalize(field)
 
 
@@ -334,6 +313,37 @@ def _filter_and_adjust_resolution(
     min_shape = fft.min_array_shape_for_expansion(expansion)
     doubled_min_shape = (2 * min_shape[0], 2 * min_shape[1])
     return fft.ifft(y, expansion=expansion, shape=doubled_min_shape)
+
+
+def _is_1d_field(field: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Determine whether the field varies in one direction only."""
+    ref_field = _field_at_max_magnitude(field)
+    assert ref_field.shape == (2,)
+    ref_angle = _angle(ref_field[0] + 1j * ref_field[1])
+    angle = _angle(field[..., 0] + 1j * field[..., 1])
+    magnitude = jnp.squeeze(_field_magnitude(field), axis=-1)
+    is_1d = jnp.all(
+        jnp.isclose(magnitude, 0.0)
+        | jnp.isclose(angle, ref_angle - 2 * jnp.pi, atol=_ATOL_ANGLE)
+        | jnp.isclose(angle, ref_angle - 1 * jnp.pi, atol=_ATOL_ANGLE)
+        | jnp.isclose(angle, ref_angle, atol=_ATOL_ANGLE)
+        | jnp.isclose(angle, ref_angle + 1 * jnp.pi, atol=_ATOL_ANGLE)
+        | jnp.isclose(angle, ref_angle + 2 * jnp.pi, atol=_ATOL_ANGLE)
+    )
+    return is_1d, ref_angle
+
+
+def _field_at_max_magnitude(field: jnp.ndarray) -> jnp.ndarray:
+    """Return the field at the location where its magnitude is largest."""
+    assert field.ndim == 3
+    assert field.shape[-1] == 2
+    magnitude = _field_magnitude(field)
+    assert magnitude.ndim == 3
+    assert magnitude.shape[-1] == 1
+    magnitude = magnitude.flatten()
+    idx = jnp.argmax(magnitude)
+    field = field.reshape((-1, 2))
+    return field[idx, :]
 
 
 # -------------------------------------------------------------------------------------

@@ -5,6 +5,7 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 
 from typing import Tuple
 
+import jax
 import jax.numpy as jnp
 
 from fmmax import basis, utils
@@ -138,7 +139,8 @@ def _validate_shape_for_expansion(
 
 def min_array_shape_for_expansion(expansion: basis.Expansion) -> Tuple[int, int]:
     """Returns the minimum allowed shape for an array to be expanded."""
-    return (
-        int(2 * max(abs(expansion.basis_coefficients[:, 0])) + 1),
-        int(2 * max(abs(expansion.basis_coefficients[:, 1])) + 1),
-    )
+    with jax.ensure_compile_time_eval():
+        return (
+            int(2 * max(abs(expansion.basis_coefficients[:, 0])) + 1),
+            int(2 * max(abs(expansion.basis_coefficients[:, 1])) + 1),
+        )
