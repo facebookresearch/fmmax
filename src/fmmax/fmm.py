@@ -767,8 +767,6 @@ def _numerical_eigensolve(
         expansion=expansion,
     )
 
-    angular_frequency = utils.angular_frequency_for_wavelength(wavelength)
-
     # The k matrix from equation 23 of [2012 Liu], modified for magnetic materials.
     k_matrix = fmm_matrices.k_matrix_patterned(
         z_permeability_matrix, transverse_wavevectors
