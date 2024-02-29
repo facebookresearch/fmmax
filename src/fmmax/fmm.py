@@ -664,11 +664,13 @@ def _eigensolve_patterned_general_anisotropic_media(
         permeability_yx,
         permeability_yy,
         permeability_zz,
+        vector_field_source,
     ) = _validate_and_broadcast(
         wavelength,
         in_plane_wavevector,
         *permittivities,
         *permeabilities,
+        vector_field_source,
     )
     (
         inverse_z_permittivity_matrix,
