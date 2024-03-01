@@ -96,6 +96,50 @@ class FieldSourcesTest(unittest.TestCase):
         onp.testing.assert_allclose(fwd_amplitude_extracted, fwd_amplitude, rtol=5e-3)
         onp.testing.assert_allclose(bwd_amplitude_extracted, bwd_amplitude, rtol=5e-3)
 
+    def test_amplitudes_match_expected_no_bz_grid(self):
+        # Generate random amplitudes, compute the resulting fields, and extract
+        # the amplitudes resulting from those fields. Compare the extracted
+        # amplitudes to the original amplitudes.
+        in_plane_wavevector = jnp.zeros((2,))
+        layer_solve_result = fmm.eigensolve_isotropic_media(
+            permittivity=jnp.asarray([[1.0]]),
+            wavelength=WAVELENGTH,
+            in_plane_wavevector=in_plane_wavevector,
+            primitive_lattice_vectors=PRIMITIVE_LATTICE_VECTORS,
+            expansion=EXPANSION,
+            formulation=fmm.Formulation.FFT,
+        )
+        fwd_amplitude = jax.random.normal(
+            jax.random.PRNGKey(0), (2 * EXPANSION.num_terms, 3), dtype=complex
+        )
+        bwd_amplitude = jax.random.normal(
+            jax.random.PRNGKey(1), (2 * EXPANSION.num_terms, 3), dtype=complex
+        )
+
+        efield, hfield = fields.fields_from_wave_amplitudes(
+            fwd_amplitude, bwd_amplitude, layer_solve_result
+        )
+        (ex, ey, _), (hx, hy, _), _ = fields.fields_on_grid(
+            efield,
+            hfield,
+            layer_solve_result,
+            shape=(20, 20),
+            num_unit_cells=(1, 1),
+        )
+        (
+            fwd_amplitude_extracted,
+            bwd_amplitude_extracted,
+        ) = sources.amplitudes_for_fields(
+            ex,
+            ey,
+            hx,
+            hy,
+            layer_solve_result,
+            brillouin_grid_axes=None,
+        )
+        onp.testing.assert_allclose(fwd_amplitude_extracted, fwd_amplitude, rtol=5e-3)
+        onp.testing.assert_allclose(bwd_amplitude_extracted, bwd_amplitude, rtol=5e-3)
+
     def test_amplitudes_match_expected_wavelength_batch(self):
         # With a size-2 wavelength batch, generate random amplitudes, compute the
         # resulting fields, and extract the amplitudes resulting from those fields.
