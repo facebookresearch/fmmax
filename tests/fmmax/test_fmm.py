@@ -400,6 +400,8 @@ class AnistropicLayerEigensolveTest(unittest.TestCase):
         uniform_eigenvalues, uniform_eigenvectors = _sort_eigs(
             uniform_result.eigenvalues, uniform_result.eigenvectors
         )
+        vector_field_source = (permittivity_xx + permittivity_yy) / 2
+        vector_field_source = jnp.broadcast_to(vector_field_source, (64, 64))
         patterned_result = fmm._eigensolve_patterned_general_anisotropic_media(
             wavelength=WAVELENGTH,
             in_plane_wavevector=IN_PLANE_WAVEVECTOR,
@@ -420,7 +422,7 @@ class AnistropicLayerEigensolveTest(unittest.TestCase):
             ),
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
-            vector_field_source=(permittivity_xx + permittivity_yy) / 2,
+            vector_field_source=vector_field_source,
         )
         patterned_eigenvalues, patterned_eigenvectors = _sort_eigs(
             patterned_result.eigenvalues, patterned_result.eigenvectors

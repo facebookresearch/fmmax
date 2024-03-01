@@ -3,7 +3,7 @@
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 import jax.numpy as jnp
 
@@ -16,7 +16,7 @@ def amplitudes_for_fields(
     hx: jnp.ndarray,
     hy: jnp.ndarray,
     layer_solve_result: fmm.LayerSolveResult,
-    brillouin_grid_axes: Tuple[int, int],
+    brillouin_grid_axes: Optional[Tuple[int, int]] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Computes the amplitudes for fields.
 
@@ -29,7 +29,8 @@ def amplitudes_for_fields(
     Args:
         ex: The x-oriented electric field on the real-space grid, with a trailing
             batch dimension.
-        ey: The y-oriented electric field on the real-space grid.
+        ey: The y-oriented electric field on the real-space grid, with shape
+            `(..., nx, ny, num_fields)`.
         hx: The x-oriented magnetic field on the real-space grid.
         hy: The y-oriented magnetic field on the real-space grid.
         layer_solve_result: The eigensolve result for the layer containing the fields.
@@ -58,11 +59,14 @@ def amplitudes_for_fields(
             f"`layer_solve_result` batch shape {layer_solve_result.batch_shape}."
         )
 
-    absolute_brillouin_grid_axes = utils.absolute_axes(brillouin_grid_axes, ex.ndim)
-    brillouin_grid_shape = (
-        layer_solve_result.batch_shape[absolute_brillouin_grid_axes[0]],
-        layer_solve_result.batch_shape[absolute_brillouin_grid_axes[1]],
-    )
+    if brillouin_grid_axes is None:
+        brillouin_grid_shape = (1, 1)
+    else:
+        absolute_brillouin_grid_axes = utils.absolute_axes(brillouin_grid_axes, ex.ndim)
+        brillouin_grid_shape = (
+            layer_solve_result.batch_shape[absolute_brillouin_grid_axes[0]],
+            layer_solve_result.batch_shape[absolute_brillouin_grid_axes[1]],
+        )
 
     if (
         ex.shape[-3] % brillouin_grid_shape[0] != 0

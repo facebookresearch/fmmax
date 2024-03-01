@@ -664,11 +664,13 @@ def _eigensolve_patterned_general_anisotropic_media(
         permeability_yx,
         permeability_yy,
         permeability_zz,
+        vector_field_source,
     ) = _validate_and_broadcast(
         wavelength,
         in_plane_wavevector,
         *permittivities,
         *permeabilities,
+        vector_field_source,
     )
     (
         inverse_z_permittivity_matrix,
@@ -764,8 +766,6 @@ def _numerical_eigensolve(
         primitive_lattice_vectors=primitive_lattice_vectors,
         expansion=expansion,
     )
-
-    angular_frequency = utils.angular_frequency_for_wavelength(wavelength)
 
     # The k matrix from equation 23 of [2012 Liu], modified for magnetic materials.
     k_matrix = fmm_matrices.k_matrix_patterned(
