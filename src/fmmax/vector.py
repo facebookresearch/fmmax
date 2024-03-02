@@ -7,7 +7,6 @@ import functools
 from typing import Callable, Dict, List, Tuple
 
 import jax
-import jax.example_libraries.optimizers as jopt
 import jax.numpy as jnp
 
 from fmmax import basis, fft, utils

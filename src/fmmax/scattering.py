@@ -287,35 +287,36 @@ def _extend_s_matrix(
     #
     # phi_T = jnp.linalg.inv(omega_k @ phi)
     # term1 = diag(q) @ phi_T @ next_omega_k @ next_phi @ diag(1 / next_q)
-    term1 = q[..., :, jnp.newaxis] * jnp.linalg.solve(
+    # term1 = q[..., :, jnp.newaxis] * jnp.linalg.solve(
+    #     omega_k @ phi,
+    #     next_omega_k @ next_phi * (1 / next_q)[..., jnp.newaxis, :],
+    # )
+    term1 = utils.diag(q) @ utils.solve(
         omega_k @ phi,
-        next_omega_k @ next_phi * (1 / next_q)[..., jnp.newaxis, :],
+        next_omega_k @ next_phi @ utils.diag(1 / next_q),
     )
     # term2 = phi_T @ omega_k @ next_phi
-    term2 = jnp.linalg.solve(omega_k @ phi, omega_k @ next_phi)
+    term2 = utils.solve(omega_k @ phi, omega_k @ next_phi)
     i11 = i22 = 0.5 * (term1 + term2)
     i12 = i21 = 0.5 * (-term1 + term2)
 
     # Phase terms \hat{f}(d) defined near equation 4.2 of [1999 Whittaker]. These
     # describe phase accumulated by propagating across a layer for each eigenmode.
-    fd = jnp.exp(1j * q * layer_thickness)
-    fd_next = jnp.exp(1j * next_q * next_layer_thickness)
+    fd = utils.diag(jnp.exp(1j * q * layer_thickness))
+    fd_next = utils.diag(jnp.exp(1j * next_q * next_layer_thickness))
 
     # Update the s-matrix to include the present layer, following the recipe
     # given in equation 5.4 of [1999 Whittaker].
     s11, s12, s21, s22 = s_matrix_blocks
 
     # s11_next = inv(i11 - diag(fd) @ s12 @ i21) @ diag(fd) @ s11
-    term3 = i11 - fd[..., :, jnp.newaxis] * s12 @ i21
-    s11_next = jnp.linalg.solve(term3, fd[..., :, jnp.newaxis] * s11)
+    term3 = i11 - fd @ s12 @ i21
+    s11_next = utils.solve(term3, fd @ s11)
     # s12_next = inv(i11 - diag(fd) @ s12 @ i21) @ (diag(fd) @ s12 @ i22 - i12) @ diag(fd_next)
-    s12_next = jnp.linalg.solve(
-        term3,
-        (fd[..., :, jnp.newaxis] * s12 @ i22 - i12) * fd_next[..., jnp.newaxis, :],
-    )
+    s12_next = utils.solve(term3, (fd @ s12 @ i22 - i12) @ fd_next)
     s21_next = s22 @ i21 @ s11_next + s21
     # s22_next = s22 @ i21 @ s12_next + s22 @ i22 @ diag(fd_next)
-    s22_next = s22 @ i21 @ s12_next + s22 @ i22 * fd_next[..., jnp.newaxis, :]
+    s22_next = s22 @ i21 @ s12_next + s22 @ i22 @ fd_next
 
     return (s11_next, s12_next, s21_next, s22_next)
 

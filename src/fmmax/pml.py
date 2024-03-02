@@ -105,7 +105,10 @@ def _crop_and_edge_pad_pml_region(
     """Crops the trailing dimensions of `permittivity` and applies edge padding."""
     i_width, j_width = widths
     if (i_width * 2, j_width * 2) >= permittivity.shape[-2:]:
-        raise ValueError()
+        raise ValueError(
+            f"`widths` {widths} are incompatible with permittivity shape "
+            f"{permittivity.shape}."
+        )
 
     arr_cropped = permittivity[
         ...,
