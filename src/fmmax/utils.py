@@ -22,6 +22,7 @@ def diag(x: jnp.ndarray) -> jnp.ndarray:
 
 def solve(a: jnp.ndarray, b: jnp.ndarray) -> jnp.ndarray:
     """A limited version of `linalg.solve` that has no batch dependency."""
+    # See https://github.com/google/jax/issues/20047
     assert a.shape == b.shape
     m = a.shape[-1]
     a_flat = a.reshape((-1, m, m))
