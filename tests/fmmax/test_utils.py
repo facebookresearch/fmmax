@@ -4,13 +4,13 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
 import itertools
-import pytest
 import unittest
 
 import jax
 import jax.numpy as jnp
 import numpy as onp
 import parameterized
+import pytest
 
 from fmmax import utils
 
