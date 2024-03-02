@@ -311,6 +311,12 @@ class AbsoluteAxesTest(unittest.TestCase):
 class SolveTest(unittest.TestCase):
     @pytest.mark.xfail
     def test_jax_linear_solve_batch_dependence(self):
+        # This test fails because (for some reason) `jnp.linalg.solve` has a batch
+        # dependency. The error for batched solves appears to result in faulty
+        # scattering matrices.
+        # See https://github.com/google/jax/issues/20047
+        # When this test passes, it is probably safe to remove the custom solve
+        # and revert to the standard solve.
         a, b = jax.random.normal(jax.random.PRNGKey(0), (2, 100, 100))
         assert a.shape == b.shape == (100, 100)
         a_batch = jnp.stack([a, a], axis=0)
@@ -318,7 +324,9 @@ class SolveTest(unittest.TestCase):
 
         sol_jax = jnp.linalg.solve(a, b)
         sol_jax_with_batch = jnp.linalg.solve(a_batch, b_batch)
-        onp.testing.assert_array_equal(sol_jax_with_batch[0, ...], sol_jax_with_batch[1, ...])  # passes
+        onp.testing.assert_array_equal(
+            sol_jax_with_batch[0, ...], sol_jax_with_batch[1, ...]
+        )  # passes
         onp.testing.assert_array_equal(sol_jax, sol_jax_with_batch[0, ...])  # Fails
         onp.testing.assert_array_equal(sol_jax, sol_jax_with_batch[1, ...])  # Fails
 
@@ -330,6 +338,8 @@ class SolveTest(unittest.TestCase):
 
         sol_jax = utils.solve(a, b)
         sol_jax_with_batch = utils.solve(a_batch, b_batch)
-        onp.testing.assert_array_equal(sol_jax_with_batch[0, ...], sol_jax_with_batch[1, ...])  # passes
+        onp.testing.assert_array_equal(
+            sol_jax_with_batch[0, ...], sol_jax_with_batch[1, ...]
+        )  # passes
         onp.testing.assert_array_equal(sol_jax, sol_jax_with_batch[0, ...])
         onp.testing.assert_array_equal(sol_jax, sol_jax_with_batch[1, ...])
