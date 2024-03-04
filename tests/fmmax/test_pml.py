@@ -9,10 +9,187 @@ import jax.numpy as jnp
 import numpy as onp
 from jax import tree_util
 
-from fmmax import basis, fields, fmm, pml, scattering, sources
+from fmmax import basis, beams, fields, fmm, pml, scattering, sources
 
 
-class FieldsInPMLDecayTest(unittest.TestCase):
+class GaussianBeamInPMLDecayTest(unittest.TestCase):
+    def simulate_beam_1d(
+        self, use_pml, polar_angle=jnp.pi / 3, approximate_num_terms=400
+    ):
+        width = 20.0  # Simulation unit cell width
+        width_pml = 2.0  # Width of perfectly matched layers on edges of unit cell.
+        grid_spacing = 0.02
+
+        beam_waist = 1.0
+        permittivity_ambient = 1.0 + 0.0j
+        thickness_ambient = 20.0
+
+        wavelength = jnp.asarray(0.45)
+        in_plane_wavevector = jnp.zeros((2,))
+        primitive_lattice_vectors = basis.LatticeVectors(u=width * basis.X, v=basis.Y)
+        dim = int(width / grid_spacing)
+        grid_shape = (dim, 1)
+        formulation = fmm.Formulation.FFT
+
+        # Manually generate the expansion for a one-dimensional simulation.
+        nmax = approximate_num_terms // 2
+        ix = onp.zeros((2 * nmax + 1,), dtype=int)
+        ix[1::2] = -jnp.arange(1, nmax + 1, dtype=int)
+        ix[2::2] = jnp.arange(1, nmax + 1, dtype=int)
+        assert tuple(ix[:5].tolist()) == (0, -1, 1, -2, 2)
+        expansion = basis.Expansion(
+            basis_coefficients=onp.stack([ix, onp.zeros_like(ix)], axis=-1)
+        )
+
+        def eigensolve_fn(permittivity: jnp.ndarray) -> fmm.LayerSolveResult:
+            if use_pml:
+                permittivities_pml, permeabilities_pml = pml.apply_uniaxial_pml(
+                    permittivity=permittivity,
+                    pml_params=pml.PMLParams(
+                        num_x=int(width_pml / grid_spacing), num_y=0
+                    ),
+                )
+                return fmm.eigensolve_general_anisotropic_media(
+                    wavelength,
+                    in_plane_wavevector,
+                    primitive_lattice_vectors,
+                    *permittivities_pml,
+                    *permeabilities_pml,
+                    expansion=expansion,
+                    formulation=formulation,
+                    vector_field_source=jnp.mean(
+                        jnp.asarray(permittivities_pml), axis=0
+                    ),
+                )
+            return fmm.eigensolve_isotropic_media(
+                wavelength=wavelength,
+                in_plane_wavevector=in_plane_wavevector,
+                primitive_lattice_vectors=primitive_lattice_vectors,
+                permittivity=permittivity,
+                expansion=expansion,
+                formulation=formulation,
+            )
+
+        layer_solve_result = eigensolve_fn(
+            permittivity=jnp.full(grid_shape, permittivity_ambient)
+        )
+
+        s_matrices_interior = scattering.stack_s_matrices_interior(
+            layer_solve_results=[layer_solve_result],
+            layer_thicknesses=[jnp.asarray(thickness_ambient)],
+        )
+
+        def _paraxial_gaussian_field_fn(x, y, z):
+            # Returns the fields of a z-propagating, x-polarized Gaussian beam.
+            wavelengths_padded = wavelength[..., jnp.newaxis, jnp.newaxis]
+            k = 2 * jnp.pi / wavelengths_padded
+            z_r = (
+                jnp.pi
+                * beam_waist**2
+                * jnp.sqrt(permittivity_ambient)
+                / wavelengths_padded
+            )
+            w_z = beam_waist * jnp.sqrt(1 + (z / z_r) ** 2)
+            r = jnp.sqrt(x**2 + y**2)
+            ex = (
+                beam_waist
+                / w_z
+                * jnp.exp(-(r**2) / w_z**2)
+                * jnp.exp(
+                    1j
+                    * (
+                        (k * z)  # Phase
+                        + k * r**2 / 2 * z / (z**2 + z_r**2)  # Wavefront curvature
+                        - jnp.arctan(z / z_r)  # Gouy phase
+                    )
+                )
+            )
+            ey = jnp.zeros_like(ex)
+            ez = jnp.zeros_like(ex)
+            hx = jnp.zeros_like(ex)
+            hy = ex / jnp.sqrt(permittivity_ambient)
+            hz = jnp.zeros_like(ex)
+            return (ex, ey, ez), (hx, hy, hz)
+
+        # Solve for the fields of the beam with the desired rotation and shift.
+        x, y = basis.unit_cell_coordinates(
+            primitive_lattice_vectors=primitive_lattice_vectors,
+            shape=grid_shape,  # type: ignore[arg-type]
+            num_unit_cells=(1, 1),
+        )
+        (beam_ex, beam_ey, _), (beam_hx, beam_hy, _) = beams.shifted_rotated_fields(
+            field_fn=_paraxial_gaussian_field_fn,
+            x=x,
+            y=y,
+            z=jnp.full(x.shape, thickness_ambient),
+            beam_origin_x=jnp.amax(x) / 4,
+            beam_origin_y=jnp.amax(y) / 2,
+            beam_origin_z=thickness_ambient - 0,
+            polar_angle=jnp.asarray(jnp.pi - polar_angle),
+            azimuthal_angle=jnp.asarray(0.0),
+            polarization_angle=jnp.asarray(0.0),
+        )
+
+        _, bwd_amplitude_ambient_end = sources.amplitudes_for_fields(
+            ex=beam_ex[..., jnp.newaxis],
+            ey=beam_ey[..., jnp.newaxis],
+            hx=beam_hx[..., jnp.newaxis],
+            hy=beam_hy[..., jnp.newaxis],
+            layer_solve_result=layer_solve_result,
+            brillouin_grid_axes=None,
+        )
+
+        fwd_flux_end, bwd_flux_end = fields.amplitude_poynting_flux(
+            forward_amplitude=jnp.zeros_like(bwd_amplitude_ambient_end),
+            backward_amplitude=bwd_amplitude_ambient_end,
+            layer_solve_result=layer_solve_result,
+        )
+        fwd_flux_start, bwd_flux_start = fields.amplitude_poynting_flux(
+            forward_amplitude=jnp.zeros_like(bwd_amplitude_ambient_end),
+            backward_amplitude=fields.propagate_amplitude(
+                amplitude=bwd_amplitude_ambient_end,
+                distance=thickness_ambient,
+                layer_solve_result=layer_solve_result,
+            ),
+            layer_solve_result=layer_solve_result,
+        )
+        power_at_end = -jnp.sum(bwd_flux_end)
+        power_at_start = -jnp.sum(bwd_flux_start)
+
+        amplitudes_interior = fields.stack_amplitudes_interior(
+            s_matrices_interior=s_matrices_interior,
+            forward_amplitude_0_start=jnp.zeros_like(bwd_amplitude_ambient_end),
+            backward_amplitude_N_end=bwd_amplitude_ambient_end,
+        )
+        layer_znum = int(jnp.round(thickness_ambient / grid_spacing) + 1)
+        (ex, ey, ez), (hx, hy, hz), _ = fields.stack_fields_3d(
+            amplitudes_interior=amplitudes_interior,
+            layer_solve_results=[layer_solve_result],
+            layer_thicknesses=[jnp.asarray(thickness_ambient)],
+            layer_znum=[layer_znum],
+            grid_shape=grid_shape,
+            num_unit_cells=(1, 1),
+        )
+        return power_at_end, power_at_start, (ex, ey, ez), (hx, hy, hz)
+
+    def test_pml_absorbs(self):
+        # Simulate a beam that is propagating at an angle. It strikes the PML and
+        # must be absorbed before reaching the bottom of the simulation domain. The
+        # beam is incident from the "end" of the simulation domain, and propagates
+        # toward the "start" of the simulation domain.
+        power_at_end, power_at_start, _, _ = self.simulate_beam_1d(use_pml=True)
+        power_at_end_no_pml, power_at_start_no_pml, _, _ = self.simulate_beam_1d(
+            use_pml=False
+        )
+        # With or without PML, the incident power is identical.
+        onp.testing.assert_allclose(power_at_end, power_at_end_no_pml, rtol=1e-2)
+        # With no PML, the power at the end is equal to the power at the start.
+        onp.testing.assert_allclose(power_at_end_no_pml, power_at_start_no_pml)
+        # With PML, the power at the start is decayed by at least 1e4.
+        self.assertGreater(onp.abs(power_at_end), 1e4 * onp.abs(power_at_start))
+
+
+class DipoleFieldsInPMLDecayTest(unittest.TestCase):
     def simulate_dipole_in_vacuum_with_pml(self, pml_params):
         pitch = 2.0
         primitive_lattice_vectors = basis.LatticeVectors(
