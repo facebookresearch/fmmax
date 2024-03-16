@@ -494,8 +494,6 @@ def fields_on_coordinates(
     coordinates_shape = x.shape
     ex_shape = electric_field[0].shape
     field_shape = ex_shape[:-2] + coordinates_shape + (ex_shape[-1],)
-    x = x.flatten()
-    y = y.flatten()
 
     transverse_wavevectors = basis.transverse_wavevectors(
         in_plane_wavevector=layer_solve_result.in_plane_wavevector,
@@ -508,7 +506,7 @@ def fields_on_coordinates(
     def _field_at_coordinates(fourier_field):
         field = (
             fourier_field[..., jnp.newaxis, :]
-            * jnp.exp(1j * (kx * x + ky * y))[..., jnp.newaxis]
+            * jnp.exp(1j * (kx * x.flatten() + ky * y.flatten()))[..., jnp.newaxis]
         )
         field = jnp.sum(field, axis=-3)
         return field.reshape(field_shape)
