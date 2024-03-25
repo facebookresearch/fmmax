@@ -302,18 +302,18 @@ class LayerSolveResult:
                 f"shape {self.in_plane_wavevector.shape} when `eigenvectors` shape is "
                 f"{self.eigenvectors.shape}."
             )
-        # if _incompatible(self.primitive_lattice_vectors.u, self.batch_shape + (2,)):
-        #     raise ValueError(
-        #         f"`primitive_lattice_vectors.u` must have compatible batch shape, but "
-        #         f"got shape {self.primitive_lattice_vectors.u.shape} when `eigenvectors` "
-        #         f"shape is {self.eigenvectors.shape}."
-        #     )
-        # if _incompatible(self.primitive_lattice_vectors.v, self.batch_shape + (2,)):
-        #     raise ValueError(
-        #         f"`primitive_lattice_vectors.v` must have compatible batch shape, but got "
-        #         f"shape {self.primitive_lattice_vectors.v.shape} when `eigenvectors` shape "
-        #         f"is {self.eigenvectors.shape}."
-        #     )
+        if _incompatible(self.primitive_lattice_vectors.u, self.batch_shape + (2,)):
+            raise ValueError(
+                f"`primitive_lattice_vectors.u` must have compatible batch shape, but "
+                f"got shape {self.primitive_lattice_vectors.u.shape} when `eigenvectors` "
+                f"shape is {self.eigenvectors.shape}."
+            )
+        if _incompatible(self.primitive_lattice_vectors.v, self.batch_shape + (2,)):
+            raise ValueError(
+                f"`primitive_lattice_vectors.v` must have compatible batch shape, but got "
+                f"shape {self.primitive_lattice_vectors.v.shape} when `eigenvectors` shape "
+                f"is {self.eigenvectors.shape}."
+            )
         if self.expansion.num_terms * 2 != self.eigenvectors.shape[-1]:
             raise ValueError(
                 f"`eigenvectors` must have shape compatible with `expansion.num_terms`, but "
