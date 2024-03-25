@@ -150,6 +150,23 @@ def compute_tangent_field(
     arr = utils.atleast_nd(arr, n=3)
     arr = arr.reshape((-1,) + arr.shape[-2:])
 
+    primitive_lattice_vectors = basis.LatticeVectors(
+        u=jnp.broadcast_to(
+            primitive_lattice_vectors.u.reshape((-1, 2)),
+            (
+                arr.shape[0],
+                2,
+            ),
+        ),
+        v=jnp.broadcast_to(
+            primitive_lattice_vectors.v.reshape((-1, 2)),
+            (
+                arr.shape[0],
+                2,
+            ),
+        ),
+    )
+
     field_fn = jax.vmap(
         functools.partial(
             _compute_tangent_field_no_batch,
@@ -158,7 +175,7 @@ def compute_tangent_field(
             smoothness_loss_weight=smoothness_loss_weight,
             steps=steps,
         ),
-        in_axes=(0, None, None),
+        in_axes=(0, None, 0),
     )
     field = field_fn(
         arr,

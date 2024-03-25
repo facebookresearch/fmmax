@@ -4,10 +4,11 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
 import dataclasses
-from typing import Sequence, Tuple
+from typing import Any, Sequence, Tuple
 
 import jax
 import jax.numpy as jnp
+from jax import tree_util
 
 from fmmax import fmm, utils
 
@@ -174,6 +175,63 @@ def _stack_s_matrices(
             append_layer(s_matrices[-1], layer_solve_result, layer_thickness)
         )
     return tuple(s_matrices)
+
+
+def stack_s_matrix_scan(
+    layer_solve_results: fmm.LayerSolveResult,
+    layer_thicknesses: jnp.ndarray,
+) -> ScatteringMatrix:
+    """Computes the stack matrix for a stack of layers.
+
+    Unlike `stack_s_matrix`, this function uses a scan operation rather than a python
+    for loop, which can lead to significantly smaller programs and shorter compile times.
+    However, it requires that the layer solve results and thicknesses for be represented
+    in the leading batch dimension of the arguments.
+
+    This function is best used when the eigensolve for each layer is also done in a
+    batched manner.
+
+    Args:
+        layer_solve_results: The layer solve results for all layers in the stack.
+        layer_thicknesses: The layer thicknesses for all layers in the stack.
+
+    Returns:
+        The scattering matrix for the stack.
+    """
+    assert layer_thicknesses.ndim == 1
+    if layer_solve_results.batch_shape[0] != len(layer_thicknesses):
+        raise ValueError(
+            f"`layer_solve_results` and `layer_thicknesses` should have the same "
+            f"length but got {len(layer_solve_results)} and {len(layer_thicknesses)}."
+        )
+
+    eye = utils.diag(jnp.ones(layer_solve_results.eigenvalues.shape[1:], dtype=complex))
+    start_solve_result = tree_util.tree_map(lambda x: x[0, ...], layer_solve_results)
+    s_matrix = ScatteringMatrix(
+        s11=eye,
+        s12=jnp.zeros_like(eye),
+        s21=jnp.zeros_like(eye),
+        s22=eye,
+        start_layer_solve_result=start_solve_result,
+        start_layer_thickness=layer_thicknesses[0],
+        end_layer_solve_result=start_solve_result,
+        end_layer_thickness=layer_thicknesses[0],
+    )
+
+    def scan_fn(s_matrix, x):
+        next_layer_solve_result, next_layer_thickness = x
+        s_matrix = append_layer(s_matrix, next_layer_solve_result, next_layer_thickness)
+        return s_matrix, s_matrix
+
+    s_matrix, _ = jax.lax.scan(
+        scan_fn,
+        init=s_matrix,
+        xs=(
+            tree_util.tree_map(lambda x: x[1:], layer_solve_results),
+            layer_thicknesses[1:],
+        ),
+    )
+    return s_matrix
 
 
 def append_layer(

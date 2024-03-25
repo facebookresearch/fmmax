@@ -147,8 +147,8 @@ class ShapesTest(unittest.TestCase):
             self.assertSequenceEqual(hgx.shape, expected_shape)
             self.assertSequenceEqual(hgy.shape, expected_shape)
             self.assertSequenceEqual(hgz.shape, expected_shape)
-            self.assertSequenceEqual(x.shape, grid_shape)
-            self.assertSequenceEqual(y.shape, grid_shape)
+            self.assertSequenceEqual(x.shape[-2:], grid_shape)
+            self.assertSequenceEqual(y.shape[-2:], grid_shape)
 
 
 class FieldsOnCoordinatesTest(unittest.TestCase):
@@ -186,14 +186,13 @@ class FieldsOnCoordinatesTest(unittest.TestCase):
             shape=(20, 20),
             num_unit_cells=(1, 1),
         )
-
         with self.subTest("xy on a square grid"):
-            efield, hfield, _ = fields.fields_on_coordinates(
+            efield, hfield, (x, y) = fields.fields_on_coordinates(
                 electric_field=(ex, ey, ez),
                 magnetic_field=(hx, hy, hz),
                 layer_solve_result=layer_solve_result,
-                x=x,
-                y=y,
+                x=jnp.squeeze(x),
+                y=jnp.squeeze(y),
             )
             onp.testing.assert_allclose(efield, expected_efield, rtol=1e-4)
             onp.testing.assert_allclose(hfield, expected_hfield, rtol=1e-4)
@@ -255,8 +254,8 @@ class FieldsOnCoordinatesTest(unittest.TestCase):
                 layer_solve_result=layer_solve_result,
                 layer_thickness=jnp.ones(()),
                 layer_znum=10,
-                x=x,
-                y=y,
+                x=jnp.squeeze(x),
+                y=jnp.squeeze(y),
             )
             onp.testing.assert_allclose(efield, expected_efield, rtol=2e-4)
             onp.testing.assert_allclose(hfield, expected_hfield, rtol=2e-4)
@@ -304,8 +303,8 @@ class FieldsOnCoordinatesTest(unittest.TestCase):
             layer_solve_results=layer_solve_results,
             layer_thicknesses=thicknesses,
             layer_znum=[10] * len(thicknesses),
-            x=x,
-            y=y,
+            x=jnp.squeeze(x),
+            y=jnp.squeeze(y),
         )
         onp.testing.assert_allclose(efield, expected_efield, rtol=1e-4)
         onp.testing.assert_allclose(hfield, expected_hfield, rtol=1e-4)

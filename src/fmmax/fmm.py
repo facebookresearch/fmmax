@@ -292,63 +292,80 @@ class LayerSolveResult:
 
         if _incompatible(self.wavelength, self.batch_shape):
             raise ValueError(
-                f"`wavelength` must have compatible batch shape, but got shape {self.wavelength.shape} "
-                f"when `eigenvectors` shape is {self.eigenvectors.shape}."
+                f"`wavelength` must have compatible batch shape, but got shape "
+                f"{self.wavelength.shape} when `eigenvectors` shape is "
+                f"{self.eigenvectors.shape}."
             )
         if _incompatible(self.in_plane_wavevector, self.batch_shape + (2,)):
             raise ValueError(
-                f"`in_plane_wavevector` must have compatible batch shape, but got shape "
-                f"{self.in_plane_wavevector.shape} when `eigenvectors` shape is {self.eigenvectors.shape}."
+                f"`in_plane_wavevector` must have compatible batch shape, but got "
+                f"shape {self.in_plane_wavevector.shape} when `eigenvectors` shape is "
+                f"{self.eigenvectors.shape}."
             )
+        # if _incompatible(self.primitive_lattice_vectors.u, self.batch_shape + (2,)):
+        #     raise ValueError(
+        #         f"`primitive_lattice_vectors.u` must have compatible batch shape, but "
+        #         f"got shape {self.primitive_lattice_vectors.u.shape} when `eigenvectors` "
+        #         f"shape is {self.eigenvectors.shape}."
+        #     )
+        # if _incompatible(self.primitive_lattice_vectors.v, self.batch_shape + (2,)):
+        #     raise ValueError(
+        #         f"`primitive_lattice_vectors.v` must have compatible batch shape, but got "
+        #         f"shape {self.primitive_lattice_vectors.v.shape} when `eigenvectors` shape "
+        #         f"is {self.eigenvectors.shape}."
+        #     )
         if self.expansion.num_terms * 2 != self.eigenvectors.shape[-1]:
             raise ValueError(
-                f"`eigenvectors` must have shape compatible with `expansion.num_terms`, but got shape "
-                f"{self.eigenvectors.shape} when `num_terms` shape is {self.expansion.num_terms}."
+                f"`eigenvectors` must have shape compatible with `expansion.num_terms`, but "
+                f"got shape {self.eigenvectors.shape} when `num_terms` shape is "
+                f"{self.expansion.num_terms}."
             )
         if self.eigenvalues.shape != self.eigenvectors.shape[:-1]:
             raise ValueError(
-                f"`eigenvalues` must have compatible shape, but got shape {self.eigenvalues.shape} "
-                f"when `eigenvectors` shape is {self.eigenvectors.shape}."
+                f"`eigenvalues` must have compatible shape, but got shape "
+                f"{self.eigenvalues.shape} when `eigenvectors` shape is "
+                f"{self.eigenvectors.shape}."
             )
 
         expected_matrix_shape = self.batch_shape + (self.expansion.num_terms,) * 2
         if _incompatible(self.inverse_z_permittivity_matrix, expected_matrix_shape):
             raise ValueError(
-                f"`inverse_z_permittivity_matrix` must have shape compatible with `eigenvectors`, "
-                f"but got shapes {self.inverse_z_permittivity_matrix.shape}  and {self.eigenvectors.shape}."
+                f"`inverse_z_permittivity_matrix` must have shape compatible with "
+                f"`eigenvectors`, but got shapes {self.inverse_z_permittivity_matrix.shape} "
+                f"and {self.eigenvectors.shape}."
             )
         if _incompatible(self.z_permittivity_matrix, expected_matrix_shape):
             raise ValueError(
-                f"`z_permittivity_matrix` must have shape compatible with `eigenvectors`, but got "
-                f"shapes {self.z_permittivity_matrix.shape}  and {self.eigenvectors.shape}."
+                f"`z_permittivity_matrix` must have shape compatible with `eigenvectors`, "
+                f"but got shapes {self.z_permittivity_matrix.shape} and "
+                f"{self.eigenvectors.shape}."
             )
         if _incompatible(self.inverse_z_permeability_matrix, expected_matrix_shape):
             raise ValueError(
-                f"`inverse_z_permeability_matrix` must have shape compatible with `eigenvectors`, "
-                f"but got shapes {self.inverse_z_permeability_matrix.shape}  and {self.eigenvectors.shape}."
+                f"`inverse_z_permeability_matrix` must have shape compatible with "
+                f"`eigenvectors`, but got shapes {self.inverse_z_permeability_matrix.shape} "
+                f"and {self.eigenvectors.shape}."
             )
         if _incompatible(self.z_permeability_matrix, expected_matrix_shape):
             raise ValueError(
-                f"`z_permeability_matrix` must have shape compatible with `eigenvectors`, but got "
-                f"shapes {self.z_permeability_matrix.shape}  and {self.eigenvectors.shape}."
+                f"`z_permeability_matrix` must have shape compatible with `eigenvectors`, "
+                f"but got shapes {self.z_permeability_matrix.shape} and "
+                f"{self.eigenvectors.shape}."
             )
         if _incompatible(self.transverse_permeability_matrix, self.eigenvectors.shape):
             raise ValueError(
-                f"`transverse_permeability_matrix` must have shape compatible with `eigenvectors`, but got "
-                f"shapes {self.transverse_permeability_matrix.shape}  and {self.eigenvectors.shape}."
-            )
-        if self.omega_script_k_matrix.shape != self.eigenvectors.shape:
-            raise ValueError(
-                f"`omega_script_k_matrix` must have shape matching `eigenvectors`, but got "
-                f"shapes {self.omega_script_k_matrix.shape}  and {self.eigenvectors.shape}."
+                f"`transverse_permeability_matrix` must have shape compatible with "
+                f"`eigenvectors`, but got shapes "
+                f"{self.transverse_permeability_matrix.shape} and "
+                f"s{self.eigenvectors.shape}."
             )
 
         if self.tangent_vector_field is not None and (
             self.tangent_vector_field[0].ndim != self.eigenvectors.ndim
         ):
             raise ValueError(
-                f"`tangent_vector_field` must have ndim compatible with `eigenvectors`, but got "
-                f"shapes {self.tangent_vector_field[0]} and {self.eigenvectors}."
+                f"`tangent_vector_field` must have ndim compatible with `eigenvectors`, "
+                f"but got shapes {self.tangent_vector_field[0]} and {self.eigenvectors}."
             )
 
 
@@ -380,8 +397,10 @@ def _eigensolve_uniform_isotropic_media(
     Returns:
         The `LayerSolveResult`.
     """
-    wavelength, in_plane_wavevector, permittivity = _validate_and_broadcast(
-        wavelength, in_plane_wavevector, permittivity
+    wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity = (
+        _validate_and_broadcast(
+            wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity
+        )
     )
     if permittivity.shape[-2:] != (1, 1):
         raise ValueError(
@@ -473,8 +492,10 @@ def _eigensolve_patterned_isotropic_media(
     Returns:
         The `LayerSolveResult`.
     """
-    wavelength, in_plane_wavevector, permittivity = _validate_and_broadcast(
-        wavelength, in_plane_wavevector, permittivity
+    wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity = (
+        _validate_and_broadcast(
+            wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity
+        )
     )
     (
         inverse_z_permittivity_matrix,
@@ -550,6 +571,7 @@ def _eigensolve_uniform_general_anisotropic_media(
     (
         wavelength,
         in_plane_wavevector,
+        primitive_lattice_vectors,
         permittivity_xx,
         permittivity_xy,
         permittivity_yx,
@@ -563,6 +585,7 @@ def _eigensolve_uniform_general_anisotropic_media(
     ) = _validate_and_broadcast(
         wavelength,
         in_plane_wavevector,
+        primitive_lattice_vectors,
         *permittivities,
         *permeabilities,
     )
@@ -654,6 +677,7 @@ def _eigensolve_patterned_general_anisotropic_media(
     (
         wavelength,
         in_plane_wavevector,
+        primitive_lattice_vectors,
         permittivity_xx,
         permittivity_xy,
         permittivity_yx,
@@ -668,6 +692,7 @@ def _eigensolve_patterned_general_anisotropic_media(
     ) = _validate_and_broadcast(
         wavelength,
         in_plane_wavevector,
+        primitive_lattice_vectors,
         *permittivities,
         *permeabilities,
         vector_field_source,
@@ -1012,6 +1037,7 @@ def fourier_matrices_patterned_anisotropic_media(
 def _validate_and_broadcast(
     angular_frequency: jnp.ndarray,
     in_plane_wavevector: jnp.ndarray,
+    primitive_lattice_vectors: basis.LatticeVectors,
     *permittivities: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, ...]:
     """Validates that shapes are compatible and adds required batch dimensions."""
@@ -1028,28 +1054,42 @@ def _validate_and_broadcast(
     if not utils.batch_compatible_shapes(
         angular_frequency.shape,
         in_plane_wavevector.shape[:-1],
+        primitive_lattice_vectors.u.shape[:-1],
+        primitive_lattice_vectors.v.shape[:-1],
         permittivity.shape[:-2],
     ):
         raise ValueError(
-            f"`angular_frequency`, `in_plane_wavevector`, and `permittivity` "
-            f"must be batch-compatible, but got shapes of {angular_frequency.shape}, "
-            f"{in_plane_wavevector.shape}, and {permittivity.shape}."
+            f"`angular_frequency`, `in_plane_wavevector`, `primitive_lattice_vectors` "
+            f"and `permittivity` must be batch-compatible, but got shapes of "
+            f"{angular_frequency.shape}, {in_plane_wavevector.shape}, "
+            f"{primitive_lattice_vectors.u.shape}, {primitive_lattice_vectors.v.shape}, "
+            f"and {permittivity.shape}."
         )
 
     num_batch_dims = max(
         [
             angular_frequency.ndim,
             in_plane_wavevector.ndim - 1,
+            primitive_lattice_vectors.u.ndim - 1,
+            primitive_lattice_vectors.v.ndim - 1,
             permittivity.ndim - 2,
         ]
     )
     angular_frequency = utils.atleast_nd(angular_frequency, n=num_batch_dims)
     in_plane_wavevector = utils.atleast_nd(in_plane_wavevector, n=num_batch_dims + 1)
+    primitive_lattice_vectors = basis.LatticeVectors(
+        u=utils.atleast_nd(primitive_lattice_vectors.u, n=num_batch_dims + 1),
+        v=utils.atleast_nd(primitive_lattice_vectors.v, n=num_batch_dims + 1),
+    )
 
     permittivities = tuple(
         [utils.atleast_nd(p, n=num_batch_dims + 2) for p in permittivities]
     )
-    return (angular_frequency, in_plane_wavevector) + permittivities
+    return (
+        angular_frequency,
+        in_plane_wavevector,
+        primitive_lattice_vectors,
+    ) + permittivities
 
 
 def _select_eigenvalues_sign(eigenvalues: jnp.ndarray) -> jnp.ndarray:
