@@ -144,8 +144,14 @@ def unit_cell_coordinates(
             indexing="ij",
         )
     )
-    x = i * primitive_lattice_vectors.u[0] + j * primitive_lattice_vectors.v[0]
-    y = i * primitive_lattice_vectors.u[1] + j * primitive_lattice_vectors.v[1]
+    x = (
+        i * primitive_lattice_vectors.u[..., jnp.newaxis, jnp.newaxis, 0]
+        + j * primitive_lattice_vectors.v[..., jnp.newaxis, jnp.newaxis, 0]
+    )
+    y = (
+        i * primitive_lattice_vectors.u[..., jnp.newaxis, jnp.newaxis, 1]
+        + j * primitive_lattice_vectors.v[..., jnp.newaxis, jnp.newaxis, 1]
+    )
     return x, y
 
 
@@ -220,8 +226,12 @@ def brillouin_zone_in_plane_wavevector(
     reciprocal_vectors = primitive_lattice_vectors.reciprocal
     return jnp.stack(
         [
-            2 * jnp.pi * (i * reciprocal_vectors.u[0] + j * reciprocal_vectors.v[0]),
-            2 * jnp.pi * (i * reciprocal_vectors.u[1] + j * reciprocal_vectors.v[1]),
+            2
+            * jnp.pi
+            * (i * reciprocal_vectors.u[..., 0] + j * reciprocal_vectors.v[..., 0]),
+            2
+            * jnp.pi
+            * (i * reciprocal_vectors.u[..., 1] + j * reciprocal_vectors.v[..., 1]),
         ],
         axis=-1,
     )
@@ -244,12 +254,12 @@ def transverse_wavevectors(
     """
     reciprocal_vectors = primitive_lattice_vectors.reciprocal
     kx = in_plane_wavevector[..., 0, jnp.newaxis] + 2 * jnp.pi * (
-        expansion.basis_coefficients[:, 0] * reciprocal_vectors.u[0]
-        + expansion.basis_coefficients[:, 1] * reciprocal_vectors.v[0]
+        expansion.basis_coefficients[:, 0] * reciprocal_vectors.u[..., 0]
+        + expansion.basis_coefficients[:, 1] * reciprocal_vectors.v[..., 0]
     )
     ky = in_plane_wavevector[..., 1, jnp.newaxis] + 2 * jnp.pi * (
-        expansion.basis_coefficients[:, 0] * reciprocal_vectors.u[1]
-        + expansion.basis_coefficients[:, 1] * reciprocal_vectors.v[1]
+        expansion.basis_coefficients[:, 0] * reciprocal_vectors.u[..., 1]
+        + expansion.basis_coefficients[:, 1] * reciprocal_vectors.v[..., 1]
     )
     return jnp.stack([kx, ky], axis=-1)
 
