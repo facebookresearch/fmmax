@@ -397,7 +397,7 @@ def _eigensolve_uniform_isotropic_media(
     Returns:
         The `LayerSolveResult`.
     """
-    wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity = (
+    wavelength, in_plane_wavevector, primitive_lattice_vectors, (permittivity,) = (
         _validate_and_broadcast(
             wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity
         )
@@ -492,7 +492,7 @@ def _eigensolve_patterned_isotropic_media(
     Returns:
         The `LayerSolveResult`.
     """
-    wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity = (
+    wavelength, in_plane_wavevector, primitive_lattice_vectors, (permittivity,) = (
         _validate_and_broadcast(
             wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity
         )
@@ -572,16 +572,18 @@ def _eigensolve_uniform_general_anisotropic_media(
         wavelength,
         in_plane_wavevector,
         primitive_lattice_vectors,
-        permittivity_xx,
-        permittivity_xy,
-        permittivity_yx,
-        permittivity_yy,
-        permittivity_zz,
-        permeability_xx,
-        permeability_xy,
-        permeability_yx,
-        permeability_yy,
-        permeability_zz,
+        (
+            permittivity_xx,
+            permittivity_xy,
+            permittivity_yx,
+            permittivity_yy,
+            permittivity_zz,
+            permeability_xx,
+            permeability_xy,
+            permeability_yx,
+            permeability_yy,
+            permeability_zz,
+        ),
     ) = _validate_and_broadcast(
         wavelength,
         in_plane_wavevector,
@@ -678,17 +680,19 @@ def _eigensolve_patterned_general_anisotropic_media(
         wavelength,
         in_plane_wavevector,
         primitive_lattice_vectors,
-        permittivity_xx,
-        permittivity_xy,
-        permittivity_yx,
-        permittivity_yy,
-        permittivity_zz,
-        permeability_xx,
-        permeability_xy,
-        permeability_yx,
-        permeability_yy,
-        permeability_zz,
-        vector_field_source,
+        (
+            permittivity_xx,
+            permittivity_xy,
+            permittivity_yx,
+            permittivity_yy,
+            permittivity_zz,
+            permeability_xx,
+            permeability_xy,
+            permeability_yx,
+            permeability_yy,
+            permeability_zz,
+            vector_field_source,
+        ),
     ) = _validate_and_broadcast(
         wavelength,
         in_plane_wavevector,
@@ -1039,7 +1043,7 @@ def _validate_and_broadcast(
     in_plane_wavevector: jnp.ndarray,
     primitive_lattice_vectors: basis.LatticeVectors,
     *permittivities: jnp.ndarray,
-) -> Tuple[jnp.ndarray, ...]:
+) -> Tuple[jnp.ndarray, jnp.ndarray, basis.LatticeVectors, Tuple[jnp.ndarray, ...]]:
     """Validates that shapes are compatible and adds required batch dimensions."""
     if not in_plane_wavevector.shape[-1] == 2:
         raise ValueError(
@@ -1089,7 +1093,8 @@ def _validate_and_broadcast(
         angular_frequency,
         in_plane_wavevector,
         primitive_lattice_vectors,
-    ) + permittivities
+        permittivities,
+    )
 
 
 def _select_eigenvalues_sign(eigenvalues: jnp.ndarray) -> jnp.ndarray:
