@@ -324,7 +324,12 @@ def _filter_and_adjust_resolution(
     """Filter `x` and adjust its resolution for the given `expansion`."""
     y = fft.fft(x, expansion=expansion)
     min_shape = fft.min_array_shape_for_expansion(expansion)
-    doubled_min_shape = (2 * min_shape[0], 2 * min_shape[1])
+    assert x.ndim == 2
+    # Singleton dimensions remain singleton.
+    doubled_min_shape = (
+        min_shape[0] * (2 if x.shape[0] > 1 else 1),
+        min_shape[1] * (2 if x.shape[1] > 1 else 1),
+    )
     return fft.ifft(y, expansion=expansion, shape=doubled_min_shape)
 
 
