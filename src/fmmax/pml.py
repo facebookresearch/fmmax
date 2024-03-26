@@ -77,9 +77,9 @@ def apply_uniaxial_pml(
     permittivity_xy = jnp.zeros_like(permittivity)
     permittivity_yx = jnp.zeros_like(permittivity)
 
-    permeability_xx = sy * sz / sx
-    permeability_yy = sx * sz / sy
-    permeability_zz = sx * sy / sz
+    permeability_xx = sy * sz / sx * jnp.ones_like(permittivity)
+    permeability_yy = sx * sz / sy * jnp.ones_like(permittivity)
+    permeability_zz = sx * sy / sz * jnp.ones_like(permittivity)
     permeability_xy = jnp.zeros_like(permittivity)
     permeability_yx = jnp.zeros_like(permittivity)
 

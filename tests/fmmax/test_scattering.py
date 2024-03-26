@@ -10,6 +10,7 @@ import grcwa
 import jax
 import jax.numpy as jnp
 import numpy as onp
+from jax import tree_util
 
 from fmmax import basis, fmm, scattering
 
@@ -279,6 +280,33 @@ class ScatteringMatrixTest(unittest.TestCase):
             solve_results[4],
         ]
         result = scattering.stack_s_matrix(swapped_solve_results, thicknesses)
+
+        with self.subTest("s11"):
+            onp.testing.assert_allclose(result.s11, expected.s11)
+        with self.subTest("s12"):
+            onp.testing.assert_allclose(result.s12, expected.s12)
+        with self.subTest("s21"):
+            onp.testing.assert_allclose(result.s21, expected.s21)
+        with self.subTest("s22"):
+            onp.testing.assert_allclose(result.s22, expected.s22)
+
+    def test_scan_matches_for_loop(self):
+        solve_results = _stack_solve_result(jax.random.PRNGKey(0))
+        thicknesses = [1.0, 1.5, 2.0, 2.5, 1.0]
+
+        stacked_solve_results = tree_util.tree_unflatten(
+            tree_util.tree_structure(solve_results[0]),
+            leaves=tree_util.tree_map(
+                lambda *args: jnp.stack(args, axis=0),
+                *[tree_util.tree_leaves(s) for s in solve_results],
+            ),
+        )
+        result = scattering.stack_s_matrix_scan(
+            layer_solve_results=stacked_solve_results,
+            layer_thicknesses=jnp.asarray(thicknesses),
+        )
+
+        expected = scattering.stack_s_matrix(solve_results, thicknesses)
 
         with self.subTest("s11"):
             onp.testing.assert_allclose(result.s11, expected.s11)

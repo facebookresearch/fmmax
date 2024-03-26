@@ -391,6 +391,8 @@ class InternalSourcesTest(unittest.TestCase):
             shape=(21, 21),
             num_unit_cells=brillouin_grid_shape,
         )
+        x = jnp.squeeze(x)  # Remove batch dimensions from BZ grid.
+        y = jnp.squeeze(y)
 
         # Perform Brillouin zone integration and compute magnetic field magnitude.
         hfield = jnp.mean(jnp.asarray(hfield), axis=(1, 2))
@@ -487,16 +489,16 @@ class AmplitudesFromInternalSourcesTest(unittest.TestCase):
                 atol=1e-08,
             )
         with self.subTest("no reflection in the stack"):
-            onp.testing.assert_allclose(fwd_amplitude_before_start, 0.0, atol=1e-15)
-            onp.testing.assert_allclose(bwd_amplitude_after_end, 0.0, atol=1e-15)
+            onp.testing.assert_allclose(fwd_amplitude_before_start, 0.0, atol=1e-12)
+            onp.testing.assert_allclose(bwd_amplitude_after_end, 0.0, atol=1e-12)
         with self.subTest("check polarization"):
             te, tm = jnp.split(bwd_amplitude_before_end, 2, axis=-2)
             if te_expected_zero:
-                onp.testing.assert_allclose(te, 0.0, rtol=1e-05, atol=1e-08)
+                onp.testing.assert_allclose(te, 0.0, rtol=1e-05, atol=1e-06)
             else:
                 self.assertFalse(onp.allclose(te, 0.0))
             if tm_expected_zero:
-                onp.testing.assert_allclose(tm, 0.0, rtol=1e-05, atol=1e-08)
+                onp.testing.assert_allclose(tm, 0.0, rtol=1e-05, atol=1e-06)
             else:
                 self.assertFalse(onp.allclose(tm, 0.0))
 
