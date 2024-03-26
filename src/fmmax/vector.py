@@ -12,7 +12,9 @@ import jax.numpy as jnp
 
 from fmmax import basis, fft, utils
 
-_ATOL_ANGLE = 1e-4
+# Absolute tolerance for detecting whether a field is 1D. If the angle of the field at
+# every point differs by less than this value from a reference value, the field is 1D.
+_ATOL_1D_FIELD_ANGLE = 1e-2
 
 
 def compute_field_jones_direct(
@@ -335,12 +337,15 @@ def _is_1d_field(field: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     magnitude = jnp.squeeze(_field_magnitude(field), axis=-1)
     is_1d = jnp.all(
         jnp.isclose(magnitude, 0.0)
-        | jnp.isclose(angle, ref_angle - 2 * jnp.pi, atol=_ATOL_ANGLE)
-        | jnp.isclose(angle, ref_angle - 1 * jnp.pi, atol=_ATOL_ANGLE)
-        | jnp.isclose(angle, ref_angle, atol=_ATOL_ANGLE)
-        | jnp.isclose(angle, ref_angle + 1 * jnp.pi, atol=_ATOL_ANGLE)
-        | jnp.isclose(angle, ref_angle + 2 * jnp.pi, atol=_ATOL_ANGLE)
+        | jnp.isclose(angle, ref_angle - 2 * jnp.pi, atol=_ATOL_1D_FIELD_ANGLE)
+        | jnp.isclose(angle, ref_angle - 1 * jnp.pi, atol=_ATOL_1D_FIELD_ANGLE)
+        | jnp.isclose(angle, ref_angle, atol=_ATOL_1D_FIELD_ANGLE)
+        | jnp.isclose(angle, ref_angle + 1 * jnp.pi, atol=_ATOL_1D_FIELD_ANGLE)
+        | jnp.isclose(angle, ref_angle + 2 * jnp.pi, atol=_ATOL_1D_FIELD_ANGLE)
     )
+    # If one of the spatial dimensions is a singleton, the field is automatically 1D.
+    assert field.ndim == 3
+    is_1d = is_1d | (field.shape[0] == 1) | (field.shape[1] == 1)
     return is_1d, ref_angle
 
 
