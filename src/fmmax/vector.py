@@ -214,7 +214,7 @@ def _compute_tangent_field_no_batch(
     # Provide a dummy gradient for the 1D case, which avoids possible nans in the
     # Newton solve below. The tangent vector field will be manually specified.
     is_1d, grad_angle = _is_1d_field(grad)
-    dummy_grad = jnp.broadcast_to(jnp.asarray([1, 0], dtype=complex), grad.shape)
+    dummy_grad = jnp.broadcast_to(jnp.asarray([1, 1], dtype=complex), grad.shape)
     grad = jnp.where(is_1d, dummy_grad, grad)
 
     # Compute the target field with which the tangent field should be aligned.
