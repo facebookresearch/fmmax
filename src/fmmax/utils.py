@@ -159,10 +159,8 @@ def _eig_bwd(
     eigenvalues, eigenvectors, eps = res
     grad_eigenvalues, grad_eigenvectors = grads
 
-    # Compute the F-matrix, from equation 5 of [2021 Colburn]. This applies a
-    # Lorentzian broadening to the matrix `f = 1 / (eigenvalues[i].conj -
-    # eigenvalues[j])`. Note that our implementation here differs both from the
-    # code and the paper.
+    # Compute the broadened F-matrix. The expression is similar to that of equation 5
+    # from [2021 Colburn], but differs slightly from both the code and paper.
     # TODO: derive the proper expression for broadened F-matrix.
     eigenvalues_i = eigenvalues[..., jnp.newaxis, :]
     eigenvalues_j = eigenvalues[..., :, jnp.newaxis]
