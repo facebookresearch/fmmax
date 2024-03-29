@@ -4,7 +4,7 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
 import dataclasses
-from typing import Any, Sequence, Tuple
+from typing import Sequence, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -350,12 +350,12 @@ def _extend_s_matrix(
     #     omega_k @ phi,
     #     next_omega_k @ next_phi * (1 / next_q)[..., jnp.newaxis, :],
     # )
-    term1 = utils.diag(q) @ utils.solve(
+    term1 = utils.diag(q) @ jnp.linalg.solve(
         omega_k @ phi,
         next_omega_k @ next_phi @ utils.diag(1 / next_q),
     )
     # term2 = phi_T @ omega_k @ next_phi
-    term2 = utils.solve(omega_k @ phi, omega_k @ next_phi)
+    term2 = jnp.linalg.solve(omega_k @ phi, omega_k @ next_phi)
     i11 = i22 = 0.5 * (term1 + term2)
     i12 = i21 = 0.5 * (-term1 + term2)
 
@@ -370,9 +370,9 @@ def _extend_s_matrix(
 
     # s11_next = inv(i11 - diag(fd) @ s12 @ i21) @ diag(fd) @ s11
     term3 = i11 - fd @ s12 @ i21
-    s11_next = utils.solve(term3, fd @ s11)
+    s11_next = jnp.linalg.solve(term3, fd @ s11)
     # s12_next = inv(i11 - diag(fd) @ s12 @ i21) @ (diag(fd) @ s12 @ i22 - i12) @ diag(fd_next)
-    s12_next = utils.solve(term3, (fd @ s12 @ i22 - i12) @ fd_next)
+    s12_next = jnp.linalg.solve(term3, (fd @ s12 @ i22 - i12) @ fd_next)
     s21_next = s22 @ i21 @ s11_next + s21
     # s22_next = s22 @ i21 @ s12_next + s22 @ i22 @ diag(fd_next)
     s22_next = s22 @ i21 @ s12_next + s22 @ i22 @ fd_next

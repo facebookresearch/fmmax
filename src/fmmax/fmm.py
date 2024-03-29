@@ -397,10 +397,13 @@ def _eigensolve_uniform_isotropic_media(
     Returns:
         The `LayerSolveResult`.
     """
-    wavelength, in_plane_wavevector, primitive_lattice_vectors, (permittivity,) = (
-        _validate_and_broadcast(
-            wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity
-        )
+    (
+        wavelength,
+        in_plane_wavevector,
+        primitive_lattice_vectors,
+        (permittivity,),
+    ) = _validate_and_broadcast(
+        wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity
     )
     if permittivity.shape[-2:] != (1, 1):
         raise ValueError(
@@ -492,10 +495,13 @@ def _eigensolve_patterned_isotropic_media(
     Returns:
         The `LayerSolveResult`.
     """
-    wavelength, in_plane_wavevector, primitive_lattice_vectors, (permittivity,) = (
-        _validate_and_broadcast(
-            wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity
-        )
+    (
+        wavelength,
+        in_plane_wavevector,
+        primitive_lattice_vectors,
+        (permittivity,),
+    ) = _validate_and_broadcast(
+        wavelength, in_plane_wavevector, primitive_lattice_vectors, permittivity
     )
     (
         inverse_z_permittivity_matrix,

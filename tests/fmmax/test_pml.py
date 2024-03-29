@@ -99,7 +99,11 @@ class GaussianBeamInPMLDecayTest(unittest.TestCase):
                     1j
                     * (
                         (k * z)  # Phase
-                        + k * r**2 / 2 * z / (z**2 + z_r**2)  # Wavefront curvature
+                        + k
+                        * r**2
+                        / 2
+                        * z
+                        / (z**2 + z_r**2)  # Wavefront curvature
                         - jnp.arctan(z / z_r)  # Gouy phase
                     )
                 )

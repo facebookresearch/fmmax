@@ -366,9 +366,9 @@ class InternalSourcesTest(unittest.TestCase):
             expansion=EXPANSION,
             formulation=fmm.Formulation.FFT,
         )
-        s_matrices_before_source = s_matrices_after_source = (
-            scattering.stack_s_matrices_interior([layer_solve_result], [1.0])
-        )
+        s_matrices_before_source = (
+            s_matrices_after_source
+        ) = scattering.stack_s_matrices_interior([layer_solve_result], [1.0])
         s_matrix_before_source = s_matrices_before_source[-1][0]
         s_matrix_after_source = s_matrices_after_source[-1][0]
         bwd_amplitude_ambient_end, *_ = sources.amplitudes_for_source(
