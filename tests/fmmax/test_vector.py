@@ -680,3 +680,33 @@ class SchemesTest(unittest.TestCase):
         )
         grad = jax.grad(_loss_fn)(arr)
         self.assertFalse(onp.any(onp.isnan(grad)))
+
+    def test_permittivity_with_singleton(self):
+        # Manually create expansion for a 1D permittivity.
+        nmax = 150
+        ix = onp.zeros((2 * nmax + 1,), dtype=int)
+        ix[1::2] = -onp.arange(1, nmax + 1, dtype=int)
+        ix[2::2] = onp.arange(1, nmax + 1, dtype=int)
+        assert tuple(ix[:5].tolist()) == (0, -1, 1, -2, 2)
+        expansion = basis.Expansion(
+            basis_coefficients=onp.stack([ix, onp.zeros_like(ix)], axis=-1)
+        )
+
+        primitive_lattice_vectors = basis.LatticeVectors(
+            u=basis.X * 10,
+            v=basis.Y,
+        )
+        arr = jax.random.uniform(jax.random.PRNGKey(0), (30, 1)) > 0.5
+        arr = jnp.kron(arr, jnp.ones((20, 1))).astype(float)
+
+        field = vector._compute_tangent_field_no_batch(
+            arr=arr,
+            expansion=expansion,
+            primitive_lattice_vectors=primitive_lattice_vectors,
+            use_jones_direct=True,
+            fourier_loss_weight=0.05,
+            smoothness_loss_weight=0.0,
+            steps=1,
+        )
+
+        self.assertFalse(jnp.any(jnp.isnan(field)))

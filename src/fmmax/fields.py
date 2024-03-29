@@ -428,8 +428,8 @@ def fields_on_grid(
     ky = layer_solve_result.in_plane_wavevector[..., 1, jnp.newaxis, jnp.newaxis]
     phase = jnp.exp(1j * (kx * x + ky * y))[..., jnp.newaxis]
     assert (
-        x.shape
-        == y.shape
+        x.shape[-2:]
+        == y.shape[-2:]
         == (shape[0] * num_unit_cells[0], shape[1] * num_unit_cells[1])
     )
 
