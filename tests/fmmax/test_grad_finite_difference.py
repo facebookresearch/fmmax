@@ -24,11 +24,11 @@ def gaussian_permittivity_fn(x0, y0, dim):
 class FiniteDifferenceGradientTest(unittest.TestCase):
     @parameterized.expand(
         [
-            (fmm.Formulation.FFT, 1e-2),
+            (fmm.Formulation.FFT, 3e-3),
             (fmm.Formulation.JONES_DIRECT, 1e-2),
             (fmm.Formulation.JONES_DIRECT_FOURIER, 1e-2),
             (fmm.Formulation.POL, 2e-2),
-            (fmm.Formulation.POL_FOURIER, 3e-2),
+            (fmm.Formulation.POL_FOURIER, 2e-2),
         ]
     )
     def test_gradient_matches_expected(self, formulation, rtol):

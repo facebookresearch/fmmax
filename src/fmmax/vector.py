@@ -11,7 +11,9 @@ import jax.numpy as jnp
 
 from fmmax import basis, fft, utils
 
-_ATOL_ANGLE = 1e-4
+# Absolute tolerance for detecting whether a field is 1D. If the angle of the field at
+# every point differs by less than this value from a reference value, the field is 1D.
+_ATOL_1D_FIELD_ANGLE = 1e-2
 
 
 def compute_field_jones_direct(
@@ -211,7 +213,7 @@ def _compute_tangent_field_no_batch(
     # Provide a dummy gradient for the 1D case, which avoids possible nans in the
     # Newton solve below. The tangent vector field will be manually specified.
     is_1d, grad_angle = _is_1d_field(grad)
-    dummy_grad = jnp.broadcast_to(jnp.asarray([1, 0], dtype=complex), grad.shape)
+    dummy_grad = jnp.broadcast_to(jnp.asarray([1, 1], dtype=complex), grad.shape)
     grad = jnp.where(is_1d, dummy_grad, grad)
 
     # Compute the target field with which the tangent field should be aligned.
@@ -321,7 +323,12 @@ def _filter_and_adjust_resolution(
     """Filter `x` and adjust its resolution for the given `expansion`."""
     y = fft.fft(x, expansion=expansion)
     min_shape = fft.min_array_shape_for_expansion(expansion)
-    doubled_min_shape = (2 * min_shape[0], 2 * min_shape[1])
+    assert x.ndim == 2
+    # Singleton dimensions remain singleton.
+    doubled_min_shape = (
+        min_shape[0] * (2 if x.shape[0] > 1 else 1),
+        min_shape[1] * (2 if x.shape[1] > 1 else 1),
+    )
     return fft.ifft(y, expansion=expansion, shape=doubled_min_shape)
 
 
@@ -334,12 +341,15 @@ def _is_1d_field(field: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     magnitude = jnp.squeeze(_field_magnitude(field), axis=-1)
     is_1d = jnp.all(
         jnp.isclose(magnitude, 0.0)
-        | jnp.isclose(angle, ref_angle - 2 * jnp.pi, atol=_ATOL_ANGLE)
-        | jnp.isclose(angle, ref_angle - 1 * jnp.pi, atol=_ATOL_ANGLE)
-        | jnp.isclose(angle, ref_angle, atol=_ATOL_ANGLE)
-        | jnp.isclose(angle, ref_angle + 1 * jnp.pi, atol=_ATOL_ANGLE)
-        | jnp.isclose(angle, ref_angle + 2 * jnp.pi, atol=_ATOL_ANGLE)
+        | jnp.isclose(angle, ref_angle - 2 * jnp.pi, atol=_ATOL_1D_FIELD_ANGLE)
+        | jnp.isclose(angle, ref_angle - 1 * jnp.pi, atol=_ATOL_1D_FIELD_ANGLE)
+        | jnp.isclose(angle, ref_angle, atol=_ATOL_1D_FIELD_ANGLE)
+        | jnp.isclose(angle, ref_angle + 1 * jnp.pi, atol=_ATOL_1D_FIELD_ANGLE)
+        | jnp.isclose(angle, ref_angle + 2 * jnp.pi, atol=_ATOL_1D_FIELD_ANGLE)
     )
+    # If one of the spatial dimensions is a singleton, the field is automatically 1D.
+    assert field.ndim == 3
+    is_1d = is_1d | (field.shape[0] == 1) | (field.shape[1] == 1)
     return is_1d, ref_angle
 
 

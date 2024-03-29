@@ -201,8 +201,9 @@ def stack_s_matrix_scan(
     assert layer_thicknesses.ndim == 1
     if layer_solve_results.batch_shape[0] != len(layer_thicknesses):
         raise ValueError(
-            f"`layer_solve_results` and `layer_thicknesses` should have the same "
-            f"length but got {len(layer_solve_results)} and {len(layer_thicknesses)}."
+            f"`layer_solve_results` and `layer_thicknesses` should be compatible (i.e. "
+            f"correspond to the same number of layers) but inferred layer numbers of "
+            f"{layer_solve_results.batch_shape[0]} and {layer_thicknesses.shape[0]}."
         )
 
     eye = utils.diag(jnp.ones(layer_solve_results.eigenvalues.shape[1:], dtype=complex))
