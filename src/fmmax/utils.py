@@ -20,17 +20,6 @@ def diag(x: jnp.ndarray) -> jnp.ndarray:
     return y.at[..., i, i].set(x)
 
 
-def solve(a: jnp.ndarray, b: jnp.ndarray) -> jnp.ndarray:
-    """A limited version of `linalg.solve` that has no batch dependency."""
-    # See https://github.com/google/jax/issues/20047
-    assert a.shape == b.shape
-    m = a.shape[-1]
-    a_flat = a.reshape((-1, m, m))
-    b_flat = b.reshape((-1, m, m))
-    results = [jnp.linalg.solve(af, bf) for af, bf in zip(a_flat, b_flat, strict=True)]
-    return jnp.asarray(results).reshape(a.shape)
-
-
 def angular_frequency_for_wavelength(wavelength: jnp.ndarray) -> jnp.ndarray:
     """Returns the angular frequency for the specified wavelength."""
     return 2 * jnp.pi / wavelength  # Since by our convention c == 1.
@@ -133,8 +122,6 @@ def eig(matrix: jnp.ndarray, eps: float = EPS_EIG) -> Tuple[jnp.ndarray, jnp.nda
 
 def _eig_host(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Wraps jnp.linalg.eig so that it can be jit-ed on a machine with GPUs."""
-    eigenvalues_shape = jax.ShapeDtypeStruct(matrix.shape[:-1], complex)
-    eigenvectors_shape = jax.ShapeDtypeStruct(matrix.shape, complex)
 
     def _eig_cpu(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
         # We force this computation to be performed on the cpu by jit-ing and
@@ -200,7 +187,7 @@ def _eig_bwd(
         * (eigenvectors_H @ eigenvectors)
         @ jnp.where(eye_mask, jnp.real(eigenvectors_H @ grad_eigenvectors_conj), 0.0)
     ) @ eigenvectors_H
-    grad_matrix = solve(eigenvectors_H, rhs)
+    grad_matrix = jnp.linalg.solve(eigenvectors_H, rhs)
 
     # Take the conjugate of the gradient, reverting to the jax convention
     # where gradients are with respect to complex parameters.
