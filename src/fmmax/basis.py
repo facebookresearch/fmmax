@@ -64,7 +64,7 @@ class Expansion:
     basis_coefficients: onp.ndarray
 
     def __post_init__(self) -> None:
-        if self.basis_coefficients.ndim != 2 or self.basis_coefficients.shape[-1] != 2:
+        if self.basis_coefficients.shape[-1] != 2:
             raise ValueError(
                 f"`basis_coefficients` must have shape `(num, 2)` but got "
                 f"{self.basis_coefficients.shape}."
@@ -117,7 +117,7 @@ def generate_expansion(
 
 def reciprocal(lattice_vectors: LatticeVectors) -> LatticeVectors:
     """Computes the reciprocal vectors for the `basis`."""
-    cross_product = _cross_product(lattice_vectors.u, lattice_vectors.v)
+    cross_product = _cross_product(lattice_vectors.u, lattice_vectors.v)[...,jnp.newaxis]
     uprime = (
         jnp.stack([lattice_vectors.v[..., 1], -lattice_vectors.v[..., 0]], axis=-1)
         / cross_product
@@ -254,12 +254,12 @@ def transverse_wavevectors(
     """
     reciprocal_vectors = primitive_lattice_vectors.reciprocal
     kx = in_plane_wavevector[..., 0, jnp.newaxis] + 2 * jnp.pi * (
-        expansion.basis_coefficients[:, 0] * reciprocal_vectors.u[..., 0]
-        + expansion.basis_coefficients[:, 1] * reciprocal_vectors.v[..., 0]
+        expansion.basis_coefficients[..., 0] * reciprocal_vectors.u[..., 0, jnp.newaxis]
+        + expansion.basis_coefficients[..., 1] * reciprocal_vectors.v[..., 0, jnp.newaxis]
     )
     ky = in_plane_wavevector[..., 1, jnp.newaxis] + 2 * jnp.pi * (
-        expansion.basis_coefficients[:, 0] * reciprocal_vectors.u[..., 1]
-        + expansion.basis_coefficients[:, 1] * reciprocal_vectors.v[..., 1]
+        expansion.basis_coefficients[..., 0] * reciprocal_vectors.u[..., 1, jnp.newaxis]
+        + expansion.basis_coefficients[..., 1] * reciprocal_vectors.v[..., 1, jnp.newaxis]
     )
     return jnp.stack([kx, ky], axis=-1)
 
@@ -314,14 +314,18 @@ def _basis_coefficients_circular(
         / onp.pi
     )
     mask = magnitude < max_magnitude
+    G1 = jnp.broadcast_to(G1, mask.shape)
+    G2 = jnp.broadcast_to(G2, mask.shape)
+    mask = jnp.squeeze(magnitude < max_magnitude)
 
-    G1 = G1[mask]
-    G2 = G2[mask]
-    magnitude = magnitude[mask]
+    G1 = G1[...,mask]
+    G2 = G2[...,mask]
+
+    magnitude = magnitude[...,mask]
     G = onp.stack([G1, G2], axis=-1)
-
-    order = onp.argsort(magnitude)
-    return G[..., order, :]
+    
+    order = jnp.squeeze(onp.argsort(magnitude))
+    return G[...,order, :]
 
 
 def _basis_coefficients_parallelogramic(

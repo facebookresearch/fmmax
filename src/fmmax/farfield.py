@@ -370,8 +370,9 @@ def unflatten(flat: jnp.ndarray, expansion: basis.Expansion) -> jnp.ndarray:
     assert flat.ndim >= 3
     assert flat.shape[-1] == expansion.num_terms
 
-    i = expansion.basis_coefficients[:, 0]
-    j = expansion.basis_coefficients[:, 1]
+    # Eliminate any leading dimensions that may be used for shard broadcasting.
+    i = jnp.squeeze(expansion.basis_coefficients[..., 0])
+    j = jnp.squeeze(expansion.basis_coefficients[..., 1])
 
     batch_shape = flat.shape[:-3]
     bz_grid_shape = flat.shape[-3:-1]
