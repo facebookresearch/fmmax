@@ -52,7 +52,9 @@ def _standard_toeplitz_indices(expansion: basis.Expansion) -> jnp.ndarray:
         indexing="ij",
     )
     basis_coefficients = jnp.asarray(expansion.basis_coefficients)
-    idx = basis_coefficients[i, :] - basis_coefficients[j, :]
+    idx = jnp.squeeze(basis_coefficients[..., i, :]) - jnp.squeeze(
+        basis_coefficients[..., j, :]
+    )
     return idx
 
 
@@ -80,7 +82,10 @@ def fft(
     trailing_dims = len(x.shape[axes[1] + 1 :])
     slices = (
         [slice(None)] * leading_dims
-        + [expansion.basis_coefficients[:, 0], expansion.basis_coefficients[:, 1]]
+        + [
+            jnp.squeeze(expansion.basis_coefficients[..., 0]),
+            jnp.squeeze(expansion.basis_coefficients[..., 1]),
+        ]
         + [slice(None)] * trailing_dims
     )
     return x_fft[tuple(slices)]
@@ -115,7 +120,10 @@ def ifft(
     trailing_dims = len(y.shape[axis + 1 :])
     slices = (
         [slice(None)] * leading_dims
-        + [expansion.basis_coefficients[:, 0], expansion.basis_coefficients[:, 1]]
+        + [
+            jnp.squeeze(expansion.basis_coefficients[..., 0]),
+            jnp.squeeze(expansion.basis_coefficients[..., 1]),
+        ]
         + [slice(None)] * trailing_dims
     )
 
@@ -141,6 +149,6 @@ def min_array_shape_for_expansion(expansion: basis.Expansion) -> Tuple[int, int]
     """Returns the minimum allowed shape for an array to be expanded."""
     with jax.ensure_compile_time_eval():
         return (
-            int(2 * max(abs(expansion.basis_coefficients[:, 0])) + 1),
-            int(2 * max(abs(expansion.basis_coefficients[:, 1])) + 1),
+            int(2 * max(abs(jnp.squeeze(expansion.basis_coefficients[..., 0]))) + 1),
+            int(2 * max(abs(jnp.squeeze(expansion.basis_coefficients[..., 1]))) + 1),
         )
