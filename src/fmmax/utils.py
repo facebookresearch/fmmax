@@ -129,7 +129,10 @@ def _eig_host(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
         # We force this computation to be performed on the cpu by jit-ing and
         # explicitly specifying the device.
         with jax.default_device(jax.devices("cpu")[0]):
-            return jax.jit(jnp.linalg.eig)(matrix)
+            eigenvalues, eigenvectors = onp.linalg.eig(matrix)
+            eigenvalues = jnp.array(eigenvalues, dtype=complex)
+            eigenvectors = jnp.array(eigenvectors, dtype=complex)
+            return eigenvalues, eigenvectors
 
     return jax.pure_callback(
         _eig_cpu,
@@ -147,9 +150,7 @@ def _eig_fwd(
     eps: float,
 ) -> Tuple[Tuple[jnp.ndarray, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray, float]]:
     """Implements the forward calculation for `eig`."""
-    eigenvalues, eigenvectors = onp.linalg.eig(matrix)
-    eigenvalues = jnp.array(eigenvalues, dtype=complex)
-    eigenvectors = jnp.array(eigenvectors, dtype=complex)
+    eigenvalues, eigenvectors = _eig_host(matrix)
     return (eigenvalues, eigenvectors), (eigenvalues, eigenvectors, eps)
 
 
