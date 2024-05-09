@@ -147,7 +147,9 @@ def _eig_fwd(
     eps: float,
 ) -> Tuple[Tuple[jnp.ndarray, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray, float]]:
     """Implements the forward calculation for `eig`."""
-    eigenvalues, eigenvectors = _eig_host(matrix)
+    eigenvalues, eigenvectors = onp.linalg.eig(matrix)
+    eigenvalues = jnp.array(eigenvalues, dtype=complex)
+    eigenvectors = jnp.array(eigenvectors, dtype=complex)
     return (eigenvalues, eigenvectors), (eigenvalues, eigenvectors, eps)
 
 
