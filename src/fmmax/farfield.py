@@ -371,16 +371,16 @@ def unflatten(flat: jnp.ndarray, expansion: basis.Expansion) -> jnp.ndarray:
     assert flat.shape[-1] == expansion.num_terms
 
     # Eliminate any leading dimensions that may be used for shard broadcasting.
-    i = jnp.squeeze(expansion.basis_coefficients[..., 0])
-    j = jnp.squeeze(expansion.basis_coefficients[..., 1])
+    i = onp.squeeze(expansion.basis_coefficients[..., 0])
+    j = onp.squeeze(expansion.basis_coefficients[..., 1])
 
     batch_shape = flat.shape[:-3]
     bz_grid_shape = flat.shape[-3:-1]
 
     # The shape of the output array shoudl accomodate all `(i, j)` values.
     shape = batch_shape + (
-        (max(i) - min(i) + 1) * bz_grid_shape[0],
-        (max(j) - min(j) + 1) * bz_grid_shape[1],
+        (onp.max(i) - onp.min(i) + 1) * bz_grid_shape[0],
+        (onp.max(j) - onp.min(j) + 1) * bz_grid_shape[1],
     )
 
     bz_i, bz_j = onp.meshgrid(
@@ -389,8 +389,8 @@ def unflatten(flat: jnp.ndarray, expansion: basis.Expansion) -> jnp.ndarray:
         indexing="ij",
     )
 
-    offset_i = min(i) * bz_grid_shape[0]
-    offset_j = min(j) * bz_grid_shape[1]
+    offset_i = onp.min(i) * bz_grid_shape[0]
+    offset_j = onp.min(j) * bz_grid_shape[1]
 
     merged_i = i * bz_grid_shape[0] + bz_i[..., onp.newaxis] - offset_i
     merged_j = j * bz_grid_shape[1] + bz_j[..., onp.newaxis] - offset_j
