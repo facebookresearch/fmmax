@@ -183,13 +183,13 @@ def plane_wave_in_plane_wavevector(
         angular_frequency
         * jnp.sin(polar_angle)
         * jnp.cos(azimuthal_angle)
-        * jnp.sqrt(permittivity)
+        * jnp.sqrt(permittivity.real)
     )
     ky0 = (
         angular_frequency
         * jnp.sin(polar_angle)
         * jnp.sin(azimuthal_angle)
-        * jnp.sqrt(permittivity)
+        * jnp.sqrt(permittivity.real)
     )
     return jnp.stack([kx0, ky0], axis=-1)
 
