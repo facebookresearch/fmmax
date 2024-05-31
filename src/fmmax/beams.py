@@ -66,14 +66,14 @@ def shifted_rotated_fields(
     # which, when rotated as specified, give us the locations `(x, y, z)`.
     assert x.shape == y.shape == z.shape
     coords = jnp.stack([x, y, z], axis=-1)
-    rotated_coords = jnp.linalg.solve(mat, coords)
+    rotated_coords = jnp.linalg.solve(mat, coords[..., jnp.newaxis])[..., 0]
     rotated_coords = jnp.split(rotated_coords, 3, axis=-1)
     xf, yf, zf = [jnp.squeeze(r, axis=-1) for r in rotated_coords]
 
     # Solve for the rotated origin.
     origin = jnp.stack([beam_origin_x, beam_origin_y, beam_origin_z], axis=-1)
     origin = jnp.expand_dims(origin, range(0, mat.ndim - 2))
-    rotated_origin = jnp.linalg.solve(mat, origin)
+    rotated_origin = jnp.linalg.solve(mat, origin[..., jnp.newaxis])[..., 0]
     assert rotated_origin.size == 3
     rotated_origin = jnp.split(rotated_origin, 3, axis=-1)
     xf0, yf0, zf0 = [jnp.squeeze(r) for r in rotated_origin]
