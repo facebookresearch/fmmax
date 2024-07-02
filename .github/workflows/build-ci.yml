@@ -72,7 +72,7 @@ jobs:
             pip install "numpy<2"
             pip install ".[tests,dev]"
       - name: Test fmmax
-        run: pytest tests/fmmax
+        run: pytest tests/grcwa
 
   test-examples:
     runs-on: ubuntu-latest
