@@ -71,7 +71,7 @@ jobs:
             python -m pip install --upgrade pip
             pip install "numpy<2"
             pip install ".[tests,dev]"
-      - name: Test fmmax
+      - name: Test grcwa
         run: pytest tests/grcwa
 
   test-examples:
