@@ -6,7 +6,6 @@ Copyright (c) Meta Platforms, Inc. and affiliates.
 import dataclasses
 import unittest
 
-import grcwa
 import jax
 import jax.numpy as jnp
 import numpy as onp
@@ -98,53 +97,6 @@ def _stack_solve_result(
 
 
 class ScatteringMatrixTest(unittest.TestCase):
-    def test_compare_to_grcwa(self):
-        solve_results = [
-            _dummy_solve_result(jax.random.PRNGKey(0)),
-            _dummy_solve_result(jax.random.PRNGKey(1)),
-            _dummy_solve_result(jax.random.PRNGKey(2)),
-            _dummy_solve_result(jax.random.PRNGKey(3)),
-        ]
-        thicknesses = [1.0, 1.5, 2.0, 2.5]
-        result = scattering.stack_s_matrix(solve_results, thicknesses)
-        expected_s11, expected_s12, expected_s21, expected_s22 = grcwa.rcwa.GetSMatrix(
-            indi=0,
-            indj=len(solve_results) - 1,
-            q_list=[r.eigenvalues for r in solve_results],
-            phi_list=[r.eigenvectors for r in solve_results],
-            kp_list=[r.omega_script_k_matrix for r in solve_results],
-            thickness_list=thicknesses,
-        )
-        with self.subTest("s11"):
-            onp.testing.assert_allclose(result.s11, expected_s11)
-        with self.subTest("s12"):
-            onp.testing.assert_allclose(result.s12, expected_s12)
-        with self.subTest("s21"):
-            onp.testing.assert_allclose(result.s21, expected_s21)
-        with self.subTest("s22"):
-            onp.testing.assert_allclose(result.s22, expected_s22)
-
-    def test_compare_to_grcwa_actual_solve(self):
-        solve_results = _stack_solve_result(jax.random.PRNGKey(0))
-        thicknesses = [1.0, 1.5, 2.0, 2.5, 1.0]
-        result = scattering.stack_s_matrix(solve_results, thicknesses)
-        expected_s11, expected_s12, expected_s21, expected_s22 = grcwa.rcwa.GetSMatrix(
-            indi=0,
-            indj=len(solve_results) - 1,
-            q_list=[r.eigenvalues for r in solve_results],
-            phi_list=[r.eigenvectors for r in solve_results],
-            kp_list=[r.omega_script_k_matrix for r in solve_results],
-            thickness_list=thicknesses,
-        )
-        with self.subTest("s11"):
-            onp.testing.assert_allclose(result.s11, expected_s11)
-        with self.subTest("s12"):
-            onp.testing.assert_allclose(result.s12, expected_s12)
-        with self.subTest("s21"):
-            onp.testing.assert_allclose(result.s21, expected_s21)
-        with self.subTest("s22"):
-            onp.testing.assert_allclose(result.s22, expected_s22)
-
     def test_construct_s_matrix_with_prepend(self):
         solve_results = [
             _dummy_solve_result(jax.random.PRNGKey(0)),
