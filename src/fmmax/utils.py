@@ -9,6 +9,9 @@ import jax
 import jax.numpy as jnp
 import numpy as onp
 
+from jax.experimental import mesh_utils
+from jax.sharding import PositionalSharding
+
 EPS_EIG = 1e-6
 
 
@@ -198,3 +201,36 @@ def _eig_bwd(
 
 
 eig.defvjp(_eig_fwd, _eig_bwd)
+
+# -----------------------------------------------------------------------------
+# Functions related to a multi-device computation (e.g. sharding)
+# -----------------------------------------------------------------------------
+
+
+def _shard_wrapper(
+    x: jnp.ndarray, sharding: PositionalSharding, device_axis: int, num_devices: int
+) -> jnp.asarray:
+    """"""
+    x = jnp.asarray(x)
+
+    # We want to replicate scalars and other "non-batchable" quantities like
+    if x.ndim < 3:
+        return jax.device_put(x, device=sharding.replicate(axis=0, keepdims=True))
+
+    shard_shape = [
+        1,
+    ] * x.ndim
+    shard_shape[device_axis] = num_devices
+    x = jnp.broadcast_to(x, [max(d, s) for d, s in zip(x.shape, shard_shape)])
+    return jax.device_put(x, device=sharding.reshape(shard_shape))
+
+
+def shard_structure(x, num_devices):
+    """"""
+    # Only shard if we request enough devices
+    if num_devices <= 1:
+        return x
+
+    return jax.tree_util.tree_map(
+        lambda _x: _shard_wrapper(_x, _sharding, _gpu_batch_axis, _num_gpus), x
+    )
