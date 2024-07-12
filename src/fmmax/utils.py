@@ -7,9 +7,9 @@ from typing import Tuple
 
 import jax
 import jax.numpy as jnp
-import numpy as onp
 
-EPS_EIG = 1e-6
+EIG_EPS_RELATIVE = 1e-12
+EIG_EPS_MINIMUM = 1e-24
 
 
 def diag(x: jnp.ndarray) -> jnp.ndarray:
@@ -97,26 +97,29 @@ def interpolate_permittivity(
 
 
 @jax.custom_vjp
-def eig(matrix: jnp.ndarray, eps: float = EPS_EIG) -> Tuple[jnp.ndarray, jnp.ndarray]:
+def eig(
+    matrix: jnp.ndarray,
+    eps_relative: float = EIG_EPS_RELATIVE,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Wraps `jnp.linalg.eig` in a jit-compatible, differentiable manner.
 
     The custom vjp allows gradients with resepct to the eigenvectors, unlike the
     standard jax implementation of `eig`. We use an expression for the gradient
-    given in [2019 Boeddeker] along with a regularization scheme used in [2021
-    Colburn]. The method effectively applies a Lorentzian broadening to a term
-    containing the inverse difference of eigenvalues.
+    given in [2019 Boeddeker] along with a regularization scheme that applies
+    a Lorentzian broadening to a term containing the inverse difference of
+    eigenvalues. The broadening is related to the maximum magnitude of the
+    eigenvalues.
 
     [2019 Boeddeker] https://arxiv.org/abs/1701.00392
-    [2021 Coluburn] https://www.nature.com/articles/s42005-021-00568-6
 
     Args:
         matrix: The matrix for which eigenvalues and eigenvectors are sought.
-        eps: Parameter which determines the degree of broadening.
+        eps_relative: Parameter which determines the degree of broadening.
 
     Returns:
         The eigenvalues and eigenvectors.
     """
-    del eps
+    del eps_relative
     return _eig_host(matrix)
 
 
@@ -142,11 +145,11 @@ def _eig_host(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
 
 def _eig_fwd(
     matrix: jnp.ndarray,
-    eps: float,
+    eps_relative: float,
 ) -> Tuple[Tuple[jnp.ndarray, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray, float]]:
     """Implements the forward calculation for `eig`."""
     eigenvalues, eigenvectors = _eig_host(matrix)
-    return (eigenvalues, eigenvectors), (eigenvalues, eigenvectors, eps)
+    return (eigenvalues, eigenvectors), (eigenvalues, eigenvectors, eps_relative)
 
 
 def _eig_bwd(
@@ -154,15 +157,45 @@ def _eig_bwd(
     grads: Tuple[jnp.ndarray, jnp.ndarray],
 ) -> Tuple[jnp.ndarray, None]:
     """Implements the backward calculation for `eig`."""
-    eigenvalues, eigenvectors, eps = res
+    eigenvalues, eigenvectors, eps_relative = res
     grad_eigenvalues, grad_eigenvectors = grads
 
-    # Compute the broadened F-matrix. The expression is similar to that of equation 5
-    # from [2021 Colburn], but differs slightly from both the code and paper.
-    # TODO: derive the proper expression for broadened F-matrix.
+    # The expression for gradient of matrix eigenvectors with respect to matrix values
+    # contains a difference between eigenvalues in the denominator. This causes
+    # numerical problems in situations where eigenvalues are degenerate or nearly
+    # degenerate. This problem is addressed in a few different ways in existing rcwa
+    # codes. Defining `delta = eigval_i - eigval_j`,
+    #
+    # - torcwa uses Lorentzian broadening of the form
+    #      1 / delta -> delta.conj / (abs(delta)**2 + eps)
+    #   with an eps value of 1e-10.
+    #   (https://github.com/kch3782/torcwa/blob/main/torcwa/torch_eig.py#L29)
+    #
+    # - tf_rcwa uses an expression similar to torcwa, but with apparently different
+    #   conjugation. Their value of eps is 1e-6. (We tested their implementation and
+    #   found it fails some of our gradient validation tests.)
+    #   (https://github.com/scolburn54/rcwa_tf/blob/master/src/tensor_utils.py#L89)
+    #
+    # - grcwa uses `1 / delta -> 1 / (delta + eps)` with an eps value of 1e-10.
+    #   (https://github.com/weiliangjinca/grcwa/blob/master/grcwa/primitives.py#L44)
+    #
+    # Also, from the wider literature:
+    #
+    # - Liao et al. (https://arxiv.org/pdf/1903.09650 sec III.A.1) uses Lorentzian
+    #   broadening with an eps value of 1e-12.
+    #
+    # One issue with Lorentzian broadening and a fixed eps is the independence from
+    # matrix scale. While a given eps may be appropriate for a matrix, it would be
+    # inappropriate for the same matrix scaled by e.g. 1e-6. (The gradient should
+    # be identical, except scaled by 1 / 1e-6.)
+    #
+    # Therefore, we use Lorentzian broadening similar to torcwa, but with an eps
+    # value that is computed in a way that considers the eigenvalue range.
     eigenvalues_i = eigenvalues[..., jnp.newaxis, :]
     eigenvalues_j = eigenvalues[..., :, jnp.newaxis]
     delta_eig = eigenvalues_i - eigenvalues_j
+    eig_range = jnp.amax(jnp.abs(delta_eig), axis=(-2, -1), keepdims=True)
+    eps = jnp.maximum(eps_relative * eig_range, EIG_EPS_MINIMUM)
     f_broadened = delta_eig.conj() / (jnp.abs(delta_eig) ** 2 + eps)
 
     # Manually set the diagonal elements to zero, as we do not use broadening here.
