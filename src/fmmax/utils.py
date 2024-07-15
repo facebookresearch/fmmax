@@ -194,8 +194,8 @@ def _eig_bwd(
     eigenvalues_i = eigenvalues[..., jnp.newaxis, :]
     eigenvalues_j = eigenvalues[..., :, jnp.newaxis]
     delta_eig = eigenvalues_i - eigenvalues_j
-    eig_range = jnp.amax(jnp.abs(delta_eig), axis=(-2, -1), keepdims=True)
-    eps = jnp.maximum(eps_relative * eig_range, EIG_EPS_MINIMUM)
+    eig_range_sq = jnp.amax(jnp.abs(delta_eig) ** 2, axis=(-2, -1), keepdims=True)
+    eps = jnp.maximum(eps_relative * eig_range_sq, EIG_EPS_MINIMUM)
     f_broadened = delta_eig.conj() / (jnp.abs(delta_eig) ** 2 + eps)
 
     # Manually set the diagonal elements to zero, as we do not use broadening here.
