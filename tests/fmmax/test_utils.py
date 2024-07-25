@@ -9,8 +9,7 @@ import unittest
 import jax
 import jax.numpy as jnp
 import numpy as onp
-import parameterized
-import pytest
+from parameterized import parameterized
 
 from fmmax import utils
 
@@ -117,7 +116,7 @@ class AtLeastNDTest(unittest.TestCase):
 
 
 class InterpolateTest(unittest.TestCase):
-    @parameterized.parameterized.expand(
+    @parameterized.expand(
         [
             (4.0, 2.0, 0.0, 2.0),
             (4.0, 2.0, 1.0, 4.0),
@@ -167,7 +166,17 @@ class EigTest(unittest.TestCase):
         jac = jax.jacrev(lambda x: utils.eig(x)[0], holomorphic=True)(matrix)
         onp.testing.assert_allclose(jac, expected_jac, rtol=RTOL)
 
-    def test_matches_eigh_hermetian_real_matrix(self):
+    @parameterized.expand(
+        [
+            (1.0, 0.0),
+            (1.0, 1e3),
+            (1.0, 1e6),
+            (1e-6, 0.0),
+            (1e-6, 1e3),
+            (1e6, 0.0),
+        ]
+    )
+    def test_matches_eigh_hermetian_real_matrix(self, matrix_scale, eigval_shift):
         # Compares against `eigh`, which is valid only for Hermetian matrices. `eig`
         # and `eigh` return eigenvalues in different, random order. We must sort
         # them to facilitiate comparison.
@@ -180,18 +189,20 @@ class EigTest(unittest.TestCase):
         matrix = jax.random.normal(jax.random.PRNGKey(0), (32,))
         matrix = matrix.reshape((2, 4, 4)).astype(complex)
         matrix = matrix + utils.matrix_adjoint(matrix)
+        matrix *= matrix_scale
+        matrix += jnp.eye(matrix.shape[-1]) * eigval_shift
         onp.testing.assert_array_equal(matrix, jnp.transpose(matrix, (0, 2, 1)))
 
         with self.subTest("eigenvalues"):
             onp.testing.assert_allclose(_eig(matrix)[0], _eigh(matrix)[0])
 
         with self.subTest("eigenvectors"):
-            onp.testing.assert_allclose(_eig(matrix)[1], _eigh(matrix)[1])
+            onp.testing.assert_allclose(_eig(matrix)[1], _eigh(matrix)[1], rtol=1e-5)
 
         with self.subTest("eigenvalue_jac"):
             expected_eigval_jac = jax.jacrev(lambda m: _eigh(m)[0])(matrix)
             eigval_jac = jax.jacrev(lambda m: _eig(m)[0], holomorphic=True)(matrix)
-            onp.testing.assert_allclose(eigval_jac, expected_eigval_jac, rtol=RTOL)
+            onp.testing.assert_allclose(eigval_jac, expected_eigval_jac, rtol=1e-4)
 
         with self.subTest("eigenvectors_jac"):
             expected_eigvec_jac = jax.jacrev(
@@ -199,9 +210,19 @@ class EigTest(unittest.TestCase):
                 holomorphic=True,
             )(matrix)
             eigvec_jac = jax.jacrev(lambda m: _eig(m)[1], holomorphic=True)(matrix)
-            onp.testing.assert_allclose(eigvec_jac, expected_eigvec_jac, rtol=RTOL)
+            onp.testing.assert_allclose(eigvec_jac, expected_eigvec_jac, rtol=1e-4)
 
-    def test_matches_eigh_hermetian_complex_matrix(self):
+    @parameterized.expand(
+        [
+            (1.0, 0.0),
+            (1.0, 1e2),
+            (1.0, 1e6),
+            (1e-6, 0.0),
+            (1e-6, 1e3),
+            (1e6, 0.0),
+        ]
+    )
+    def test_matches_eigh_hermetian_complex_matrix(self, matrix_scale, eigval_shift):
         # Compares against `eigh`, which is valid only for Hermetian matrices. `eig`
         # and `eigh` return eigenvalues in different, random order. We must sort
         # them to facilitiate comparison.
@@ -215,18 +236,20 @@ class EigTest(unittest.TestCase):
         matrix = matrix + 1j * jax.random.normal(jax.random.PRNGKey(1), (32,))
         matrix = matrix.reshape((2, 4, 4)).astype(complex)
         matrix = matrix + utils.matrix_adjoint(matrix)
+        matrix *= matrix_scale
+        matrix += jnp.eye(matrix.shape[-1]) * eigval_shift
         onp.testing.assert_array_equal(matrix, utils.matrix_adjoint(matrix))
 
         with self.subTest("eigenvalues"):
             onp.testing.assert_allclose(_eig(matrix)[0], _eigh(matrix)[0])
 
         with self.subTest("eigenvectors"):
-            onp.testing.assert_allclose(_eig(matrix)[1], _eigh(matrix)[1])
+            onp.testing.assert_allclose(_eig(matrix)[1], _eigh(matrix)[1], rtol=1e-5)
 
         with self.subTest("eigenvalues_jac"):
             expected_eigval_jac = jax.jacrev(lambda m: _eigh(m)[0])(matrix)
             eigval_jac = jax.jacrev(lambda m: _eig(m)[0], holomorphic=True)(matrix)
-            onp.testing.assert_allclose(eigval_jac, expected_eigval_jac, rtol=RTOL)
+            onp.testing.assert_allclose(eigval_jac, expected_eigval_jac, rtol=1e-4)
 
         with self.subTest("eigenvectors_jac"):
             expected_eigvec_jac = jax.jacrev(
@@ -234,7 +257,7 @@ class EigTest(unittest.TestCase):
                 holomorphic=True,
             )(matrix)
             eigvec_jac = jax.jacrev(lambda m: _eig(m)[1], holomorphic=True)(matrix)
-            onp.testing.assert_allclose(eigvec_jac, expected_eigvec_jac, rtol=RTOL)
+            onp.testing.assert_allclose(eigvec_jac, expected_eigvec_jac, rtol=1e-4)
 
     def test_eigvec_jac_matches_fd_hermetian_matrix(self):
         # Tests that a finite-difference jacobian matches that computed by the
@@ -283,19 +306,19 @@ class EigTest(unittest.TestCase):
 
 
 class AbsoluteAxesTest(unittest.TestCase):
-    @parameterized.parameterized.expand(([(0, 0), 3], [(1, -2), 3]))
+    @parameterized.expand(([(0, 0), 3], [(1, -2), 3]))
     def test_absolute_axes_duplicates(self, axes, ndim):
         with self.assertRaisesRegex(ValueError, "Found duplicates in `axes`"):
             utils.absolute_axes(axes, ndim)
 
-    @parameterized.parameterized.expand(([(3,), 3], [(-4,), 3]))
+    @parameterized.expand(([(3,), 3], [(-4,), 3]))
     def test_absolute_axes_out_of_range(self, axes, ndim):
         with self.assertRaisesRegex(
             ValueError, "All elements of `axes` must be in the range"
         ):
             utils.absolute_axes(axes, ndim)
 
-    @parameterized.parameterized.expand(
+    @parameterized.expand(
         (
             [(0, 1, 2, 3), 4, (0, 1, 2, 3)],
             [(0, 1, 2, 3), 6, (0, 1, 2, 3)],
