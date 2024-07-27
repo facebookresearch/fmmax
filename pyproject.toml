@@ -1,7 +1,7 @@
 [project]
 
 name = "fmmax"
-version = "v0.8.2"
+version = "v0.8.3"
 description = "Fourier modal method with Jax"
 readme = "README.md"
 requires-python = ">=3.7"

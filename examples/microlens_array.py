@@ -63,7 +63,11 @@ def simulate_microlens_array(
 
     # Generate the permittivity arrays and thicknesses for the layers that
     # comprise the microlens.
-    lens_profile_fn = functools.partial(lens_profile, height=lens_height, pitch=pitch)
+    lens_profile_fn = functools.partial(
+        lens_profile,
+        height=jnp.asarray(lens_height),
+        pitch=jnp.asarray(pitch),
+    )
     lens_radii = jnp.linspace(0.1, pitch / 2, num_lens_layers)
     lens_layer_permittivities = [
         utils.interpolate_permittivity(
