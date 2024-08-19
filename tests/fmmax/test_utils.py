@@ -146,8 +146,8 @@ class EigTest(unittest.TestCase):
             jax.device_put(matrix, device=jax.devices("cpu")[0])
         )
         eigval, eigvec = utils.eig(matrix)
-        onp.testing.assert_array_equal(eigval, expected_eigval)
-        onp.testing.assert_array_equal(eigvec, expected_eigvec)
+        onp.testing.assert_allclose(eigval, expected_eigval, rtol=1e-12)
+        onp.testing.assert_allclose(eigvec, expected_eigvec, rtol=1e-12)
 
     def test_eigvalue_jacobian_matches_expected_real_matrix(self):
         matrix = jax.random.normal(jax.random.PRNGKey(0), (2, 4, 4)).astype(complex)

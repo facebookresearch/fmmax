@@ -7,6 +7,7 @@ from typing import Tuple
 
 import jax
 import jax.numpy as jnp
+import jeig
 
 EIG_EPS_RELATIVE = 1e-12
 EIG_EPS_MINIMUM = 1e-24
@@ -120,27 +121,7 @@ def eig(
         The eigenvalues and eigenvectors.
     """
     del eps_relative
-    return _eig_host(matrix)
-
-
-def _eig_host(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Wraps jnp.linalg.eig so that it can be jit-ed on a machine with GPUs."""
-
-    def _eig_cpu(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-        # We force this computation to be performed on the cpu by jit-ing and
-        # explicitly specifying the device.
-        with jax.default_device(jax.devices("cpu")[0]):
-            return jax.jit(jnp.linalg.eig)(matrix)
-
-    return jax.pure_callback(
-        _eig_cpu,
-        (
-            jnp.ones(matrix.shape[:-1], dtype=complex),  # Eigenvalues
-            jnp.ones(matrix.shape, dtype=complex),  # Eigenvectors
-        ),
-        matrix.astype(complex),
-        vectorized=True,
-    )
+    return jeig.eig(matrix)
 
 
 def _eig_fwd(
@@ -148,7 +129,7 @@ def _eig_fwd(
     eps_relative: float,
 ) -> Tuple[Tuple[jnp.ndarray, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray, float]]:
     """Implements the forward calculation for `eig`."""
-    eigenvalues, eigenvectors = _eig_host(matrix)
+    eigenvalues, eigenvectors = jeig.eig(matrix)
     return (eigenvalues, eigenvectors), (eigenvalues, eigenvectors, eps_relative)
 
 

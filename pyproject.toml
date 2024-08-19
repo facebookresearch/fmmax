@@ -23,6 +23,7 @@ maintainers = [
 dependencies = [
   "jax",
   "jaxlib",
+  "jeig",
   "numpy",
 ]
 
