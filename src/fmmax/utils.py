@@ -7,7 +7,7 @@ from typing import Tuple
 
 import jax
 import jax.numpy as jnp
-import jeig
+
 
 EIG_EPS_RELATIVE = 1e-12
 EIG_EPS_MINIMUM = 1e-24
@@ -121,7 +121,39 @@ def eig(
         The eigenvalues and eigenvectors.
     """
     del eps_relative
-    return jeig.eig(matrix)
+    return _eig(matrix)
+
+
+def _eig_host_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Wraps jnp.linalg.eig so that it can be jit-ed on a machine with GPUs."""
+
+    def _eig_cpu(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        # We force this computation to be performed on the cpu by jit-ing and
+        # explicitly specifying the device.
+        with jax.default_device(jax.devices("cpu")[0]):
+            return jax.jit(jnp.linalg.eig)(matrix)
+
+    return jax.pure_callback(
+        _eig_cpu,
+        (
+            jnp.ones(matrix.shape[:-1], dtype=complex),  # Eigenvalues
+            jnp.ones(matrix.shape, dtype=complex),  # Eigenvectors
+        ),
+        matrix.astype(complex),
+        vectorized=True,
+    )
+
+
+# The `jeig` module offers several jax-wrapped implementations of eigendecomposition,
+# some of which have performance benefits. However, since `jeig` has a dependency on
+# pytorch, we make its use optional. If `jeig` is not available, we fall back on a
+# pure-jax implementation of the eigendecomposition.
+try:
+    import jeig
+
+    _eig = jeig.eig
+except ModuleNotFoundError:
+    _eig = _eig_host_jax
 
 
 def _eig_fwd(
@@ -129,7 +161,7 @@ def _eig_fwd(
     eps_relative: float,
 ) -> Tuple[Tuple[jnp.ndarray, jnp.ndarray], Tuple[jnp.ndarray, jnp.ndarray, float]]:
     """Implements the forward calculation for `eig`."""
-    eigenvalues, eigenvectors = jeig.eig(matrix)
+    eigenvalues, eigenvectors = _eig(matrix)
     return (eigenvalues, eigenvectors), (eigenvalues, eigenvectors, eps_relative)
 
 
