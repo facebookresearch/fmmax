@@ -69,8 +69,7 @@ jobs:
       - name: Setup environment
         run: |
             python -m pip install --upgrade pip
-            pip install jeig
-            pip install ".[tests,dev]"        
+            pip install ".[tests,dev,jeig]"        
       - name: Test fmmax
         run: pytest tests/fmmax
 

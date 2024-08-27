@@ -23,11 +23,12 @@ maintainers = [
 dependencies = [
   "jax",
   "jaxlib",
-  "jeig",
   "numpy",
 ]
-
 [project.optional-dependencies]
+jeig = [
+  "jeig",
+]
 tests = [
   "grcwa",
   "parameterized",
