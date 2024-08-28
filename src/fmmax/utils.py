@@ -8,6 +8,17 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 
+# The `jeig` package offers several jax-wrapped implementations of eigendecomposition,
+# some of which have performance benefits. However, since `jeig` has a dependency on
+# pytorch, we make its use optional. If `jeig` is not available, we fall back on a
+# pure-jax implementation of the eigendecomposition.
+try:
+    import jeig
+
+    _JEIG_AVALABLE = True
+except ModuleNotFoundError:
+    _JEIG_AVALABLE = False
+
 
 EIG_EPS_RELATIVE = 1e-12
 EIG_EPS_MINIMUM = 1e-24
@@ -144,16 +155,12 @@ def _eig_host_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     )
 
 
-# The `jeig` package offers several jax-wrapped implementations of eigendecomposition,
-# some of which have performance benefits. However, since `jeig` has a dependency on
-# pytorch, we make its use optional. If `jeig` is not available, we fall back on a
-# pure-jax implementation of the eigendecomposition.
-try:
-    import jeig
-
-    _eig = jeig.eig
-except ModuleNotFoundError:
-    _eig = _eig_host_jax
+def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Eigendecomposition using `jeig` if available, and `_eig_host_jax` if not."""
+    if _JEIG_AVALABLE:
+        return jeig.eig(matrix)
+    else:
+        return _eig_host_jax(matrix)
 
 
 def _eig_fwd(
