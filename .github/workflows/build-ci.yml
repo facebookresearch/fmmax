@@ -23,7 +23,7 @@ jobs:
       - name: Setup environment
         run: |
             python -m pip install --upgrade pip
-            pip install ".[dev]"
+            pip install ".[dev,jeig]"
       - name: Lint Python files
         run: |
             find . -name "*.py" | xargs black --check
@@ -52,6 +52,24 @@ jobs:
         run: |
             python -m pip install --upgrade pip
             pip install ".[tests,dev]"        
+      - name: Test fmmax
+        run: pytest tests/fmmax
+
+  test-fmmax-jeig:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+      - name: Setup environment
+        run: |
+            python -m pip install --upgrade pip
+            pip install ".[tests,dev,jeig]"        
       - name: Test fmmax
         run: pytest tests/fmmax
 
