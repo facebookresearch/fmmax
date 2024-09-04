@@ -15,9 +15,9 @@ import jax.numpy as jnp
 try:
     import jeig
 
-    _JEIG_AVALABLE = True
+    _JEIG_AVAILABLE = True
 except ModuleNotFoundError:
-    _JEIG_AVALABLE = False
+    _JEIG_AVAILABLE = False
 
 
 EIG_EPS_RELATIVE = 1e-12
@@ -157,7 +157,7 @@ def _eig_host_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
 
 def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Eigendecomposition using `jeig` if available, and `_eig_host_jax` if not."""
-    if _JEIG_AVALABLE:
+    if _JEIG_AVAILABLE:
         return jeig.eig(matrix)
     else:
         return _eig_host_jax(matrix)
