@@ -322,3 +322,65 @@ class ChangeLayerThicknessTest(unittest.TestCase):
         onp.testing.assert_allclose(
             adjusted.end_layer_thickness, expected.end_layer_thickness
         )
+
+
+class RedhefferStarProductTest(unittest.TestCase):
+   def test_star_product(self):
+       layer_solve_results = [
+           _dummy_solve_result(jax.random.PRNGKey(0)),
+           _dummy_solve_result(jax.random.PRNGKey(1)),
+           _dummy_solve_result(jax.random.PRNGKey(2)),
+           _dummy_solve_result(jax.random.PRNGKey(3)),
+           _dummy_solve_result(jax.random.PRNGKey(4)),
+           _dummy_solve_result(jax.random.PRNGKey(5)),
+       ]
+       layer_thicknesses = [0.3, 0.7, 0.2, 0.9, 1.2, 0.4]
+       a = scattering.stack_s_matrix(
+           layer_solve_results=layer_solve_results[:3],
+           layer_thicknesses=layer_thicknesses[:3],
+       )
+       b = scattering.stack_s_matrix(
+           layer_solve_results=layer_solve_results[3:],
+           layer_thicknesses=layer_thicknesses[3:],
+       )
+
+
+       expected = scattering.stack_s_matrix(
+           layer_solve_results=layer_solve_results,
+           layer_thicknesses=layer_thicknesses,
+       )
+       result = scattering.redheffer_star_product(a, b)
+
+
+       with self.subTest("s11"):
+           onp.testing.assert_allclose(result.s11, expected.s11)
+       with self.subTest("s12"):
+           onp.testing.assert_allclose(result.s12, expected.s12)
+       with self.subTest("s21"):
+           onp.testing.assert_allclose(result.s21, expected.s21)
+       with self.subTest("s22"):
+           onp.testing.assert_allclose(result.s22, expected.s22)
+
+
+       with self.subTest("start_layer_thickness"):
+           onp.testing.assert_array_equal(
+               result.start_layer_thickness, expected.start_layer_thickness
+           )
+       with self.subTest("end_layer_thickness"):
+           onp.testing.assert_array_equal(
+               result.end_layer_thickness, expected.end_layer_thickness
+           )
+       with self.subTest("start_layer_solve_result"):
+           for r, e in zip(
+               tree_util.tree_leaves(result.start_layer_solve_result),
+               tree_util.tree_leaves(expected.start_layer_solve_result),
+           ):
+               onp.testing.assert_array_equal(r, e)
+
+
+       with self.subTest("end_layer_solve_result"):
+           for r, e in zip(
+               tree_util.tree_leaves(result.end_layer_solve_result),
+               tree_util.tree_leaves(expected.end_layer_solve_result),
+           ):
+               onp.testing.assert_array_equal(r, e)
