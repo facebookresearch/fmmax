@@ -1,7 +1,7 @@
 [project]
 
 name = "fmmax"
-version = "v0.9.1"
+version = "v0.10.0"
 description = "Fourier modal method with Jax"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -21,7 +21,7 @@ maintainers = [
 
 # TODO add gpu channels
 dependencies = [
-  "jax",
+  "jax <= 0.4.31",
   "jaxlib",
   "numpy",
 ]
