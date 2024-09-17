@@ -235,6 +235,33 @@ def stack_s_matrix_scan(
     return s_matrix
 
 
+def redheffer_star_product(
+    a: ScatteringMatrix,
+    b: ScatteringMatrix,
+) -> ScatteringMatrix:
+    """Compute the Redheffer star product of two scattering matrices."""
+    a_extended = append_layer(a, b.start_layer_solve_result, b.start_layer_thickness)
+    a11, a12, a21, a22 = a_extended.s11, a_extended.s12, a_extended.s21, a_extended.s22
+    b11, b12, b21, b22 = b.s11, b.s12, b.s21, b.s22
+
+    # See https://en.wikipedia.org/wiki/Redheffer_star_product
+    eye = utils.diag(jnp.ones_like(a11[..., 0]))
+    s11 = b11 @ jnp.linalg.solve(eye - a12 @ b21, a11)
+    s12 = b12 + b11 @ jnp.linalg.solve(eye - a12 @ b21, a12 @ b22)
+    s21 = a21 + a22 @ jnp.linalg.solve(eye - b21 @ a12, b21 @ a11)
+    s22 = a22 @ jnp.linalg.solve(eye - b21 @ a12, b22)
+    return ScatteringMatrix(
+        s11=s11,
+        s12=s12,
+        s21=s21,
+        s22=s22,
+        start_layer_solve_result=a.start_layer_solve_result,
+        start_layer_thickness=a.start_layer_thickness,
+        end_layer_solve_result=b.end_layer_solve_result,
+        end_layer_thickness=b.end_layer_thickness,
+    )
+
+
 def append_layer(
     s_matrix: ScatteringMatrix,
     next_layer_solve_result: fmm.LayerSolveResult,
