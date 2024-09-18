@@ -56,8 +56,18 @@ def jax_calculation():
         "expansion": expansion,
         "formulation": formulation,
     }
-
-    # Perform the anisotropic grating eigensolve and compute the zeroth-order reflectivity.
+    solve_result_ambient = fmm.eigensolve_isotropic_media(
+        permittivity=permittivity_ambient, **eigensolve_kwargs
+    )
+    solve_result_passivation = fmm.eigensolve_isotropic_media(
+        permittivity=permittivity_passivation, **eigensolve_kwargs
+    )
+    solve_result_metal = fmm.eigensolve_isotropic_media(
+        permittivity=permittivity_metal, **eigensolve_kwargs
+    )
+    solve_result_grating_isotropic = fmm.eigensolve_isotropic_media(
+        permittivity=permittivity_grating, **eigensolve_kwargs
+    )
     solve_result_grating_anisotropic = fmm.eigensolve_general_anisotropic_media(
         permittivity_xx=permittivity_grating,
         permittivity_xy=jnp.zeros_like(permittivity_grating),
@@ -71,5 +81,4 @@ def jax_calculation():
         permeability_zz=jnp.ones_like(permittivity_grating),
         **eigensolve_kwargs,
     )
-
     return True
