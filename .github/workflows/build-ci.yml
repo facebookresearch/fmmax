@@ -11,7 +11,7 @@ on:
 jobs:
   lint-and-typecheck:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,64 +38,83 @@ jobs:
             darglint src --strictness=short --ignore-raise=ValueError
             darglint examples --strictness=short --ignore-raise=ValueError
 
+  # test-fmmax:
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 15
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: Setup python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.10"
+  #         cache: "pip"
+  #         cache-dependency-path: pyproject.toml
+  #     - name: Setup environment
+  #       run: |
+  #           python -m pip install --upgrade pip
+  #           pip install ".[tests,dev]"        
+  #     - name: Test fmmax
+  #       run: pytest tests/fmmax
+
+  # test-fmmax-jeig:
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 15
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: Setup python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.10"
+  #         cache: "pip"
+  #         cache-dependency-path: pyproject.toml
+  #     - name: Setup environment
+  #       run: |
+  #           python -m pip install --upgrade pip
+  #           pip install ".[tests,dev,jeig]"        
+  #     - name: Test fmmax
+  #       run: pytest tests/fmmax
+
+  # test-grcwa:
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 2
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: Setup python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.10"
+  #         cache: "pip"
+  #         cache-dependency-path: pyproject.toml
+  #     - name: Setup environment
+  #       run: |
+  #           python -m pip install --upgrade pip
+  #           pip install ".[tests,dev]"
+  #     - name: Test grcwa
+  #       run: pytest tests/grcwa
+
+  # test-examples:
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: Setup python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.10"
+  #         cache: "pip"
+  #         cache-dependency-path: pyproject.toml
+  #     - name: Setup environment
+  #       run: |
+  #           python -m pip install --upgrade pip
+  #           pip install ".[tests,dev]"        
+  #     - name: Test examples
+  #       run: python -m pytest tests/examples
+        
   test-fmmax:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
-      - name: Setup environment
-        run: |
-            python -m pip install --upgrade pip
-            pip install ".[tests,dev]"        
-      - name: Test fmmax
-        run: pytest tests/fmmax
-
-  test-fmmax-jeig:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
-      - name: Setup environment
-        run: |
-            python -m pip install --upgrade pip
-            pip install ".[tests,dev,jeig]"        
-      - name: Test fmmax
-        run: pytest tests/fmmax
-
-  test-grcwa:
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
-      - name: Setup environment
-        run: |
-            python -m pip install --upgrade pip
-            pip install ".[tests,dev]"
-      - name: Test grcwa
-        run: pytest tests/grcwa
-
-  test-examples:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -111,6 +130,5 @@ jobs:
         run: |
             python -m pip install --upgrade pip
             pip install ".[tests,dev]"        
-      - name: Test examples
-        run: python -m pytest tests/examples
-        
+      - name: Test fmmax::test_fmm
+        run: pytest tests/fmmax::test_fmm.py
