@@ -26,21 +26,15 @@ class ReproTest(unittest.TestCase):
 
 
 def jax_calculation():
-    # Computes the TE- and TM-reflection from a metallic grating.
-    formulation = fmm.Formulation.FFT
-    grating_angle = 0.0
     permittivity_ambient = jnp.asarray([[1.0 + 0.0j]])
     permittivity_passivation = jnp.asarray([[2.25 + 0.0j]])
     permittivity_metal = jnp.asarray([[-7.632 + 0.731j]])
 
     # Permittivity of the grating layer.
-    x, y = jnp.meshgrid(jnp.linspace(-0.5, 0.5), jnp.linspace(-0.5, 0.5), indexing="ij")
-    position = x * jnp.cos(grating_angle) + y * jnp.sin(grating_angle)
-    density = (-0.2 < position) & (position < 0.2)
     permittivity_grating = utils.interpolate_permittivity(
         permittivity_solid=permittivity_metal,
         permittivity_void=permittivity_passivation,
-        density=density,
+        density=jnp.ones((50, 50)) * 0.5,
     )
 
     primitive_lattice_vectors = basis.LatticeVectors(u=basis.X, v=basis.Y)
@@ -54,7 +48,7 @@ def jax_calculation():
         "in_plane_wavevector": jnp.zeros((2,)),
         "primitive_lattice_vectors": primitive_lattice_vectors,
         "expansion": expansion,
-        "formulation": formulation,
+        "formulation": fmm.Formulation.FFT,
     }
     solve_result_ambient = fmm.eigensolve_isotropic_media(
         permittivity=permittivity_ambient, **eigensolve_kwargs
