@@ -78,6 +78,15 @@ def jax_calculation():
     solve_result_grating_isotropic = fmm.eigensolve_isotropic_media(
         permittivity=permittivity_grating, **eigensolve_kwargs
     )
+    s_matrix_isotropic = scattering.stack_s_matrix(
+        layer_solve_results=[
+            solve_result_ambient,
+            solve_result_passivation,
+            solve_result_grating_isotropic,
+            solve_result_metal,
+        ],
+        layer_thicknesses=thicknesses,
+    )
 
     # Perform the anisotropic grating eigensolve and compute the zeroth-order reflectivity.
     solve_result_grating_anisotropic = fmm.eigensolve_general_anisotropic_media(
