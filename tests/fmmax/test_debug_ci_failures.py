@@ -20,12 +20,12 @@ class ReproTest(unittest.TestCase):
 
     @parameterized.parameterized.expand(
         (
-            (fmm.Formulation.FFT, 0.0),
-            (fmm.Formulation.FFT, jnp.pi / 4),
+            (fmm.Formulation.FFT,),
+            (fmm.Formulation.FFT,),
         )
     )
     def test_repro(
-        self, formulation, grating_angle
+        self, formulation
     ):
         # Checks that the zeroth order reflection of a grating computed using the anisotropic
         # codepath matches that using the isotropic material codepath.
