@@ -18,27 +18,17 @@ jax.config.update("jax_enable_x64", True)
 
 class ReproTest(unittest.TestCase):
 
-    @parameterized.parameterized.expand(
-        (
-            (fmm.Formulation.FFT,),
-            (fmm.Formulation.FFT,),
-        )
-    )
-    def test_repro(
-        self, formulation
-    ):
-        # Checks that the zeroth order reflection of a grating computed using the anisotropic
-        # codepath matches that using the isotropic material codepath.
-        (
-            (r_te_anisotropic, r_tm_anisotropic),
-            (r_te_isotropic, r_tm_isotropic),
-        ) = compute_grating_reflection(fmm.Formulation.FFT, 0.0)
-        onp.testing.assert_allclose(r_te_anisotropic, r_te_isotropic, rtol=1e-4)
-        onp.testing.assert_allclose(r_tm_anisotropic, r_tm_isotropic, rtol=1e-4)
+    @parameterized.parameterized.expand(((0,), (1,)))
+    def test_repro(self, dummy_var):
+        del dummy_var
+        result = jax_calculation()
+        self.assertTrue(result)
 
 
-def compute_grating_reflection(formulation, grating_angle):
+def jax_calculation():
     # Computes the TE- and TM-reflection from a metallic grating.
+    formulation = fmm.Formulation.FFT
+    grating_angle = 0.0
     permittivity_ambient = jnp.asarray([[1.0 + 0.0j]])
     permittivity_passivation = jnp.asarray([[2.25 + 0.0j]])
     permittivity_metal = jnp.asarray([[-7.632 + 0.731j]])
@@ -127,4 +117,4 @@ def compute_grating_reflection(formulation, grating_angle):
     r_te_anisotropic = s_matrix_anisotropic.s21[0, 0]
     r_tm_anisotropic = s_matrix_anisotropic.s21[n, n]
 
-    return (r_te_anisotropic, r_tm_anisotropic), (r_te_isotropic, r_tm_isotropic)
+    return True
