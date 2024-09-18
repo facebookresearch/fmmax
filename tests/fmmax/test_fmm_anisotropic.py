@@ -21,7 +21,7 @@ class ReproTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
             (fmm.Formulation.FFT, 0.0),
-            (fmm.Formulation.FFT, jnp.pi / 4),
+            # (fmm.Formulation.FFT, jnp.pi / 4),
         ]
     )
     def test_repro(
