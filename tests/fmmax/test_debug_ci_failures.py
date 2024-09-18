@@ -26,7 +26,6 @@ class ReproTest(unittest.TestCase):
 
 
 def jax_calculation():
-    permittivity_ambient = jnp.asarray([[1.0 + 0.0j]])
     permittivity_passivation = jnp.asarray([[2.25 + 0.0j]])
     permittivity_metal = jnp.asarray([[-7.632 + 0.731j]])
 
@@ -49,19 +48,9 @@ def jax_calculation():
         "expansion": expansion,
         "formulation": fmm.Formulation.FFT,
     }
-    solve_result_ambient = fmm.eigensolve_isotropic_media(
-        permittivity=permittivity_ambient, **eigensolve_kwargs
-    )
-    solve_result_passivation = fmm.eigensolve_isotropic_media(
-        permittivity=permittivity_passivation, **eigensolve_kwargs
-    )
-    solve_result_metal = fmm.eigensolve_isotropic_media(
-        permittivity=permittivity_metal, **eigensolve_kwargs
-    )
     solve_result_grating_isotropic = fmm.eigensolve_isotropic_media(
         permittivity=permittivity_grating, **eigensolve_kwargs
     )
-
     solve_result_grating_anisotropic = fmm.eigensolve_general_anisotropic_media(
         permittivity_xx=permittivity_grating,
         permittivity_xy=jnp.zeros_like(permittivity_grating),
