@@ -617,25 +617,12 @@ class FailureMinimalReproductionTest(unittest.TestCase):
 
         return (r_te_anisotropic, r_tm_anisotropic), (r_te_isotropic, r_tm_isotropic)
 
-    @parameterized.parameterized.expand(
-        [
-            (fmm.Formulation.FFT, 0.0),
-            (fmm.Formulation.FFT, jnp.pi / 4),
-            (fmm.Formulation.FFT, jnp.pi / 2),
-            (fmm.Formulation.JONES_DIRECT, 0.0),
-            (fmm.Formulation.JONES_DIRECT, jnp.pi / 2),
-            (fmm.Formulation.JONES_DIRECT_FOURIER, 0.0),
-            (fmm.Formulation.JONES_DIRECT_FOURIER, jnp.pi / 2),
-        ]
-    )
-    def test_reflection_with_anisotropic_eignensolve_matches_isotropic_tight_tolerance(
-        self, formulation, grating_angle
-    ):
+    def test_repro(self):
         # Checks that the zeroth order reflection of a grating computed using the anisotropic
         # codepath matches that using the isotropic material codepath.
         (
             (r_te_anisotropic, r_tm_anisotropic),
             (r_te_isotropic, r_tm_isotropic),
-        ) = self.compute_grating_reflection(formulation, grating_angle)
+        ) = self.compute_grating_reflection(fmm.Formulation.FFT, 0.0)
         onp.testing.assert_allclose(r_te_anisotropic, r_te_isotropic, rtol=1e-4)
         onp.testing.assert_allclose(r_tm_anisotropic, r_tm_isotropic, rtol=1e-4)
