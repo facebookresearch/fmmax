@@ -49,6 +49,12 @@ def jax_calculation():
         "expansion": expansion,
         "formulation": fmm.Formulation.FFT,
     }
+    solve_result_ambient = fmm.eigensolve_isotropic_media(
+        permittivity=permittivity_ambient, **eigensolve_kwargs
+    )
+    solve_result_passivation = fmm.eigensolve_isotropic_media(
+        permittivity=permittivity_passivation, **eigensolve_kwargs
+    )
     solve_result_metal = fmm.eigensolve_isotropic_media(
         permittivity=permittivity_metal, **eigensolve_kwargs
     )
