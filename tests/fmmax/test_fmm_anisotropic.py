@@ -114,15 +114,9 @@ class ReproTest(unittest.TestCase):
     @parameterized.parameterized.expand(
         [
             (fmm.Formulation.FFT, 0.0),
-            # (fmm.Formulation.FFT, jnp.pi / 4),
-            # (fmm.Formulation.FFT, jnp.pi / 2),
-            # (fmm.Formulation.JONES_DIRECT, 0.0),
-            # (fmm.Formulation.JONES_DIRECT, jnp.pi / 2),
-            # (fmm.Formulation.JONES_DIRECT_FOURIER, 0.0),
-            # (fmm.Formulation.JONES_DIRECT_FOURIER, jnp.pi / 2),
         ]
     )
-    def test_reflection_with_anisotropic_eignensolve_matches_isotropic_tight_tolerance(
+    def test_repro(
         self, formulation, grating_angle
     ):
         # Checks that the zeroth order reflection of a grating computed using the anisotropic
