@@ -16,14 +16,40 @@ from fmmax import basis, fmm, scattering, utils
 jax.config.update("jax_enable_x64", True)
 
 
-class ReproTest(unittest.TestCase):
+# class ReproTest(unittest.TestCase):
+
+#     @parameterized.parameterized.expand(
+#         [
+#             (fmm.Formulation.FFT, 0.0),
+#         ]
+#     )
+#     def test_repro(
+#         self, formulation, grating_angle
+#     ):
+#         # Checks that the zeroth order reflection of a grating computed using the anisotropic
+#         # codepath matches that using the isotropic material codepath.
+#         (
+#             (r_te_anisotropic, r_tm_anisotropic),
+#             (r_te_isotropic, r_tm_isotropic),
+#         ) = compute_grating_reflection(fmm.Formulation.FFT, 0.0)
+#         onp.testing.assert_allclose(r_te_anisotropic, r_te_isotropic, rtol=1e-4)
+#         onp.testing.assert_allclose(r_tm_anisotropic, r_tm_isotropic, rtol=1e-4)
+
+
+class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
 
     @parameterized.parameterized.expand(
         [
             (fmm.Formulation.FFT, 0.0),
+            (fmm.Formulation.FFT, jnp.pi / 4),
+            (fmm.Formulation.FFT, jnp.pi / 2),
+            (fmm.Formulation.JONES_DIRECT, 0.0),
+            (fmm.Formulation.JONES_DIRECT, jnp.pi / 2),
+            (fmm.Formulation.JONES_DIRECT_FOURIER, 0.0),
+            (fmm.Formulation.JONES_DIRECT_FOURIER, jnp.pi / 2),
         ]
     )
-    def test_repro(
+    def test_reflection_with_anisotropic_eignensolve_matches_isotropic_tight_tolerance(
         self, formulation, grating_angle
     ):
         # Checks that the zeroth order reflection of a grating computed using the anisotropic
@@ -31,9 +57,30 @@ class ReproTest(unittest.TestCase):
         (
             (r_te_anisotropic, r_tm_anisotropic),
             (r_te_isotropic, r_tm_isotropic),
-        ) = compute_grating_reflection(fmm.Formulation.FFT, 0.0)
+        ) = compute_grating_reflection(formulation, grating_angle)
         onp.testing.assert_allclose(r_te_anisotropic, r_te_isotropic, rtol=1e-4)
         onp.testing.assert_allclose(r_tm_anisotropic, r_tm_isotropic, rtol=1e-4)
+
+    @parameterized.parameterized.expand(
+        [
+            (fmm.Formulation.JONES_DIRECT, jnp.pi / 3),
+            (fmm.Formulation.JONES_DIRECT, 2 * jnp.pi / 3),
+            (fmm.Formulation.JONES_DIRECT_FOURIER, jnp.pi / 3),
+            (fmm.Formulation.JONES_DIRECT_FOURIER, 2 * jnp.pi / 3),
+        ]
+    )
+    def test_reflection_with_anisotropic_eignensolve_matches_isotropic_loose_tolerance(
+        self, formulation, grating_angle
+    ):
+        # Checks that the zeroth order reflection of a grating computed using the anisotropic
+        # codepath matches that using the isotropic material codepath. Gratings that are rotated
+        # result in slightly larger differences between the anisotropic and isotropic codepaths.
+        (
+            (r_te_anisotropic, r_tm_anisotropic),
+            (r_te_isotropic, r_tm_isotropic),
+        ) = compute_grating_reflection(formulation, grating_angle)
+        onp.testing.assert_allclose(r_te_anisotropic, r_te_isotropic, rtol=3e-2)
+        onp.testing.assert_allclose(r_tm_anisotropic, r_tm_isotropic, rtol=3e-2)
 
 
 def compute_grating_reflection(formulation, grating_angle):
@@ -127,56 +174,6 @@ def compute_grating_reflection(formulation, grating_angle):
     r_tm_anisotropic = s_matrix_anisotropic.s21[n, n]
 
     return (r_te_anisotropic, r_tm_anisotropic), (r_te_isotropic, r_tm_isotropic)
-
-
-
-
-
-# class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
-
-#     @parameterized.parameterized.expand(
-#         [
-#             (fmm.Formulation.FFT, 0.0),
-#             (fmm.Formulation.FFT, jnp.pi / 4),
-#             (fmm.Formulation.FFT, jnp.pi / 2),
-#             (fmm.Formulation.JONES_DIRECT, 0.0),
-#             (fmm.Formulation.JONES_DIRECT, jnp.pi / 2),
-#             (fmm.Formulation.JONES_DIRECT_FOURIER, 0.0),
-#             (fmm.Formulation.JONES_DIRECT_FOURIER, jnp.pi / 2),
-#         ]
-#     )
-#     def test_reflection_with_anisotropic_eignensolve_matches_isotropic_tight_tolerance(
-#         self, formulation, grating_angle
-#     ):
-#         # Checks that the zeroth order reflection of a grating computed using the anisotropic
-#         # codepath matches that using the isotropic material codepath.
-#         (
-#             (r_te_anisotropic, r_tm_anisotropic),
-#             (r_te_isotropic, r_tm_isotropic),
-#         ) = compute_grating_reflection(formulation, grating_angle)
-#         onp.testing.assert_allclose(r_te_anisotropic, r_te_isotropic, rtol=1e-4)
-#         onp.testing.assert_allclose(r_tm_anisotropic, r_tm_isotropic, rtol=1e-4)
-
-#     @parameterized.parameterized.expand(
-#         [
-#             (fmm.Formulation.JONES_DIRECT, jnp.pi / 3),
-#             (fmm.Formulation.JONES_DIRECT, 2 * jnp.pi / 3),
-#             (fmm.Formulation.JONES_DIRECT_FOURIER, jnp.pi / 3),
-#             (fmm.Formulation.JONES_DIRECT_FOURIER, 2 * jnp.pi / 3),
-#         ]
-#     )
-#     def test_reflection_with_anisotropic_eignensolve_matches_isotropic_loose_tolerance(
-#         self, formulation, grating_angle
-#     ):
-#         # Checks that the zeroth order reflection of a grating computed using the anisotropic
-#         # codepath matches that using the isotropic material codepath. Gratings that are rotated
-#         # result in slightly larger differences between the anisotropic and isotropic codepaths.
-#         (
-#             (r_te_anisotropic, r_tm_anisotropic),
-#             (r_te_isotropic, r_tm_isotropic),
-#         ) = compute_grating_reflection(formulation, grating_angle)
-#         onp.testing.assert_allclose(r_te_anisotropic, r_te_isotropic, rtol=3e-2)
-#         onp.testing.assert_allclose(r_tm_anisotropic, r_tm_isotropic, rtol=3e-2)
 
 
 # class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
