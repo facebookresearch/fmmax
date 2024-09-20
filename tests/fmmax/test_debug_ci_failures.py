@@ -59,7 +59,7 @@ def jax_calculation():
         "in_plane_wavevector": jnp.zeros((2,)),
         "primitive_lattice_vectors": primitive_lattice_vectors,
         "expansion": expansion,
-        "formulation": formulation,
+        "formulation": fmm.Formulation.FFT,
     }
     solve_result_ambient = fmm.eigensolve_isotropic_media(
         permittivity=permittivity_ambient, **eigensolve_kwargs
