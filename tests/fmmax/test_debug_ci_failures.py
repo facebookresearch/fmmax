@@ -87,9 +87,6 @@ def jax_calculation():
         ],
         layer_thicknesses=thicknesses,
     )
-    n = expansion.num_terms
-    r_te_isotropic = s_matrix_isotropic.s21[0, 0]
-    r_tm_isotropic = s_matrix_isotropic.s21[n, n]
 
     # Perform the anisotropic grating eigensolve and compute the zeroth-order reflectivity.
     solve_result_grating_anisotropic = fmm.eigensolve_general_anisotropic_media(
@@ -114,7 +111,5 @@ def jax_calculation():
         ],
         layer_thicknesses=thicknesses,
     )
-    r_te_anisotropic = s_matrix_anisotropic.s21[0, 0]
-    r_tm_anisotropic = s_matrix_anisotropic.s21[n, n]
 
     return True
