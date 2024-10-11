@@ -136,27 +136,10 @@ def eig(
     return _eig(matrix)
 
 
-def _eig_scipy(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Eigendecomposition using `scipy.linalg.eig`."""
-
-    def _eig_fn(m: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-        eigval, eigvec = jax.pure_callback(
-            scipy.linalg.eig,
-            (
-                jnp.ones(m.shape[:-1], dtype=complex),  # Eigenvalues
-                jnp.ones(m.shape, dtype=complex),  # Eigenvectors
-            ),
-            m.astype(complex),
-            vectorized=False,
-        )
-        return jnp.asarray(eigval), jnp.asarray(eigvec)
-
-    batch_shape = matrix.shape[:-2]
-    matrix = jnp.reshape(matrix, (-1,) + matrix.shape[-2:])
-    eigvals, eigvecs = jax.vmap(_eig_fn)(matrix)
-    eigvecs = jnp.reshape(eigvecs, batch_shape + eigvecs.shape[-2:])
-    eigvals = jnp.reshape(eigvals, batch_shape + eigvals.shape[-1:])
-    return eigvals, eigvecs
+# We force this computation to be performed on the cpu by jit-ing and
+# explicitly specifying the device
+with jax.default_device(jax.devices("cpu")[0]):
+    _eig_jax_cpu = jax.jit(jnp.linalg.eig)
 
 
 def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -164,7 +147,7 @@ def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     if _JEIG_AVAILABLE:
         return jeig.eig(matrix)
     else:
-        return _eig_scipy(matrix)
+        return _eig_jax_cpu(matrix)
 
 
 def _eig_fwd(
