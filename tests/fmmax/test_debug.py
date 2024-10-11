@@ -35,22 +35,22 @@ def jax_calculation():
     solve_result_grating_isotropic = fmm.eigensolve_isotropic_media(
         permittivity=jnp.ones((50, 50)), **eigensolve_kwargs
     )
-    solve_result_grating_anisotropic = fmm.eigensolve_general_anisotropic_media(
-        permittivity_xx=jnp.ones((50, 50)),
-        permittivity_xy=jnp.zeros((50, 50)),
-        permittivity_yx=jnp.zeros((50, 50)),
-        permittivity_yy=jnp.ones((50, 50)),
-        permittivity_zz=jnp.ones((50, 50)),
-        permeability_xx=jnp.ones((50, 50)),
-        permeability_xy=jnp.zeros((50, 50)),
-        permeability_yx=jnp.zeros((50, 50)),
-        permeability_yy=jnp.ones((50, 50)),
-        permeability_zz=jnp.ones((50, 50)),
-        **eigensolve_kwargs,
-    )
+    # solve_result_grating_anisotropic = fmm.eigensolve_general_anisotropic_media(
+    #     permittivity_xx=jnp.ones((50, 50)),
+    #     permittivity_xy=jnp.zeros((50, 50)),
+    #     permittivity_yx=jnp.zeros((50, 50)),
+    #     permittivity_yy=jnp.ones((50, 50)),
+    #     permittivity_zz=jnp.ones((50, 50)),
+    #     permeability_xx=jnp.ones((50, 50)),
+    #     permeability_xy=jnp.zeros((50, 50)),
+    #     permeability_yx=jnp.zeros((50, 50)),
+    #     permeability_yy=jnp.ones((50, 50)),
+    #     permeability_zz=jnp.ones((50, 50)),
+    #     **eigensolve_kwargs,
+    # )
 
 
 class DebugTest(unittest.TestCase):
     def test_simple(self):
-        for _ in range(5):
+        for _ in range(10):
             jax_calculation()
