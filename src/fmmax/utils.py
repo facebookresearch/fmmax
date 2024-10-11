@@ -136,14 +136,14 @@ def eig(
     return _eig(matrix)
 
 
-# We force this computation to be performed on the cpu by jit-ing and
-# explicitly specifying the device
+# Define eigendecomposition that runs on CPU. Note that the compilation takes place at
+# module import time. If the `jit` is inside a function, jax deadlocks can occur.
 with jax.default_device(jax.devices("cpu")[0]):
     _eig_jax_cpu = jax.jit(jnp.linalg.eig)
 
 
 def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Eigendecomposition using `jeig` if available, and `_eig_host_jax` if not."""
+    """Eigendecomposition using `jeig` if available, and `_eig_jax_cpu` if not."""
     if _JEIG_AVAILABLE:
         return jeig.eig(matrix)
     else:
