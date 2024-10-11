@@ -3,7 +3,7 @@
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
-from typing import Tuple
+from typing import Any, Tuple
 
 import jax
 import jax.numpy as jnp
