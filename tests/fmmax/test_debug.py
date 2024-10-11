@@ -16,7 +16,7 @@ from fmmax import basis, fmm, scattering, utils
 jax.config.update("jax_enable_x64", True)
 
 
-def jax_calculation(formulation, grating_angle):
+def jax_calculation():
     formulation = fmm.Formulation.JONES_DIRECT
     grating_angle = jnp.pi / 3
     
