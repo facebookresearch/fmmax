@@ -7,7 +7,6 @@ from typing import Tuple
 
 import jax
 import jax.numpy as jnp
-import scipy  # type: ignore[import-untyped]
 
 # The `jeig` package offers several jax-wrapped implementations of eigendecomposition,
 # some of which have performance benefits. However, since `jeig` has a dependency on
@@ -19,6 +18,7 @@ try:
     _JEIG_AVAILABLE = True
 except ModuleNotFoundError:
     _JEIG_AVAILABLE = False
+
 
 EIG_EPS_RELATIVE = 1e-12
 EIG_EPS_MINIMUM = 1e-24
