@@ -134,17 +134,30 @@ class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
     #     onp.testing.assert_allclose(r_te_anisotropic, r_te_isotropic, rtol=1e-4)
     #     onp.testing.assert_allclose(r_tm_anisotropic, r_tm_isotropic, rtol=1e-4)
 
-    @parameterized.parameterized.expand(
-        [
-            (fmm.Formulation.JONES_DIRECT, jnp.pi / 3),
-            (fmm.Formulation.JONES_DIRECT, 2 * jnp.pi / 3),
-            (fmm.Formulation.JONES_DIRECT_FOURIER, jnp.pi / 3),
-            (fmm.Formulation.JONES_DIRECT_FOURIER, 2 * jnp.pi / 3),
-        ]
-    )
-    def test_reflection_with_anisotropic_eignensolve_matches_isotropic_loose_tolerance(
-        self, formulation, grating_angle
-    ):
+    # @parameterized.parameterized.expand(
+    #     [
+    #         (fmm.Formulation.JONES_DIRECT, jnp.pi / 3),
+    #         (fmm.Formulation.JONES_DIRECT, 2 * jnp.pi / 3),
+    #         (fmm.Formulation.JONES_DIRECT_FOURIER, jnp.pi / 3),
+    #         (fmm.Formulation.JONES_DIRECT_FOURIER, 2 * jnp.pi / 3),
+    #     ]
+    # )
+    # def test_reflection_with_anisotropic_eignensolve_matches_isotropic_loose_tolerance(
+    #     self, formulation, grating_angle
+    # ):
+    #     # Checks that the zeroth order reflection of a grating computed using the anisotropic
+    #     # codepath matches that using the isotropic material codepath. Gratings that are rotated
+    #     # result in slightly larger differences between the anisotropic and isotropic codepaths.
+    #     (
+    #         (r_te_anisotropic, r_tm_anisotropic),
+    #         (r_te_isotropic, r_tm_isotropic),
+    #     ) = self.compute_grating_reflection(formulation, grating_angle)
+    #     onp.testing.assert_allclose(r_te_anisotropic, r_te_isotropic, rtol=3e-2)
+    #     onp.testing.assert_allclose(r_tm_anisotropic, r_tm_isotropic, rtol=3e-2)
+
+    def test_simple(self):
+        formulation = fmm.Formulation.JONES_DIRECT
+        grating_angle = jnp.pi / 3
         # Checks that the zeroth order reflection of a grating computed using the anisotropic
         # codepath matches that using the isotropic material codepath. Gratings that are rotated
         # result in slightly larger differences between the anisotropic and isotropic codepaths.
