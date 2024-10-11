@@ -18,7 +18,6 @@ jax.config.update("jax_enable_x64", True)
 
 def jax_calculation():
     formulation = fmm.Formulation.JONES_DIRECT
-    grating_angle = jnp.pi / 3
     
     # Computes the TE- and TM-reflection from a metallic grating.
     permittivity_ambient = jnp.asarray([[1.0 + 0.0j]])
@@ -26,15 +25,10 @@ def jax_calculation():
     permittivity_metal = jnp.asarray([[-7.632 + 0.731j]])
 
     # Permittivity of the grating layer.
-    x, y = jnp.meshgrid(
-        jnp.linspace(-0.5, 0.5), jnp.linspace(-0.5, 0.5), indexing="ij"
-    )
-    position = x * jnp.cos(grating_angle) + y * jnp.sin(grating_angle)
-    density = (-0.2 < position) & (position < 0.2)
     permittivity_grating = utils.interpolate_permittivity(
         permittivity_solid=permittivity_metal,
         permittivity_void=permittivity_passivation,
-        density=density,
+        density=jnp.ones((50, 50)),
     )
 
     # Thickensses of ambient, passivation, grating, and metal substrate.
