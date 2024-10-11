@@ -17,16 +17,6 @@ jax.config.update("jax_enable_x64", True)
 
 
 def jax_calculation():
-    # Computes the TE- and TM-reflection from a metallic grating.
-    permittivity_passivation = jnp.asarray([[1.0]])
-    permittivity_metal = jnp.asarray([[1.0]])
-
-    # Permittivity of the grating layer.
-    permittivity_grating = utils.interpolate_permittivity(
-        permittivity_solid=permittivity_metal,
-        permittivity_void=permittivity_passivation,
-        density=jnp.ones((50, 50)),
-    )
 
     primitive_lattice_vectors = basis.LatticeVectors(u=basis.X, v=basis.Y)
     expansion = basis.generate_expansion(
@@ -43,19 +33,19 @@ def jax_calculation():
     }
 
     solve_result_grating_isotropic = fmm.eigensolve_isotropic_media(
-        permittivity=permittivity_grating, **eigensolve_kwargs
+        permittivity=jnp.ones((50, 50)), **eigensolve_kwargs
     )
     solve_result_grating_anisotropic = fmm.eigensolve_general_anisotropic_media(
-        permittivity_xx=permittivity_grating,
-        permittivity_xy=jnp.zeros_like(permittivity_grating),
-        permittivity_yx=jnp.zeros_like(permittivity_grating),
-        permittivity_yy=permittivity_grating,
-        permittivity_zz=permittivity_grating,
-        permeability_xx=jnp.ones_like(permittivity_grating),
-        permeability_xy=jnp.zeros_like(permittivity_grating),
-        permeability_yx=jnp.zeros_like(permittivity_grating),
-        permeability_yy=jnp.ones_like(permittivity_grating),
-        permeability_zz=jnp.ones_like(permittivity_grating),
+        permittivity_xx=jnp.ones((50, 50)),
+        permittivity_xy=jnp.zeros((50, 50)),
+        permittivity_yx=jnp.zeros((50, 50)),
+        permittivity_yy=jnp.ones((50, 50)),
+        permittivity_zz=jnp.ones((50, 50)),
+        permeability_xx=jnp.ones((50, 50)),
+        permeability_xy=jnp.zeros((50, 50)),
+        permeability_yx=jnp.zeros((50, 50)),
+        permeability_yy=jnp.ones((50, 50)),
+        permeability_zz=jnp.ones((50, 50)),
         **eigensolve_kwargs,
     )
 
