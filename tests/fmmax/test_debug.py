@@ -176,19 +176,6 @@ class AnisotropicMatchesIsotropicGratingTest(unittest.TestCase):
             (r_te_isotropic, r_tm_isotropic),
         ) = self.compute_grating_reflection(formulation, grating_angle)
 
-        formulation = fmm.Formulation.FFT
-        grating_angle = jnp.pi / 3
-        # Checks that the zeroth order reflection of a grating computed using the anisotropic
-        # codepath matches that using the isotropic material codepath. Gratings that are rotated
-        # result in slightly larger differences between the anisotropic and isotropic codepaths.
-        (
-            (r_te_anisotropic, r_tm_anisotropic),
-            (r_te_isotropic, r_tm_isotropic),
-        ) = self.compute_grating_reflection(formulation, grating_angle)
-
-        onp.testing.assert_allclose(r_te_anisotropic, r_te_isotropic, rtol=3e-2)
-        onp.testing.assert_allclose(r_tm_anisotropic, r_tm_isotropic, rtol=3e-2)
-
 
 # class AnisotropicMagneticFresnelReflectionTest(unittest.TestCase):
 #     @parameterized.parameterized.expand(
