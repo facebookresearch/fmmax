@@ -3,12 +3,11 @@
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
-from typing import Any, Tuple
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
-import numpy as onp
-import scipy
+import scipy  # type: ignore[import-untyped]
 
 # The `jeig` package offers several jax-wrapped implementations of eigendecomposition,
 # some of which have performance benefits. However, since `jeig` has a dependency on
