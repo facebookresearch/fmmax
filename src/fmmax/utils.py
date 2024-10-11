@@ -3,10 +3,11 @@
 Copyright (c) Meta Platforms, Inc. and affiliates.
 """
 
-from typing import Tuple
+from typing import Any, Tuple
 
 import jax
 import jax.numpy as jnp
+import numpy as onp
 
 # The `jeig` package offers several jax-wrapped implementations of eigendecomposition,
 # some of which have performance benefits. However, since `jeig` has a dependency on
@@ -138,11 +139,14 @@ def eig(
 def _eig_host_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Wraps jnp.linalg.eig so that it can be jit-ed on a machine with GPUs."""
 
-    def _eig_cpu(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    def _eig_cpu(
+        matrix: jnp.ndarray,
+    ) -> Tuple[onp.ndarray[Any, Any], onp.ndarray[Any, Any]]:
         # We force this computation to be performed on the cpu by jit-ing and
         # explicitly specifying the device.
         with jax.default_device(jax.devices("cpu")[0]):
-            return jax.jit(jnp.linalg.eig)(matrix)
+            eigval, eigvec = jax.jit(jnp.linalg.eig)(matrix)
+            return onp.asarray(eigval), onp.asarray(eigvec)
 
     return jax.pure_callback(
         _eig_cpu,
