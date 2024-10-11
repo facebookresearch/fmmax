@@ -29,25 +29,12 @@ def jax_calculation():
         "in_plane_wavevector": jnp.zeros((2,)),
         "primitive_lattice_vectors": primitive_lattice_vectors,
         "expansion": expansion,
-        "formulation": fmm.Formulation.JONES_DIRECT,
+        "formulation": fmm.Formulation.FFT,
     }
 
     solve_result_grating_isotropic = fmm.eigensolve_isotropic_media(
         permittivity=jnp.ones((50, 50)), **eigensolve_kwargs
     )
-    # solve_result_grating_anisotropic = fmm.eigensolve_general_anisotropic_media(
-    #     permittivity_xx=jnp.ones((50, 50)),
-    #     permittivity_xy=jnp.zeros((50, 50)),
-    #     permittivity_yx=jnp.zeros((50, 50)),
-    #     permittivity_yy=jnp.ones((50, 50)),
-    #     permittivity_zz=jnp.ones((50, 50)),
-    #     permeability_xx=jnp.ones((50, 50)),
-    #     permeability_xy=jnp.zeros((50, 50)),
-    #     permeability_yx=jnp.zeros((50, 50)),
-    #     permeability_yy=jnp.ones((50, 50)),
-    #     permeability_zz=jnp.ones((50, 50)),
-    #     **eigensolve_kwargs,
-    # )
 
 
 class DebugTest(unittest.TestCase):
