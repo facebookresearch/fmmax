@@ -19,8 +19,9 @@ jax.config.update("jax_enable_x64", True)
 class DebugTest(unittest.TestCase):
     def test_simple(self):
 
+        key = jax.random.PRNGKey(0)
         for i in range(10):
-            mat = jax.random.normal((440, 440))
+            mat = jax.random.normal(jax.random.fold_in(key, i), (440, 440))
             utils.eig(mat)
             # primitive_lattice_vectors = basis.LatticeVectors(u=basis.X, v=basis.Y)
             # expansion = basis.generate_expansion(
