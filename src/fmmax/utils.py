@@ -135,32 +135,34 @@ def eig(
     return _eig(matrix)
 
 
-def _eig_host_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Wraps jnp.linalg.eig so that it can be jit-ed on a machine with GPUs."""
+def _eig_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Eigendecomposition using `jax.numpy.linalg.eig`."""
+    # If using CPU backend, using `pure_callback` to call a jit-compiled version of
+    # `jnp.linalg.eig` is flaky and can cause deadlocks. Directly call it instead.
+    if jax.devices()[0] == jax.devices("cpu")[0]:
+        return jnp.linalg.eig(matrix)
+    else:
+        return jax.pure_callback(
+            _eig_jax_cpu,
+            (
+                jnp.ones(matrix.shape[:-1], dtype=complex),  # Eigenvalues
+                jnp.ones(matrix.shape, dtype=complex),  # Eigenvectors
+            ),
+            matrix.astype(complex),
+            vectorized=True,
+        )
 
-    def _eig_cpu(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-        # We force this computation to be performed on the cpu by jit-ing and
-        # explicitly specifying the device.
-        with jax.default_device(jax.devices("cpu")[0]):
-            return jax.jit(jnp.linalg.eig)(matrix)
 
-    return jax.pure_callback(
-        _eig_cpu,
-        (
-            jnp.ones(matrix.shape[:-1], dtype=complex),  # Eigenvalues
-            jnp.ones(matrix.shape, dtype=complex),  # Eigenvectors
-        ),
-        matrix.astype(complex),
-        vectorized=True,
-    )
+with jax.default_device(jax.devices("cpu")[0]):
+    _eig_jax_cpu = jax.jit(jnp.linalg.eig)
 
 
 def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Eigendecomposition using `jeig` if available, and `_eig_host_jax` if not."""
+    """Eigendecomposition using `jeig` if available, and `_eig_jax` if not."""
     if _JEIG_AVAILABLE:
         return jeig.eig(matrix)
     else:
-        return _eig_host_jax(matrix)
+        return _eig_jax(matrix)
 
 
 def _eig_fwd(
