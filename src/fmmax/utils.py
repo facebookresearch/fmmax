@@ -151,8 +151,6 @@ def _eig_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
         )
 
 
-# Define jax eigendecomposition that runs on CPU. Note that the compilation takes
-# place at module import time. If the `jit` is inside a function, deadlocks can occur.
 with jax.default_device(jax.devices("cpu")[0]):
     _eig_jax_cpu = jax.jit(jnp.linalg.eig)
 
