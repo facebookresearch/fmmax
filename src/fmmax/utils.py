@@ -8,6 +8,7 @@ from typing import Any, Tuple
 import jax
 import jax.numpy as jnp
 import numpy as onp
+import scipy
 
 # The `jeig` package offers several jax-wrapped implementations of eigendecomposition,
 # some of which have performance benefits. However, since `jeig` has a dependency on
@@ -136,27 +137,27 @@ def eig(
     return _eig(matrix)
 
 
-def _eig_host_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Wraps jnp.linalg.eig so that it can be jit-ed on a machine with GPUs."""
+def _eig_scipy(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Eigendecomposition using `scipy.linalg.eig`."""
 
-    def _eig_cpu(
-        matrix: jnp.ndarray,
-    ) -> Tuple[onp.ndarray[Any, Any], onp.ndarray[Any, Any]]:
-        # We force this computation to be performed on the cpu by jit-ing and
-        # explicitly specifying the device.
-        with jax.default_device(jax.devices("cpu")[0]):
-            eigvals, eigvecs = jax.jit(jnp.linalg.eig)(matrix)
-            return onp.asarray(eigvals), onp.asarray(eigvecs)
+    def _eig_fn(m: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        eigval, eigvec = jax.pure_callback(
+            scipy.linalg.eig,
+            (
+                jnp.ones(m.shape[:-1], dtype=complex),  # Eigenvalues
+                jnp.ones(m.shape, dtype=complex),  # Eigenvectors
+            ),
+            m.astype(complex),
+            vectorized=False,
+        )
+        return jnp.asarray(eigval), jnp.asarray(eigvec)
 
-    return jax.pure_callback(
-        _eig_cpu,
-        (
-            jnp.ones(matrix.shape[:-1], dtype=complex),  # Eigenvalues
-            jnp.ones(matrix.shape, dtype=complex),  # Eigenvectors
-        ),
-        matrix.astype(complex),
-        vectorized=True,
-    )
+    batch_shape = matrix.shape[:-2]
+    matrix = jnp.reshape(matrix, (-1,) + matrix.shape[-2:])
+    eigvals, eigvecs = jax.vmap(_eig_fn)(matrix)
+    eigvecs = jnp.reshape(eigvecs, batch_shape + eigvecs.shape[-2:])
+    eigvals = jnp.reshape(eigvals, batch_shape + eigvals.shape[-1:])
+    return eigvals, eigvecs
 
 
 def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -164,7 +165,7 @@ def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     if _JEIG_AVAILABLE:
         return jeig.eig(matrix)
     else:
-        return _eig_host_jax(matrix)
+        return _eig_scipy(matrix)
 
 
 def _eig_fwd(
