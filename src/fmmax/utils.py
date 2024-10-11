@@ -136,18 +136,32 @@ def eig(
     return _eig(matrix)
 
 
-# Define eigendecomposition that runs on CPU. Note that the compilation takes place at
-# module import time. If the `jit` is inside a function, jax deadlocks can occur.
+def _eig_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Eigendecomposition using `jax.numpy.linalg.eig`."""
+    eigval, eigvec = jax.pure_callback(
+        _eig_jax_cpu,
+        (
+            jnp.ones(matrix.shape[:-1], dtype=complex),  # Eigenvalues
+            jnp.ones(matrix.shape, dtype=complex),  # Eigenvectors
+        ),
+        matrix.astype(complex),
+        vectorized=True,
+    )
+    return jnp.asarray(eigval), jnp.asarray(eigvec)
+
+
+# Define jax eigendecomposition that runs on CPU. Note that the compilation takes
+# place at module import time. If the `jit` is inside a function, deadlocks can occur.
 with jax.default_device(jax.devices("cpu")[0]):
     _eig_jax_cpu = jax.jit(jnp.linalg.eig)
 
 
 def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Eigendecomposition using `jeig` if available, and `_eig_jax_cpu` if not."""
+    """Eigendecomposition using `jeig` if available, and `_eig_jax` if not."""
     if _JEIG_AVAILABLE:
         return jeig.eig(matrix)
     else:
-        return _eig_jax_cpu(matrix)
+        return _eig_jax(matrix)
 
 
 def _eig_fwd(
