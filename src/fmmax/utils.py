@@ -20,7 +20,6 @@ try:
 except ModuleNotFoundError:
     _JEIG_AVAILABLE = False
 
-
 EIG_EPS_RELATIVE = 1e-12
 EIG_EPS_MINIMUM = 1e-24
 
@@ -150,8 +149,6 @@ def _eig_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     return jnp.asarray(eigval), jnp.asarray(eigvec)
 
 
-# Define jax eigendecomposition that runs on CPU. Note that the compilation takes
-# place at module import time. If the `jit` is inside a function, deadlocks can occur.
 with jax.default_device(jax.devices("cpu")[0]):
     _eig_jax_cpu = jax.jit(jnp.linalg.eig)
 
@@ -161,7 +158,10 @@ def _eig(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     if _JEIG_AVAILABLE:
         return jeig.eig(matrix)
     else:
-        return _eig_jax(matrix)
+        if jax.devices()[0] == jax.devices("cpu")[0]:
+            return jnp.linalg.eig(matrix)
+        else:
+            return _eig_jax(matrix)
 
 
 def _eig_fwd(
