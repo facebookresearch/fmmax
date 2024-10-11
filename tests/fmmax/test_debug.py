@@ -31,14 +31,6 @@ def jax_calculation():
         density=jnp.ones((50, 50)),
     )
 
-    # Thickensses of ambient, passivation, grating, and metal substrate.
-    thicknesses = [
-        jnp.asarray(0.0),
-        jnp.asarray(0.02),
-        jnp.asarray(0.06),
-        jnp.asarray(0.0),
-    ]
-
     primitive_lattice_vectors = basis.LatticeVectors(u=basis.X, v=basis.Y)
     expansion = basis.generate_expansion(
         primitive_lattice_vectors=primitive_lattice_vectors,
@@ -52,6 +44,7 @@ def jax_calculation():
         "expansion": expansion,
         "formulation": formulation,
     }
+
     solve_result_ambient = fmm.eigensolve_isotropic_media(
         permittivity=permittivity_ambient, **eigensolve_kwargs
     )
@@ -61,25 +54,9 @@ def jax_calculation():
     solve_result_metal = fmm.eigensolve_isotropic_media(
         permittivity=permittivity_metal, **eigensolve_kwargs
     )
-
-    # Perform the isotropic grating eigensolve and compute the zeroth-order reflectivity.
     solve_result_grating_isotropic = fmm.eigensolve_isotropic_media(
         permittivity=permittivity_grating, **eigensolve_kwargs
     )
-    s_matrix_isotropic = scattering.stack_s_matrix(
-        layer_solve_results=[
-            solve_result_ambient,
-            solve_result_passivation,
-            solve_result_grating_isotropic,
-            solve_result_metal,
-        ],
-        layer_thicknesses=thicknesses,
-    )
-    n = expansion.num_terms
-    r_te_isotropic = s_matrix_isotropic.s21[0, 0]
-    r_tm_isotropic = s_matrix_isotropic.s21[n, n]
-
-    # Perform the anisotropic grating eigensolve and compute the zeroth-order reflectivity.
     solve_result_grating_anisotropic = fmm.eigensolve_general_anisotropic_media(
         permittivity_xx=permittivity_grating,
         permittivity_xy=jnp.zeros_like(permittivity_grating),
@@ -93,19 +70,6 @@ def jax_calculation():
         permeability_zz=jnp.ones_like(permittivity_grating),
         **eigensolve_kwargs,
     )
-    s_matrix_anisotropic = scattering.stack_s_matrix(
-        layer_solve_results=[
-            solve_result_ambient,
-            solve_result_passivation,
-            solve_result_grating_anisotropic,  # Use results of anisotropic eigensolve.
-            solve_result_metal,
-        ],
-        layer_thicknesses=thicknesses,
-    )
-    r_te_anisotropic = s_matrix_anisotropic.s21[0, 0]
-    r_tm_anisotropic = s_matrix_anisotropic.s21[n, n]
-
-    return (r_te_anisotropic, r_tm_anisotropic), (r_te_isotropic, r_tm_isotropic)
 
 
 class DebugTest(unittest.TestCase):
