@@ -415,17 +415,42 @@ def fields_on_grid(
         The electric field `(ex, ey, ez)`, magnetic field `(hx, hy, hz)`,
         and the grid coordinates `(x, y)`.
     """
+    return _fields_on_grid(
+        electric_field=electric_field,
+        magnetic_field=magnetic_field,
+        shape=shape,
+        num_unit_cells=num_unit_cells,
+        in_plane_wavevector=layer_solve_result.in_plane_wavevector,
+        primitive_lattice_vectors=layer_solve_result.primitive_lattice_vectors,
+        expansion=layer_solve_result.expansion,
+    )
+
+
+def _fields_on_grid(
+    electric_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    magnetic_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    in_plane_wavevector: jnp.ndarray,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    expansion: basis.Expansion,
+    shape: Tuple[int, int],
+    num_unit_cells: Tuple[int, int],
+) -> Tuple[
+    Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    Tuple[jnp.ndarray, jnp.ndarray],
+]:
+    """Transforms the fields from fourier representation to the grid."""
     _validate_amplitudes_shape(
         electric_field + magnetic_field,
-        num_terms=layer_solve_result.expansion.num_terms,
+        num_terms=expansion.num_terms,
     )
     x, y = basis.unit_cell_coordinates(
-        primitive_lattice_vectors=layer_solve_result.primitive_lattice_vectors,
+        primitive_lattice_vectors=primitive_lattice_vectors,
         shape=shape,
         num_unit_cells=num_unit_cells,
     )
-    kx = layer_solve_result.in_plane_wavevector[..., 0, jnp.newaxis, jnp.newaxis]
-    ky = layer_solve_result.in_plane_wavevector[..., 1, jnp.newaxis, jnp.newaxis]
+    kx = in_plane_wavevector[..., 0, jnp.newaxis, jnp.newaxis]
+    ky = in_plane_wavevector[..., 1, jnp.newaxis, jnp.newaxis]
     phase = jnp.exp(1j * (kx * x + ky * y))[..., jnp.newaxis]
     assert (
         x.shape[-2:]
@@ -434,7 +459,7 @@ def fields_on_grid(
     )
 
     def _field_on_grid(fourier_field):
-        field = fft.ifft(fourier_field, layer_solve_result.expansion, shape, axis=-2)
+        field = fft.ifft(fourier_field, expansion, shape, axis=-2)
         return jnp.tile(field, num_unit_cells + (1,))
 
     ex, ey, ez = electric_field
