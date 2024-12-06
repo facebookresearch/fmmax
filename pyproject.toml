@@ -21,7 +21,7 @@ maintainers = [
 
 # TODO add gpu channels
 dependencies = [
-  "jax <= 0.4.35",
+  "jax <= 0.4.36",
   "jaxlib",
   "numpy",
 ]
