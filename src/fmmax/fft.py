@@ -32,7 +32,7 @@ def fourier_convolution_matrix(
     _validate_shape_for_expansion(x.shape, expansion)
 
     x_fft = jnp.fft.fft2(x)
-    x_fft /= jnp.prod(jnp.asarray(x.shape[-2:]))
+    x_fft /= jnp.prod(jnp.asarray(x.shape[-2:])).astype(x.dtype)
     idx = _standard_toeplitz_indices(expansion)
     return x_fft[..., idx[..., 0], idx[..., 1]]
 

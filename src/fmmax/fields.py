@@ -142,11 +142,11 @@ def amplitude_poynting_flux(
     alpha_e = A @ forward_amplitude
     beta_e = A @ backward_amplitude
 
-    s_forward = jnp.asarray(0.5) * (
+    s_forward = jnp.asarray(0.5, dtype=forward_amplitude.dtype) * (
         (jnp.conj(alpha_e) * alpha_h + jnp.conj(alpha_h) * alpha_e)
         + (jnp.conj(beta_h) * alpha_e - jnp.conj(beta_e) * alpha_h)
     )
-    s_backward = jnp.asarray(0.5) * (
+    s_backward = jnp.asarray(0.5, dtype=forward_amplitude.dtype) * (
         -(jnp.conj(beta_e) * beta_h + jnp.conj(beta_h) * beta_e)
         + jnp.conj((jnp.conj(beta_h) * alpha_e - jnp.conj(beta_e) * alpha_h))
     )
@@ -267,7 +267,11 @@ def _poynting_flux_a_matrix(layer_solve_result: fmm.LayerSolveResult) -> jnp.nda
     angular_frequency = utils.angular_frequency_for_wavelength(
         layer_solve_result.wavelength
     )[..., jnp.newaxis]
-    return omega_script_k @ phi @ utils.diag(jnp.ones(()) / (angular_frequency * q))
+    return (
+        omega_script_k
+        @ phi
+        @ utils.diag(jnp.ones((), dtype=q.dtype) / (angular_frequency * q))
+    )
 
 
 def fields_from_wave_amplitudes(
@@ -358,7 +362,11 @@ def field_conversion_matrix(layer_solve_result: fmm.LayerSolveResult) -> jnp.nda
     # Note that there is a factor of `angular_frequency` in the denominator here, which
     # differs from equation 35 in [2012 Liu]. This is an error in that reference, and
     # the factor is actually present e.g. in equation 59.
-    mat = omega_script_k @ phi @ utils.diag(jnp.ones(()) / (angular_frequency * q))
+    mat = (
+        omega_script_k
+        @ phi
+        @ utils.diag(jnp.ones((), dtype=q.dtype) / (angular_frequency * q))
+    )
     return jnp.block([[mat, -mat], [phi, phi]])
 
 

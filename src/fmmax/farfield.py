@@ -259,7 +259,7 @@ def _integrated_flux_weights(
 
     # The weights are just the gradient of the integrated flux with respect
     # to the flat array elements; use a dummy flux having a single source.
-    dummy_flux = jnp.ones(flux.shape[:-1] + (1,))
+    dummy_flux = jnp.ones_like(flux, shape=flux.shape[:-1] + (1,))
     return jax.grad(_integrated_fn)(dummy_flux)
 
 

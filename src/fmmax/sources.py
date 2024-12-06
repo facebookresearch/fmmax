@@ -398,7 +398,7 @@ def emission_matrix(
     fd_s21_after = utils.diag(next_fd) @ s_matrix_after_source.s21
 
     shape = jnp.broadcast_shapes(q.shape, next_q.shape)
-    eye = utils.diag(jnp.ones(shape))
+    eye = utils.diag(jnp.ones(shape, dtype=q.dtype))
 
     # Equation 7.9 from [1999 Whittaker].
     matrix = jnp.block(

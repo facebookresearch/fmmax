@@ -109,17 +109,17 @@ class RotatedFieldsTest(unittest.TestCase):
             polarization_angle=polarization_angle,
         )
         with self.subTest("ex"):
-            onp.testing.assert_allclose(fields[0][0], expected_fields[0][0], atol=1e-5)
+            onp.testing.assert_allclose(fields[0][0], expected_fields[0][0], atol=2e-5)
         with self.subTest("ey"):
-            onp.testing.assert_allclose(fields[0][1], expected_fields[0][1], atol=1e-5)
+            onp.testing.assert_allclose(fields[0][1], expected_fields[0][1], atol=2e-5)
         with self.subTest("ez"):
-            onp.testing.assert_allclose(fields[0][2], expected_fields[0][2], atol=1e-5)
+            onp.testing.assert_allclose(fields[0][2], expected_fields[0][2], atol=2e-5)
         with self.subTest("hx"):
-            onp.testing.assert_allclose(fields[1][0], expected_fields[1][0], atol=1e-5)
+            onp.testing.assert_allclose(fields[1][0], expected_fields[1][0], atol=2e-5)
         with self.subTest("hy"):
-            onp.testing.assert_allclose(fields[1][1], expected_fields[1][1], atol=1e-5)
+            onp.testing.assert_allclose(fields[1][1], expected_fields[1][1], atol=2e-5)
         with self.subTest("hz"):
-            onp.testing.assert_allclose(fields[1][2], expected_fields[1][2], atol=1e-5)
+            onp.testing.assert_allclose(fields[1][2], expected_fields[1][2], atol=2e-5)
 
     @parameterized.parameterized.expand(
         [

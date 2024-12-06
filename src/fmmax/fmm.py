@@ -453,7 +453,12 @@ def _eigensolve_uniform_isotropic_media(
         permittivity[..., jnp.newaxis], batch_shape + (expansion.num_terms,)
     )
     z_permittivity_matrix = utils.diag(z_permittivity_matrix)
-    z_permeability_matrix = utils.diag(jnp.ones(z_permittivity_matrix.shape[:-1]))
+    z_permeability_matrix = utils.diag(
+        jnp.ones(
+            z_permittivity_matrix.shape[:-1],
+            dtype=z_permittivity_matrix.dtype,
+        )
+    )
     return LayerSolveResult(
         wavelength=wavelength,
         in_plane_wavevector=in_plane_wavevector,
@@ -516,7 +521,10 @@ def _eigensolve_patterned_isotropic_media(
     )
 
     # Create permeability matrices for nonmagnetic materials.
-    ones = jnp.ones(z_permittivity_matrix.shape[:-1])
+    ones = jnp.ones(
+        z_permittivity_matrix.shape[:-1],
+        dtype=z_permittivity_matrix.dtype,
+    )
     zeros = jnp.zeros_like(ones)
     z_permeability_matrix = utils.diag(ones)
     inverse_z_permeability_matrix = utils.diag(ones)

@@ -122,13 +122,21 @@ def rotation_matrix(
     Returns:
         The rotation matrix.
     """
+    dtype = jnp.promote_types(
+        jnp.asarray(polar_angle).dtype,
+        jnp.promote_types(
+            jnp.asarray(azimuthal_angle).dtype,
+            jnp.asarray(polarization_angle).dtype,
+        ),
+    )
     # Matrix that rotates around the y-axis by `polar_angle`.
     rotation_y_matrix = jnp.asarray(
         [
             [jnp.cos(polar_angle), 0.0, jnp.sin(polar_angle)],
             [0.0, 1.0, 0.0],
             [-jnp.sin(polar_angle), 0.0, jnp.cos(polar_angle)],
-        ]
+        ],
+        dtype=dtype,
     )
 
     # Matrix that rotates around the z-axis by `azimuthal_angle`.
@@ -137,7 +145,8 @@ def rotation_matrix(
             [jnp.cos(azimuthal_angle), -jnp.sin(azimuthal_angle), 0.0],
             [jnp.sin(azimuthal_angle), jnp.cos(azimuthal_angle), 0.0],
             [0.0, 0.0, 1.0],
-        ]
+        ],
+        dtype=dtype,
     )
 
     # Matrix that rotates around the axis defined by the specified polar and
@@ -164,6 +173,7 @@ def rotation_matrix(
                 uz * uy * (1 - cos_theta_p) + ux * sin_theta_p,
                 cos_theta_p + uz**2 * (1 - cos_theta_p),
             ],
-        ]
+        ],
+        dtype=dtype,
     )
     return rotation_p_matrix @ rotation_z_matrix @ rotation_y_matrix
