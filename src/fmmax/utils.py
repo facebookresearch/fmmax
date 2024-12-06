@@ -142,13 +142,14 @@ def _eig_jax(matrix: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
     if jax.devices()[0] == jax.devices("cpu")[0]:
         return jnp.linalg.eig(matrix)
     else:
+        dtype = jnp.promote_types(matrix.dtype, jnp.complex64)
         return jax.pure_callback(
             _eig_jax_cpu,
             (
-                jnp.ones(matrix.shape[:-1], dtype=complex),  # Eigenvalues
-                jnp.ones(matrix.shape, dtype=complex),  # Eigenvectors
+                jnp.ones(matrix.shape[:-1], dtype=dtype),  # Eigenvalues
+                jnp.ones(matrix.shape, dtype=dtype),  # Eigenvectors
             ),
-            matrix.astype(complex),
+            matrix.astype(dtype),
             vectorized=True,
         )
 

@@ -142,11 +142,11 @@ def amplitude_poynting_flux(
     alpha_e = A @ forward_amplitude
     beta_e = A @ backward_amplitude
 
-    s_forward = jnp.asarray(0.5) * (
+    s_forward = jnp.asarray(0.5, dtype=forward_amplitude.dtype) * (
         (jnp.conj(alpha_e) * alpha_h + jnp.conj(alpha_h) * alpha_e)
         + (jnp.conj(beta_h) * alpha_e - jnp.conj(beta_e) * alpha_h)
     )
-    s_backward = jnp.asarray(0.5) * (
+    s_backward = jnp.asarray(0.5, dtype=forward_amplitude.dtype) * (
         -(jnp.conj(beta_e) * beta_h + jnp.conj(beta_h) * beta_e)
         + jnp.conj((jnp.conj(beta_h) * alpha_e - jnp.conj(beta_e) * alpha_h))
     )
@@ -267,7 +267,11 @@ def _poynting_flux_a_matrix(layer_solve_result: fmm.LayerSolveResult) -> jnp.nda
     angular_frequency = utils.angular_frequency_for_wavelength(
         layer_solve_result.wavelength
     )[..., jnp.newaxis]
-    return omega_script_k @ phi @ utils.diag(jnp.ones(()) / (angular_frequency * q))
+    return (
+        omega_script_k
+        @ phi
+        @ utils.diag(jnp.ones((), dtype=q.dtype) / (angular_frequency * q))
+    )
 
 
 def fields_from_wave_amplitudes(
@@ -358,7 +362,11 @@ def field_conversion_matrix(layer_solve_result: fmm.LayerSolveResult) -> jnp.nda
     # Note that there is a factor of `angular_frequency` in the denominator here, which
     # differs from equation 35 in [2012 Liu]. This is an error in that reference, and
     # the factor is actually present e.g. in equation 59.
-    mat = omega_script_k @ phi @ utils.diag(jnp.ones(()) / (angular_frequency * q))
+    mat = (
+        omega_script_k
+        @ phi
+        @ utils.diag(jnp.ones((), dtype=q.dtype) / (angular_frequency * q))
+    )
     return jnp.block([[mat, -mat], [phi, phi]])
 
 
@@ -415,17 +423,42 @@ def fields_on_grid(
         The electric field `(ex, ey, ez)`, magnetic field `(hx, hy, hz)`,
         and the grid coordinates `(x, y)`.
     """
+    return _fields_on_grid(
+        electric_field=electric_field,
+        magnetic_field=magnetic_field,
+        shape=shape,
+        num_unit_cells=num_unit_cells,
+        in_plane_wavevector=layer_solve_result.in_plane_wavevector,
+        primitive_lattice_vectors=layer_solve_result.primitive_lattice_vectors,
+        expansion=layer_solve_result.expansion,
+    )
+
+
+def _fields_on_grid(
+    electric_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    magnetic_field: Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    in_plane_wavevector: jnp.ndarray,
+    primitive_lattice_vectors: basis.LatticeVectors,
+    expansion: basis.Expansion,
+    shape: Tuple[int, int],
+    num_unit_cells: Tuple[int, int],
+) -> Tuple[
+    Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    Tuple[jnp.ndarray, jnp.ndarray],
+]:
+    """Transforms the fields from fourier representation to the grid."""
     _validate_amplitudes_shape(
         electric_field + magnetic_field,
-        num_terms=layer_solve_result.expansion.num_terms,
+        num_terms=expansion.num_terms,
     )
     x, y = basis.unit_cell_coordinates(
-        primitive_lattice_vectors=layer_solve_result.primitive_lattice_vectors,
+        primitive_lattice_vectors=primitive_lattice_vectors,
         shape=shape,
         num_unit_cells=num_unit_cells,
     )
-    kx = layer_solve_result.in_plane_wavevector[..., 0, jnp.newaxis, jnp.newaxis]
-    ky = layer_solve_result.in_plane_wavevector[..., 1, jnp.newaxis, jnp.newaxis]
+    kx = in_plane_wavevector[..., 0, jnp.newaxis, jnp.newaxis]
+    ky = in_plane_wavevector[..., 1, jnp.newaxis, jnp.newaxis]
     phase = jnp.exp(1j * (kx * x + ky * y))[..., jnp.newaxis]
     assert (
         x.shape[-2:]
@@ -434,7 +467,7 @@ def fields_on_grid(
     )
 
     def _field_on_grid(fourier_field):
-        field = fft.ifft(fourier_field, layer_solve_result.expansion, shape, axis=-2)
+        field = fft.ifft(fourier_field, expansion, shape, axis=-2)
         return jnp.tile(field, num_unit_cells + (1,))
 
     ex, ey, ez = electric_field

@@ -483,7 +483,7 @@ def _fourier_loss(
     transverse_wavevectors = basis.transverse_wavevectors(
         primitive_lattice_vectors=primitive_lattice_vectors,
         expansion=expansion,
-        in_plane_wavevector=jnp.zeros((2,)),
+        in_plane_wavevector=jnp.zeros((2,), dtype=fourier_field.real.dtype),
     )
 
     basis_vectors = jnp.stack(
